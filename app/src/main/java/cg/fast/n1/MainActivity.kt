@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-            geolocationEnabled = true
+            setGeolocationEnabled(true)
             allowFileAccess = true
             allowContentAccess = true
             @Suppress("DEPRECATION") allowFileAccessFromFileURLs = true
