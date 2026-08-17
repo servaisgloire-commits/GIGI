@@ -8,7 +8,9 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.Fast"
-        android:label="FAST">
+        android:label="FAST"
+        android:icon="@drawable/fast_logo"
+        android:roundIcon="@drawable/fast_logo">
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait"
