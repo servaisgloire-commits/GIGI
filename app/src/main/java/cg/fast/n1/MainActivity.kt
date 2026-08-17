@@ -40,7 +40,23 @@ class MainActivity : AppCompatActivity() {
                 callback?.invoke(origin, ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED, false)
             }
         }
-        web.webViewClient = WebViewClient()
+        web.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                view?.evaluateJavascript("""
+                    try {
+                      startDriverTracking = function(){
+                        try { FASTNative.setAccessToken(token); FASTNative.startDriverTracking(); watchId = -1; }
+                        catch(e) { console.log(e); }
+                      };
+                      stopDriverTracking = function(){
+                        try { FASTNative.stopDriverTracking(); watchId = null; }
+                        catch(e) { console.log(e); }
+                      };
+                    } catch(e) { console.log(e); }
+                """.trimIndent(), null)
+            }
+        }
         web.addJavascriptInterface(FastBridge(), "FASTNative")
         web.loadUrl("file:///android_asset/index.html")
         setContentView(web)
@@ -63,14 +79,11 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface
         fun startDriverTracking() {
             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
-            val intent = Intent(this@MainActivity, DriverLocationService::class.java)
-            ContextCompat.startForegroundService(this@MainActivity, intent)
+            ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, DriverLocationService::class.java))
         }
 
         @android.webkit.JavascriptInterface
-        fun stopDriverTracking() {
-            stopService(Intent(this@MainActivity, DriverLocationService::class.java))
-        }
+        fun stopDriverTracking() { stopService(Intent(this@MainActivity, DriverLocationService::class.java)) }
 
         @android.webkit.JavascriptInterface
         fun callSupport(phone: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) } }
