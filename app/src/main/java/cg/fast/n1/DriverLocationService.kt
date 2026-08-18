@@ -1,6 +1,7 @@
 package cg.fast.n1
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -37,7 +38,9 @@ class DriverLocationService : Service() {
             val token = accessToken()
             if (token.isBlank()) return
 
-            if (location.accuracy > 120f && System.currentTimeMillis() - lastSentAt < 10_000L) return
+            val now = System.currentTimeMillis()
+            if (location.accuracy > 120f && now - lastSentAt < 12_000L) return
+            if (now - lastSentAt < 2_500L) return
 
             val body = JSONObject().apply {
                 put("lat", location.latitude)
@@ -46,7 +49,7 @@ class DriverLocationService : Service() {
                 if (location.hasBearing()) put("heading", location.bearing.toDouble())
                 if (location.hasSpeed()) put("speed_kmh", location.speed * 3.6)
             }
-            lastSentAt = System.currentTimeMillis()
+            lastSentAt = now
             networkExecutor.execute { postLocation(token, body) }
         }
     }
@@ -72,6 +75,13 @@ class DriverLocationService : Service() {
     private fun accessToken(): String =
         getSharedPreferences("fast", MODE_PRIVATE).getString("access_token", "") ?: ""
 
+    private fun isAppInForeground(): Boolean {
+        val info = ActivityManager.RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(info)
+        return info.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+            info.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
+    }
+
     private fun postLocation(token: String, body: JSONObject) {
         try {
             val conn = URL(BuildConfig.PYTHON_API_URL + "/v1/driver/location").openConnection() as HttpURLConnection
@@ -92,8 +102,10 @@ class DriverLocationService : Service() {
         networkExecutor.execute {
             while (running) {
                 val token = accessToken()
-                if (token.isNotBlank()) pollCurrentOffer(token)
-                try { Thread.sleep(4000L) } catch (_: InterruptedException) { break }
+                // Le WebView interroge déjà les offres quand l'app est visible.
+                // On garde le polling natif uniquement en arrière-plan pour éviter le trafic en double.
+                if (token.isNotBlank() && !isAppInForeground()) pollCurrentOffer(token)
+                try { Thread.sleep(6000L) } catch (_: InterruptedException) { break }
             }
         }
     }
@@ -153,10 +165,10 @@ class DriverLocationService : Service() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
 
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
-            .setMinUpdateIntervalMillis(1500L)
-            .setMaxUpdateDelayMillis(5000L)
-            .setMinUpdateDistanceMeters(4f)
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 4000L)
+            .setMinUpdateIntervalMillis(2500L)
+            .setMaxUpdateDelayMillis(8000L)
+            .setMinUpdateDistanceMeters(6f)
             .setWaitForAccurateLocation(true)
             .build()
         fused.requestLocationUpdates(request, callback, mainLooper)
