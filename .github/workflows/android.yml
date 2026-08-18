@@ -38,6 +38,7 @@ jobs:
           node --check app/src/main/assets/google-map-adapter.js
           node --check app/src/main/assets/app-quality.js
           node --check app/src/main/assets/competitive-235.js
+          node --check app/src/main/assets/driver-profile.js
           node --check app/src/main/assets/fast-security.js
           node --check app/src/main/assets/stability-fixes.js
           node --check app/src/main/assets/driver-gps.js
@@ -47,6 +48,8 @@ jobs:
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'competitive-235.js' app/src/main/assets/index.html
           grep -q 'versionName = "2.3.5"' app/build.gradle.kts
+          test -f app/src/main/assets/driver-profile.js
+          test -f app/src/main/assets/driver-profile.css
       - name: Build verification APK
         run: gradle assembleDebug
       - name: Decode production keystore
@@ -76,6 +79,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="fast-v2.3.5"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v2.3.5" --notes "Definitive FAST release: Google Maps, transparent upfront ride info, integrated driver navigation, PIN safety, trip sharing, safety center, real-time GPS, improved passenger/driver UX and stronger runtime stability."
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v2.3.5" --notes "FAST v2.3.5: Google Maps, driver offer choice, driver profile with private document validation and payout settings, integrated navigation, PIN safety, trip sharing and real-time GPS."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v2.3.5-production.apk
           gh release upload "$TAG" FAST-N1-v2.3.5-production.apk --clobber
