@@ -1,0 +1,1 @@
+FAST 6.0 build 602 verification: password recovery, stale-search cleanup, unlimited-distance dispatch and Android production gates.
