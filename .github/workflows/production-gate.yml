@@ -27,8 +27,9 @@ jobs:
       - name: Compile Python
         run: python -m compileall -q backend/app
       - name: Run backend tests
-        working-directory: backend
-        run: pytest -q
+        run: python -m pytest -q backend/tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
       - name: Reject committed server secrets
         shell: bash
         run: |
