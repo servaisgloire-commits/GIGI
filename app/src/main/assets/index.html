@@ -22,27 +22,27 @@
     <button id="loginBtn" class="btn">Se connecter</button>
     <button id="forgotBtn" class="text-btn">Mot de passe oublié ?</button>
     <div class="separator"><span></span><b>ou</b><span></span></div>
-    <h3>Créer un compte</h3>
+    <h3>Créer un compte passager</h3>
     <div class="two"><input id="firstName" class="input" placeholder="Prénom"><input id="lastName" class="input" placeholder="Nom"></div>
     <input id="phone" class="input" placeholder="Téléphone">
     <input id="signupEmail" class="input" type="email" placeholder="E-mail">
     <input id="signupPassword" class="input" type="password" placeholder="Mot de passe">
-    <select id="signupRole" class="input"><option value="client">Je suis passager</option><option value="driver">Je suis chauffeur</option></select>
+    <select id="signupRole" class="hidden"><option value="client" selected>Passager</option></select>
     <button id="signupBtn" class="btn outline">Créer mon compte FAST</button>
     <p class="help">Confirmation par e-mail • Assistance : <span id="authSupportEmail">servaisgloire@hotmail.com</span></p>
   </div>
 </section>
 
 <section id="mainApp" class="hidden">
-<header class="top">
+<header class="top" id="mainHeader">
   <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
   <div class="brand-center"><div class="fast-mark small"><span></span><span></span><span></span></div><div class="fast-word smallword">FAST</div></div>
-  <button class="vehicle-mode-btn" id="vehicleModeBtn" aria-label="Mode véhicule"><span>🚘</span><small>Véhicule</small></button>
+  <button class="vehicle-mode-btn hidden" id="vehicleModeBtn" aria-hidden="true"><span>🚘</span><small>Véhicule</small></button>
 </header>
 
 <section id="homePage" class="pageview">
   <div id="passengerArea">
-    <div class="mapwrap">
+    <div class="mapwrap" id="sharedMapWrap">
       <div id="map"></div>
       <div class="map-engine"><b>FAST MAP</b><small id="mapEngineText">Mapbox</small></div>
       <button id="locateBtn" class="floating-locate" aria-label="Ma position">◎</button>
@@ -65,27 +65,44 @@
     </div>
   </div>
 
-  <div id="driverArea" class="hidden driver-page">
-    <div class="vehicle-mode-hero"><div><small>MODE VÉHICULE</small><h2>FAST Driver</h2><p>Navigation, GPS et demandes en temps réel.</p></div><div class="vehicle-hero-icon">🚘</div></div>
-    <div class="driver-header"><div class="photo lg">JM</div><div class="driver-name"><small>Bonjour,</small><b id="driverName">Chauffeur FAST</b></div><label class="toggle"><input id="driverToggleInput" type="checkbox"><span></span></label></div>
-    <div class="earnings-card"><small>Gains du jour</small><div class="earnings">0 FCFA</div><div class="spark">╱╲╱╲╱╲</div></div>
-    <div class="driver-shortcuts"><button>▣<span>Portefeuille</span></button><button>◷<span>Historique</span></button><button>▥<span>Statistiques</span></button><button>◉<span>Profil</span></button></div>
+  <div id="driverArea" class="hidden driver-navigation-page">
+    <div class="driver-nav-top">
+      <div><small>FAST DRIVER</small><b id="driverName">Chauffeur FAST</b></div>
+      <label class="toggle"><input id="driverToggleInput" type="checkbox"><span></span></label>
+    </div>
+    <div id="driverGpsMapHost" class="driver-gps-map-host"></div>
+    <div class="driver-guidance-card" id="driverGuidanceCard">
+      <div class="driver-turn-icon" id="driverTurnIcon">↑</div>
+      <div class="driver-guidance-main"><small id="driverRoadPhase">En attente d’une course</small><b id="driverInstruction">Mettez-vous en ligne pour recevoir une course</b><span id="driverStepDistance">—</span></div>
+      <div class="driver-eta-box"><b id="driverNavEta">—</b><small>arrivée</small></div>
+    </div>
+    <div class="driver-nav-stats">
+      <div><small>Distance</small><b id="driverNavDistance">—</b></div>
+      <div><small>Vitesse</small><b id="driverSpeed">0 km/h</b></div>
+      <div><small>GPS</small><b id="driverGpsAccuracy">—</b></div>
+      <div><small>Étapes</small><b id="driverStepCount">0</b></div>
+    </div>
+    <div id="driverStepsPanel" class="driver-steps-panel hidden">
+      <div class="section"><h3>Prochaines étapes</h3><span>Navigation</span></div>
+      <div id="driverStepsList"></div>
+    </div>
     <div class="section"><h3>Demandes de course</h3><span>Temps réel</span></div>
     <div id="offerCard" class="offer-card hidden"><div class="offer-top"><div class="countdown">25<br><small>sec</small></div><div><b>Nouvelle course</b><small id="offerDistance">—</small></div><strong id="offerEta">—</strong></div><div class="offer-actions"><button id="acceptOffer" class="btn">Accepter</button><button id="rejectOffer" class="btn ghost">Refuser</button></div></div>
-    <div id="driverTrip" class="driver-trip hidden"><h3>Course active</h3><button id="arrivingBtn" class="btn outline">Je suis en approche</button><button id="startRideBtn" class="btn">Démarrer</button><button id="completeRideBtn" class="btn dark">Terminer</button></div>
-    <div class="verification-card"><b>Validation chauffeur</b><p>Votre compte doit être vérifié par FAST avant de recevoir des courses.</p><button id="requestDriverValidation" class="btn outline">Demander ma validation</button></div>
-    <button id="backPassengerBtn" class="btn outline">← Revenir au mode passager</button>
+    <div id="driverTrip" class="driver-trip hidden"><div class="driver-trip-actions"><button id="arrivingBtn" class="btn outline">Je suis en approche</button><button id="startRideBtn" class="btn">Démarrer</button><button id="completeRideBtn" class="btn dark">Terminer</button></div></div>
+    <button id="requestDriverValidation" class="hidden">Validation</button>
+    <button id="backPassengerBtn" class="hidden">Retour passager</button>
   </div>
 </section>
 
 <section id="historyPage" class="pageview hidden page"><div class="section"><h3>Mes courses</h3><span>Historique</span></div><div id="historyList"></div></section>
 <section id="walletPage" class="pageview hidden page"><div class="wallet-card"><small>Solde FAST</small><div id="walletBalance" class="wallet-balance">0 FCFA</div></div><div class="card-lite"><b>Moyens de paiement</b><p>Carte bancaire • MTN MoMo • Airtel Money • Orange Money • Wallet FAST</p></div></section>
 <section id="profilePage" class="pageview hidden page"><div class="card-lite"><b>Assistance FAST</b><p>Support officiel</p><div class="support-grid"><button id="callSupport" class="btn outline">Appeler</button><button id="emailSupport" class="btn outline">E-mail</button></div><p id="supportEmail" class="help">servaisgloire@hotmail.com</p><span id="supportPhone" class="hidden">0748413996</span></div><button id="logoutBtn" class="btn dark">Se déconnecter</button></section>
-<nav class="nav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>▣</b>Courses</button><button data-page="walletPage"><b>◫</b>Portefeuille</button><button data-page="profilePage"><b>◉</b>Profil</button></nav>
+<nav class="nav" id="clientNav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>▣</b>Courses</button><button data-page="walletPage"><b>◫</b>Portefeuille</button><button data-page="profilePage"><b>◉</b>Profil</button></nav>
 </section>
 <div id="toast" class="toast"></div>
 </div>
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js"></script>
 <script src="app.js"></script>
+<script src="driver-gps.js"></script>
 </body>
 </html>
