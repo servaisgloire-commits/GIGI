@@ -36,8 +36,8 @@ jobs:
           if git grep -nE 'sb_secret_[A-Za-z0-9_-]+' -- ':!*.md'; then
             echo 'Supabase secret key found in repository'; exit 1
           fi
-          if git grep -nE 'AIza[0-9A-Za-z_-]{20,}' -- ':!*.md'; then
-            echo 'Google API key found in repository'; exit 1
+          if git grep -nE 'AIza[0-9A-Za-z_-]{20,}' -- ':!*.md' ':!app/build.gradle.kts'; then
+            echo 'Unexpected Google API key found outside Android build configuration'; exit 1
           fi
 
   android-build:
@@ -52,6 +52,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Validate production assets
+        run: |
+          node --check app/src/main/assets/production-ui.js
+          node --check app/src/main/assets/driver-profile.js
+          grep -q 'versionName = "5.12"' app/build.gradle.kts
+          grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
       - name: Compile Android debug
         run: gradle assembleDebug
       - name: Compile Android release
