@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-let fastDriverUiReady=false,offersTimer=null;
+let fastDriverUiReady=false,offersTimer=null,currentDriverPage='home';
 const d$=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function restHeaders(extra={}){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra}}
@@ -29,15 +29,28 @@ function ensureDriverUi(){
 }
 function showDriverPage(name){
   if(role!=='driver')return;
+  currentDriverPage=name==='profile'?'profile':'home';
   const home=d$('driverArea'),profilePage=d$('driverProfilePage');
-  if(name==='profile'){home?.classList.add('hidden');profilePage?.classList.remove('hidden');loadDriverProfile()}else{profilePage?.classList.add('hidden');home?.classList.remove('hidden');setTimeout(()=>map&&map.resize(),120);loadOfferStack()}
-  d$('driverBottomNav')?.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.driverPage===name));
+  if(currentDriverPage==='profile'){
+    home?.classList.add('hidden');profilePage?.classList.remove('hidden');loadDriverProfile();
+  }else{
+    profilePage?.classList.add('hidden');home?.classList.remove('hidden');setTimeout(()=>map&&map.resize(),120);loadOfferStack();
+  }
+  d$('driverBottomNav')?.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.driverPage===currentDriverPage));
 }
-function activateDriverHome(){ensureDriverUi();if(role!=='driver')return;d$('driverBottomNav')?.classList.remove('hidden');d$('clientNav')?.classList.add('hidden');showDriverPage('home');clearInterval(offersTimer);offersTimer=setInterval(loadOfferStack,3000);loadOfferStack()}
-function deactivateDriverUi(){d$('driverBottomNav')?.classList.add('hidden');d$('driverProfilePage')?.classList.add('hidden');clearInterval(offersTimer)}
+function activateDriverHome(forceHome=false){
+  ensureDriverUi();if(role!=='driver')return;
+  d$('driverBottomNav')?.classList.remove('hidden');d$('clientNav')?.classList.add('hidden');
+  const profileVisible=d$('driverProfilePage')&&!d$('driverProfilePage').classList.contains('hidden');
+  if(forceHome||(!profileVisible&&currentDriverPage!=='profile'))showDriverPage('home');
+  else if(currentDriverPage==='profile')showDriverPage('profile');
+  clearInterval(offersTimer);offersTimer=setInterval(()=>{if(currentDriverPage==='home')loadOfferStack()},3000);
+  if(currentDriverPage==='home')loadOfferStack();
+}
+function deactivateDriverUi(){d$('driverBottomNav')?.classList.add('hidden');d$('driverProfilePage')?.classList.add('hidden');clearInterval(offersTimer);currentDriverPage='home'}
 function injectOfferStack(){const old=d$('offerCard');if(!old||d$('driverOffersStack'))return;const wrap=document.createElement('div');wrap.id='driverOffersStack';wrap.className='driver-offers-stack';wrap.innerHTML='<div class="driver-wait-card"><div class="pulse-dot"></div><div><b>Vous êtes prêt</b><small>Les propositions de course apparaîtront ici. Choisissez celle qui vous convient.</small></div></div><div id="driverOffersList"></div>';old.insertAdjacentElement('beforebegin',wrap);old.classList.add('hidden')}
 async function loadOfferStack(){
-  if(role!=='driver'||!token||!profile?.id)return;
+  if(role!=='driver'||currentDriverPage!=='home'||!token||!profile?.id)return;
   const list=d$('driverOffersList');if(!list)return;
   try{
     const rows=await rest(`dispatch_offers?select=id,ride_id,distance_km,eta_min,status,expires_at,offered_at&driver_id=eq.${encodeURIComponent(profile.id)}&or=(status.eq.pending,status.eq.offered)&order=offered_at.desc&limit=8`);
@@ -45,7 +58,7 @@ async function loadOfferStack(){
     if(!live.length){list.innerHTML='<div class="no-offer"><b>En attente d’une course</b><small>Restez en ligne, vous recevrez les nouvelles propositions ici.</small></div>';return}
     list.innerHTML=live.map(o=>`<article class="driver-offer-choice"><div class="offer-choice-main"><div><small>NOUVELLE COURSE</small><b>${Number(o.distance_km||0).toFixed(1)} km du passager</b><span>Arrivée estimée en ${Number(o.eta_min||0)} min</span></div><div class="offer-choice-eta">${Number(o.eta_min||0)}<small>min</small></div></div><div class="offer-choice-actions"><button data-refuse="${esc(o.id)}">Ignorer</button><button class="accept" data-accept="${esc(o.id)}">Choisir cette course</button></div></article>`).join('');
     list.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>respondStackOffer(b.dataset.accept,true));list.querySelectorAll('[data-refuse]').forEach(b=>b.onclick=()=>respondStackOffer(b.dataset.refuse,false));
-  }catch(e){try{if(typeof loadOffer==='function')loadOffer()}catch(_){} list.innerHTML='<div class="no-offer"><b>En attente d’une course</b><small>Connexion au dispatch FAST…</small></div>'}
+  }catch(e){try{if(typeof loadOffer==='function')loadOffer()}catch(_){} list.innerHTML='<div class="no-offer"><b>En attente d’une course</b><small>Connexion à FAST…</small></div>'}
 }
 async function respondStackOffer(id,accept){try{const d=await api('/v1/driver/offers/'+id+'/respond',{method:'POST',body:JSON.stringify({accept})});toast(accept?'Course sélectionnée':'Proposition ignorée');if(accept){currentRideId=d.ride_id;d$('driverTrip')?.classList.remove('hidden');clearInterval(offersTimer);if(typeof startDriverNavigationPolling==='function')startDriverNavigationPolling()}loadOfferStack()}catch(e){toast(e.message)}}
 const docTypes=[['identity','Pièce d’identité'],['license','Permis de conduire'],['vehicle_registration','Carte grise'],['insurance','Assurance véhicule'],['driver_photo','Photo chauffeur'],['address_proof','Justificatif de domicile']];
@@ -56,7 +69,7 @@ function togglePayoutFields(){const bank=d$('payoutMethod')?.value==='bank';d$('
 async function loadPayout(){try{const rows=await rest(`driver_payout_profiles?select=*&driver_id=eq.${encodeURIComponent(profile.id)}&limit=1`),p=rows?.[0];if(!p)return;d$('payoutMethod').value=p.payout_method||'mobile_money';d$('payoutHolder').value=p.account_holder||'';d$('payoutPhone').value=p.phone_number||'';d$('payoutOperator').value=p.mobile_operator||'MTN';d$('payoutBank').value=p.bank_name||'';d$('payoutAccount').value=p.iban_or_account||'';togglePayoutFields();d$('payoutStatus').textContent=p.is_complete?'Informations de paiement enregistrées.':'Informations à compléter.'}catch(e){}}
 async function savePayout(){const method=d$('payoutMethod').value,holder=d$('payoutHolder').value.trim(),phone=d$('payoutPhone').value.trim(),operator=d$('payoutOperator').value,bank=d$('payoutBank').value.trim(),account=d$('payoutAccount').value.trim(),complete=!!holder&&(method==='mobile_money'?!!phone:!!(bank&&account));if(!complete)return toast('Complétez les informations de paiement');const btn=d$('savePayoutBtn');btn.disabled=true;btn.textContent='Enregistrement…';try{await rest('driver_payout_profiles?on_conflict=driver_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({driver_id:profile.id,payout_method:method,account_holder:holder,phone_number:phone||null,mobile_operator:method==='mobile_money'?operator:null,bank_name:method==='bank'?bank:null,iban_or_account:method==='bank'?account:null,is_complete:true,updated_at:new Date().toISOString()})});d$('payoutStatus').textContent='Informations de paiement enregistrées.';toast('Paiement configuré')}catch(e){toast(e.message)}finally{btn.disabled=false;btn.textContent='Enregistrer mes informations de paiement'}}
 async function loadDriverProfile(){if(!profile?.id)return;d$('driverProfileName').textContent=((profile.first_name||'')+' '+(profile.last_name||'')).trim()||'Mon profil FAST';await Promise.allSettled([loadDocuments(),loadPayout()])}
-window.addEventListener('load',()=>{ensureDriverUi();setTimeout(()=>{if(role==='driver')activateDriverHome()},800)});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&role==='driver')activateDriverHome()});
-const watch=setInterval(()=>{if(!d$('mainApp'))return;if(role==='driver'){ensureDriverUi();activateDriverHome()}else deactivateDriverUi()},2500);
+window.addEventListener('load',()=>{ensureDriverUi();setTimeout(()=>{if(role==='driver')activateDriverHome(true)},800)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&role==='driver')activateDriverHome(false)});
+const watch=setInterval(()=>{if(!d$('mainApp'))return;if(role==='driver'){ensureDriverUi();activateDriverHome(false)}else deactivateDriverUi()},2500);
 })();
