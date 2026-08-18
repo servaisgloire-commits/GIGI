@@ -21,10 +21,17 @@
   function whenReady(fn){if(state.ready&&window.google&&google.maps)fn();else{state.waiters.push(fn);loadGoogle()}}
   function toLatLng(c){return Array.isArray(c)?{lat:Number(c[1]),lng:Number(c[0])}:c}
   function color(v,f){return typeof v==='string'?v:f} function number(v,f){const n=Number(v);return Number.isFinite(n)?n:f}
+  const fastMapStyle=[
+    {featureType:'poi',stylers:[{visibility:'off'}]},
+    {featureType:'transit',stylers:[{visibility:'off'}]},
+    {featureType:'road',elementType:'labels.icon',stylers:[{visibility:'off'}]},
+    {featureType:'administrative.land_parcel',stylers:[{visibility:'off'}]},
+    {featureType:'landscape.man_made',elementType:'labels',stylers:[{visibility:'off'}]}
+  ];
   class Source{constructor(owner,id,data){this.owner=owner;this.id=id;this.data=data}setData(data){this.data=data;this.owner._renderLayerForSource(this.id)}}
   class MapCompat{
     constructor(opts){this.opts=opts||{};this.sources={};this.layers={};this.overlays={};this.loaded=false;this.events={};this.dragRotate={enable(){}};this.touchZoomRotate={enable(){}};whenReady(()=>this._init())}
-    _init(){const el=typeof this.opts.container==='string'?document.getElementById(this.opts.container):this.opts.container;if(!el){fail('Zone carte absente');return} el.style.background='#e8eef6';this.gmap=new google.maps.Map(el,{center:toLatLng(this.opts.center||[15.2429,-4.2634]),zoom:number(this.opts.zoom,15),mapTypeControl:false,streetViewControl:false,fullscreenControl:false,rotateControl:false,clickableIcons:false,gestureHandling:'greedy',backgroundColor:'#e7edf5',disableDefaultUI:true,zoomControl:false});this.loaded=true;google.maps.event.addListenerOnce(this.gmap,'idle',()=>{google.maps.event.trigger(this.gmap,'resize');this._emit('load');setStatus('Google Maps')});setTimeout(()=>google.maps.event.trigger(this.gmap,'resize'),500)}
+    _init(){const el=typeof this.opts.container==='string'?document.getElementById(this.opts.container):this.opts.container;if(!el){fail('Zone carte absente');return} el.style.background='#e8eef6';this.gmap=new google.maps.Map(el,{center:toLatLng(this.opts.center||[15.2429,-4.2634]),zoom:number(this.opts.zoom,15),mapTypeControl:false,streetViewControl:false,fullscreenControl:false,rotateControl:false,clickableIcons:false,gestureHandling:'greedy',backgroundColor:'#e7edf5',disableDefaultUI:true,zoomControl:false,styles:fastMapStyle});this.loaded=true;google.maps.event.addListenerOnce(this.gmap,'idle',()=>{google.maps.event.trigger(this.gmap,'resize');this._emit('load');setStatus('Google Maps')});setTimeout(()=>google.maps.event.trigger(this.gmap,'resize'),500)}
     on(n,f){(this.events[n]||(this.events[n]=[])).push(f);if(n==='load'&&this.loaded)setTimeout(f,0);return this}_emit(n,a){(this.events[n]||[]).forEach(f=>{try{f(a)}catch(e){console.error(e)}})}resize(){if(this.gmap)google.maps.event.trigger(this.gmap,'resize')}isStyleLoaded(){return!!this.loaded}
     addSource(id,d){this.sources[id]=new Source(this,id,d&&d.data);return this}getSource(id){return this.sources[id]||null}removeSource(id){delete this.sources[id]}addLayer(l){this.layers[l.id]=l;this._drawLayer(l.id);return this}getLayer(id){return this.layers[id]||null}removeLayer(id){this._clearOverlay(id);delete this.layers[id]}
     _clearOverlay(id){const o=this.overlays[id];if(!o)return;(Array.isArray(o)?o:[o]).forEach(x=>x&&x.setMap&&x.setMap(null));delete this.overlays[id]}_renderLayerForSource(s){Object.keys(this.layers).forEach(id=>{if(this.layers[id].source===s)this._drawLayer(id)})}
