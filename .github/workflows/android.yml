@@ -2,7 +2,7 @@ name: Build FAST Android
 
 on:
   push:
-    branches: [ main, fast-v0.7.1-bugfix ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -22,70 +22,60 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-
       - name: Check JavaScript syntax
         run: |
           node --check app/src/main/assets/app.js
           node --check app/src/main/assets/google-map-adapter.js
           node --check app/src/main/assets/app-quality.js
-          node --check app/src/main/assets/quick-destinations.js
+          node --check app/src/main/assets/competitive-235.js
           node --check app/src/main/assets/fast-security.js
           node --check app/src/main/assets/stability-fixes.js
           node --check app/src/main/assets/driver-gps.js
           node --check app/src/main/assets/driver-motion.js
-
-      - name: Verify MapLibre removal
+      - name: Verify Google Maps only
         run: |
-          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js' app/src/main/assets; then
-            echo 'MapLibre runtime reference found'; exit 1;
-          fi
-
+          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
+          grep -q 'competitive-235.js' app/src/main/assets/index.html
+          grep -q 'versionName = "2.3.5"' app/build.gradle.kts
       - name: Build verification APK
         run: gradle assembleDebug
-
       - name: Decode production keystore
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: |
           echo "$FAST_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fast-production.jks"
           echo "FAST_KEYSTORE_PATH=$RUNNER_TEMP/fast-production.jks" >> "$GITHUB_ENV"
-
       - name: Build production release
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: gradle assembleRelease
-
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v0.7.4-debug
+          name: FAST-N1-v2.3.5-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
-
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v0.7.4-production
+          name: FAST-N1-v2.3.5-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
-
       - name: Publish signed production release
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v0.7.4"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v0.7.4" --notes "Google Maps release with refreshed passenger and driver UI, runtime quality safeguards, stronger network feedback and stability checks."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v0.7.4-production.apk
-          gh release upload "$TAG" FAST-N1-v0.7.4-production.apk --clobber
+          TAG="fast-v2.3.5"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v2.3.5" --notes "Definitive FAST release: Google Maps, transparent upfront ride info, integrated driver navigation, PIN safety, trip sharing, safety center, real-time GPS, improved passenger/driver UX and stronger runtime stability."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v2.3.5-production.apk
+          gh release upload "$TAG" FAST-N1-v2.3.5-production.apk --clobber
