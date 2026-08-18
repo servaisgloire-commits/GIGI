@@ -11,8 +11,8 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "0.7.4"
+        versionCode = 235
+        versionName = "2.3.5"
 
         val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY") ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
