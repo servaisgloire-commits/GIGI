@@ -11,15 +11,13 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.7.2"
+        versionCode = 17
+        versionName = "0.7.3"
 
-        val mapboxToken = System.getenv("FAST_MAPBOX_PUBLIC_TOKEN") ?: ""
         val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY") ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
         buildConfigField("String", "PYTHON_API_URL", "\"https://fast-n1-python-api.vercel.app\"")
-        buildConfigField("String", "MAPBOX_PUBLIC_TOKEN", "\"${mapboxToken.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${googleMapsKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
