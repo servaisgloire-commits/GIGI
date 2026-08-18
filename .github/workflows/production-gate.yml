@@ -30,6 +30,10 @@ jobs:
         run: python -m pytest -q backend/tests
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
+      - name: Validate password recovery backend
+        run: |
+          grep -q 'recover-password' backend/app/auth_memory.py
+          grep -q 'fast-reset-password' backend/app/auth_memory.py
       - name: Reject committed server secrets
         shell: bash
         run: |
@@ -60,10 +64,12 @@ jobs:
           node --check app/src/main/assets/production-ui.js
           node --check app/src/main/assets/driver-profile.js
           node --check app/src/main/assets/stability-fixes.js
+          node --check app/src/main/assets/recovery-fix.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
           grep -q 'versionCode = 601' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
       - name: Compile Android debug
         run: gradle assembleDebug
       - name: Compile Android release
