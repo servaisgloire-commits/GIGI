@@ -34,6 +34,6 @@
   class BoundsCompat{constructor(){this._b=null;whenReady(()=>{if(!this._b)this._b=new google.maps.LatLngBounds()})}extend(c){whenReady(()=>{if(!this._b)this._b=new google.maps.LatLngBounds();this._b.extend(toLatLng(c))});return this}}
   class PopupCompat{constructor(){this.html=''}setHTML(v){this.html=String(v||'');return this}}
   class MarkerCompat{constructor(opts){this.el=opts&&opts.element;this.popup=null;this.map=null;this.position=null;this.overlay=null}setLngLat(c){this.position=toLatLng(c);if(this.overlay&&this.overlay.setPosition)this.overlay.setPosition(this.position);return this}setPopup(p){this.popup=p;return this}addTo(map){this.map=map;whenReady(()=>this._mount());return this}_mount(){if(!this.map||!this.map.gmap||!this.position)return;this.overlay=new google.maps.Marker({map:this.map.gmap,position:this.position});if(this.popup&&this.popup.html)this.overlay.addListener('click',()=>{if(!this.info)this.info=new google.maps.InfoWindow();this.info.setContent(this.popup.html);this.info.open({map:this.map.gmap,anchor:this.overlay})})}remove(){if(this.overlay)this.overlay.setMap(null);if(this.info)this.info.close();this.overlay=null}}
-  window.mapboxgl={Map:MapCompat,Marker:MarkerCompat,Popup:PopupCompat,LngLatBounds:BoundsCompat,accessToken:''};window.maplibregl=undefined;
+  window.mapboxgl={Map:MapCompat,Marker:MarkerCompat,Popup:PopupCompat,LngLatBounds:BoundsCompat,accessToken:''};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadGoogle,{once:true});else loadGoogle();
 })();
