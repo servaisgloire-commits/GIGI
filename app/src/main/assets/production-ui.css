@@ -11,8 +11,11 @@ body.client-mode .map-engine,body.client-mode .map-status,body.client-mode .safe
 body.client-mode .floating-locate{right:18px;bottom:22px;width:48px;height:48px;border-radius:16px;background:#fff;color:var(--fast-blue);border:1px solid #e5ebf3;box-shadow:0 10px 28px rgba(15,23,42,.14);font-size:22px}
 body.client-mode .booking-panel{position:relative;z-index:20;margin:-28px 0 0;background:#fff;border-radius:28px 28px 0 0;padding:17px 18px 102px;box-shadow:0 -8px 30px rgba(15,23,42,.08);min-height:245px}
 body.client-mode .booking-panel:before{content:'';display:block;width:44px;height:5px;border-radius:10px;background:#dbe3ed;margin:-6px auto 15px}
+.fast-pickup-choice{margin:0 0 11px}.fast-pickup-choice>small{display:block;color:#7b8491;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin:0 0 7px 2px}.fast-pickup-choice>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fast-pickup-choice button{height:44px;border:1px solid #e1e7ee;background:#fff;border-radius:13px;color:#4b5563;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px}.fast-pickup-choice button span{font-size:16px;color:var(--fast-blue)}.fast-pickup-choice button.active{border-color:#bcd7ff;background:#eef6ff;color:#0b57d0}
 body.client-mode .route-fields{background:transparent;border:0;padding:0;box-shadow:none;margin:0}
 body.client-mode .route-field:first-child,body.client-mode .route-line{display:none!important}
+body.client-mode.fast-pickup-address-mode .route-field:first-child{display:flex!important;margin-bottom:9px}
+body.client-mode.fast-pickup-address-mode .route-line{display:none!important}
 body.client-mode .route-field{min-height:62px;border:1px solid #dfe5ec;border-radius:16px;background:#fafbfc;padding:0 12px;display:flex;align-items:center;gap:10px;box-shadow:none}
 body.client-mode .route-field .route-dot{display:none}
 body.client-mode .route-field .route-text{width:100%}
@@ -31,6 +34,7 @@ body.client-mode.fast-client-route-ready .single-service-card,body.client-mode.f
 body.client-mode.fast-client-route-ready .fast-client-actions{display:grid}
 body.client-mode.fast-client-route-ready .fast-client-prompt{display:none}
 body.client-mode.fast-client-route-ready .fast-quick-destinations{display:none}
+body.client-mode.fast-client-route-ready .fast-pickup-choice{display:none}
 body.client-mode.fast-client-route-ready .booking-panel{padding-top:14px}
 body.client-mode .single-service-card{margin:14px 0 10px;border:1px solid #e4e9f0;border-radius:19px;background:#fff;color:#111827;box-shadow:none;padding:14px;align-items:center}
 body.client-mode .single-service-card .single-car small,body.client-mode .single-service-card .single-car span{color:#6b7280}
@@ -52,7 +56,7 @@ body.client-mode #bookingState b{display:block;font-size:18px;line-height:1.25;c
 .fast-search-eta{margin:22px auto 4px;padding-top:18px;border-top:1px solid #edf1f5;color:#7b8491;font-size:10px;max-width:260px}
 .fast-search-eta strong{display:block!important;color:#123b88!important;font-size:27px!important;margin-top:5px}
 body.client-mode.fast-client-searching #sharedMapWrap{height:42vh;min-height:310px}
-body.client-mode.fast-client-searching .route-fields,body.client-mode.fast-client-searching .fast-client-prompt,body.client-mode.fast-client-searching .fast-quick-destinations,body.client-mode.fast-client-searching .single-service-card,body.client-mode.fast-client-searching .payment-card,body.client-mode.fast-client-searching #bookBtn,body.client-mode.fast-client-searching .fast-client-actions{display:none!important}
+body.client-mode.fast-client-searching .route-fields,body.client-mode.fast-client-searching .fast-client-prompt,body.client-mode.fast-client-searching .fast-pickup-choice,body.client-mode.fast-client-searching .fast-quick-destinations,body.client-mode.fast-client-searching .single-service-card,body.client-mode.fast-client-searching .payment-card,body.client-mode.fast-client-searching #bookBtn,body.client-mode.fast-client-searching .fast-client-actions{display:none!important}
 body.client-mode.fast-client-searching .booking-panel{min-height:420px}
 body.client-mode #ridePanel{border:0;background:#fff;border-radius:20px;box-shadow:none;padding:14px;margin:12px 0 0}
 body.client-mode #ridePanel .driver-head{padding-bottom:12px;border-bottom:1px solid #eef2f6}
