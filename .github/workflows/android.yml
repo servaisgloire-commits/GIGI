@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,9 +26,17 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         run: gradle assembleDebug
-      - name: Upload FAST APK
+      - name: Upload FAST APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-APK
+          name: FAST-N1-APK-v0.5.0
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+      - name: Publish FAST v0.5.0 APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="fast-v0.5.0"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v0.5.0" --notes "FAST 9/10 milestone: detailed road routing, live driver GPS, nearby vehicles, ETA and navigation details."
+          cp app/build/outputs/apk/debug/app-debug.apk FAST-N1-v0.5.0.apk
+          gh release upload "$TAG" FAST-N1-v0.5.0.apk --clobber
