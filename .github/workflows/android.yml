@@ -50,7 +50,8 @@ jobs:
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
           grep -q 'versionCode = 601' app/build.gradle.kts
-          grep -q 'AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw' app/build.gradle.kts
+          grep -q 'val googleMapsKey' app/build.gradle.kts
+          grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
