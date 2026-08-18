@@ -1,50 +1,61 @@
 body.client-mode .advanced-ride .live-nav{display:none!important}
 body.client-mode #driverArea{display:none!important}
-body.driver-mode .app{padding-bottom:0;background:#07111f}
-body.driver-mode #mainHeader{height:54px;background:#07111f;color:#fff;border-bottom:0;grid-template-columns:44px 1fr 44px}
+body.driver-mode .app{padding-bottom:0;background:#eef3f8}
+body.driver-mode #mainHeader{height:54px;background:rgba(255,255,255,.96);color:#0f172a;border-bottom:1px solid #e7edf5;grid-template-columns:44px 1fr 44px;position:sticky;top:0;z-index:1300;backdrop-filter:blur(14px)}
 body.driver-mode #mainHeader .icon-btn{visibility:hidden}
-body.driver-mode #mainHeader .fast-word{color:#fff}
+body.driver-mode #mainHeader .fast-word{color:#0f172a}
 body.driver-mode #clientNav{display:none!important}
-body.driver-mode #homePage{background:#07111f;min-height:calc(100vh - 54px)}
-.driver-navigation-page{padding:0;background:#07111f;min-height:calc(100vh - 54px);color:#fff;position:relative}
-.driver-nav-top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#07111f;position:relative;z-index:900}
-.driver-nav-top small{display:block;color:#7db2ff;font-size:9px;letter-spacing:1.5px;font-weight:900}
-.driver-nav-top b{display:block;font-size:16px;margin-top:2px}
-.driver-gps-map-host{position:relative;height:68vh;min-height:520px;background:#dfe8f5;overflow:hidden}
-.driver-gps-map-host .mapwrap{height:100%;margin:0;background:#dfe8f5}
-.driver-gps-map-host #map{height:100%!important;min-height:520px}
-body.driver-mode .map-engine{top:12px;right:12px}
-body.driver-mode .floating-locate{bottom:18px}
-.driver-guidance-card{position:relative;z-index:1000;margin:-42px 12px 0;background:rgba(7,17,31,.96);border:1px solid rgba(125,178,255,.25);border-radius:22px;padding:14px;display:grid;grid-template-columns:64px 1fr 72px;gap:12px;align-items:center;box-shadow:0 18px 45px rgba(0,0,0,.38);backdrop-filter:blur(18px)}
-.driver-turn-icon{width:62px;height:62px;border-radius:18px;background:linear-gradient(135deg,#0b57d0,#2793ff);display:grid;place-items:center;font-size:36px;font-weight:950;color:#fff}
+body.driver-mode #homePage{background:#eef3f8;min-height:calc(100vh - 54px)}
+.driver-navigation-page{padding:0;background:#eef3f8;min-height:calc(100vh - 54px);color:#0f172a;position:relative}
+.driver-nav-top{height:66px;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,.96);position:relative;z-index:900;border-bottom:1px solid #e8eef6}
+.driver-nav-top small{display:block;color:#64748b;font-size:9px;letter-spacing:1.5px;font-weight:900}
+.driver-nav-top b{display:block;font-size:17px;margin-top:2px;color:#0f172a}
+.driver-gps-map-host{position:relative;height:61vh;min-height:470px;background:#e9eff6;overflow:hidden}
+.driver-gps-map-host .mapwrap{height:100%;margin:0;background:#e9eff6}
+.driver-gps-map-host #map{height:100%!important;min-height:470px}
+body.driver-mode .map-engine{top:12px;right:12px;border-radius:999px;background:rgba(15,23,42,.9);color:#fff;padding:8px 12px;box-shadow:0 8px 20px rgba(15,23,42,.12)}
+body.driver-mode .map-engine small{color:#cbd5e1}
+body.driver-mode .floating-locate{bottom:18px;right:14px;width:auto;min-width:118px;height:44px;border-radius:999px;padding:0 14px;background:#fff;color:#0b57d0;border:1px solid #dbe5f1;box-shadow:0 10px 28px rgba(15,23,42,.16);font-weight:900;font-size:0;display:flex;align-items:center;justify-content:center;gap:7px}
+body.driver-mode .floating-locate::before{content:'◎';font-size:20px}
+body.driver-mode .floating-locate::after{content:'Centrer';font-size:12px}
+.driver-guidance-card{position:relative;z-index:1000;margin:-38px 12px 0;background:rgba(255,255,255,.98);border:1px solid #e1e8f0;border-radius:24px;padding:15px;display:grid;grid-template-columns:62px 1fr 76px;gap:12px;align-items:center;box-shadow:0 18px 45px rgba(15,23,42,.14);backdrop-filter:blur(18px)}
+.driver-turn-icon{width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#0b57d0,#2788ff);display:grid;place-items:center;font-size:34px;font-weight:950;color:#fff;box-shadow:0 10px 22px rgba(11,87,208,.22)}
 .driver-guidance-main{min-width:0}
-.driver-guidance-main small{display:block;color:#8cbcff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.8px}
-.driver-guidance-main b{display:block;font-size:16px;line-height:1.15;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.driver-guidance-main span{display:block;color:#d8e8ff;font-size:12px;font-weight:850}
-.driver-eta-box{text-align:center;background:#0d2039;border-radius:16px;padding:10px 7px}
-.driver-eta-box b{display:block;font-size:18px;color:#fff}
-.driver-eta-box small{display:block;font-size:8px;color:#8cbcff;margin-top:2px}
-.driver-nav-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:12px}
-.driver-nav-stats>div{background:#0c1b2e;border:1px solid #142a46;border-radius:15px;padding:10px 6px;text-align:center}
-.driver-nav-stats small{display:block;color:#7890ad;font-size:8px}
-.driver-nav-stats b{display:block;color:#fff;font-size:11px;margin-top:3px}
-.driver-steps-panel{margin:0 12px 12px;background:#0c1b2e;border:1px solid #142a46;border-radius:20px;padding:12px;color:#fff;max-height:250px;overflow:auto}
-.driver-steps-panel .section{margin:0 0 7px}
-.driver-steps-panel .section h3{font-size:13px}
-.driver-steps-panel .section span{color:#78adff}
-.driver-gps-step{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;padding:9px 4px;border-top:1px solid #172b45}
+.driver-guidance-main small{display:block;color:#0b57d0;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.8px}
+.driver-guidance-main b{display:block;font-size:16px;line-height:1.18;margin:4px 0;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.driver-guidance-main span{display:block;color:#475569;font-size:12px;font-weight:850}
+.driver-eta-box{text-align:center;background:#eff6ff;border:1px solid #dbeafe;border-radius:16px;padding:10px 7px}
+.driver-eta-box b{display:block;font-size:18px;color:#0b57d0}
+.driver-eta-box small{display:block;font-size:8px;color:#64748b;margin-top:2px}
+.driver-nav-stats{display:flex;gap:7px;padding:10px 12px 4px;overflow-x:auto;scrollbar-width:none}
+.driver-nav-stats::-webkit-scrollbar{display:none}
+.driver-nav-stats>div{flex:0 0 auto;min-width:86px;background:#fff;border:1px solid #e2e8f0;border-radius:999px;padding:8px 12px;text-align:left;box-shadow:0 5px 14px rgba(15,23,42,.04)}
+.driver-nav-stats small{display:block;color:#94a3b8;font-size:8px}
+.driver-nav-stats b{display:block;color:#0f172a;font-size:11px;margin-top:2px}
+.driver-steps-panel{margin:8px 12px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:12px;color:#0f172a;max-height:210px;overflow:auto;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+.driver-steps-panel .section{margin:0 0 7px;padding:0}
+.driver-steps-panel .section h3{font-size:13px;color:#0f172a}
+.driver-steps-panel .section span{color:#0b57d0}
+.driver-gps-step{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;padding:9px 4px;border-top:1px solid #eef2f7}
 .driver-gps-step:first-child{border-top:0}
-.driver-gps-step.next{background:linear-gradient(90deg,rgba(22,119,255,.14),transparent);border-radius:13px;padding-left:8px}
-.driver-gps-step-icon{width:38px;height:38px;border-radius:12px;background:#10294a;color:#6eaeff;display:grid;place-items:center;font-size:23px;font-weight:950}
+.driver-gps-step.next{background:linear-gradient(90deg,rgba(22,119,255,.08),transparent);border-radius:13px;padding-left:8px}
+.driver-gps-step-icon{width:38px;height:38px;border-radius:12px;background:#eef5ff;color:#0b57d0;display:grid;place-items:center;font-size:22px;font-weight:950}
 .driver-gps-step.next .driver-gps-step-icon{background:#1677ff;color:#fff}
-.driver-gps-step b{display:block;color:#fff;font-size:11px;line-height:1.25}
-.driver-gps-step small{display:block;color:#8195ad;font-size:9px;margin-top:3px}
-body.driver-mode .section{padding:0 12px;margin:14px 0 8px}
-body.driver-mode .section h3{color:#fff}
-body.driver-mode .offer-card,body.driver-mode .driver-trip{margin:0 12px 12px;background:#0c1b2e;border-color:#1c3554;color:#fff}
-.driver-trip-actions{display:grid;grid-template-columns:1fr;gap:6px}
-body.driver-mode .btn.outline,body.driver-mode .btn.ghost{background:#0f223b;color:#8fc0ff;border-color:#23476f}
-body.driver-mode .toggle span{background:#23344a}
+.driver-gps-step b{display:block;color:#0f172a;font-size:11px;line-height:1.25}
+.driver-gps-step small{display:block;color:#64748b;font-size:9px;margin-top:3px}
+body.driver-mode .section{padding:0 12px;margin:12px 0 8px}
+body.driver-mode .section h3{color:#0f172a;font-size:14px}
+body.driver-mode .section span{color:#64748b;font-size:10px}
+body.driver-mode .offer-card,body.driver-mode .driver-trip{margin:0 12px 12px;background:#fff;border:1px solid #e2e8f0;color:#0f172a;border-radius:22px;box-shadow:0 10px 28px rgba(15,23,42,.08)}
+body.driver-mode .offer-card{padding:14px}
+body.driver-mode .offer-card .offer-top b{font-size:17px;color:#0f172a}
+body.driver-mode .offer-card strong{font-size:21px;color:#0b57d0}
+body.driver-mode .offer-card .countdown{background:#eff6ff;color:#0b57d0;border:1px solid #dbeafe}
+.driver-trip-actions{display:grid;grid-template-columns:1fr;gap:8px;padding:12px}
+body.driver-mode .btn{min-height:50px;border-radius:16px;font-weight:900}
+body.driver-mode .btn.outline,body.driver-mode .btn.ghost{background:#fff;color:#0b57d0;border:1px solid #cbdcf5}
+body.driver-mode .btn.dark{background:#0f172a;color:#fff}
+body.driver-mode .toggle span{background:#cbd5e1}
 body.driver-mode .toggle input:checked+span{background:#1677ff}
 .fast-role-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 6px}
 .fast-role-card{border:1px solid #dbe5f1;background:#f8fbff;border-radius:18px;padding:14px 10px;text-align:left;min-height:116px;transition:.18s;box-shadow:none;color:#0f172a}
@@ -54,4 +65,4 @@ body.driver-mode .toggle input:checked+span{background:#1677ff}
 .fast-role-card small{display:block;color:#718096;font-size:9px;line-height:1.35;margin-top:5px}
 .fast-role-card.active b{color:#0b57d0}
 .fast-role-help{margin:7px 2px 10px;color:#64748b;font-size:10px;line-height:1.4}
-@media (min-height:850px){.driver-gps-map-host{height:72vh}.driver-gps-map-host #map{min-height:600px}}
+@media (min-height:850px){.driver-gps-map-host{height:66vh}.driver-gps-map-host #map{min-height:540px}}
