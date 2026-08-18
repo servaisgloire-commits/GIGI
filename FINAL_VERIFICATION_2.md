@@ -1,0 +1,1 @@
+FAST N°1 6.0 final verification after Google Maps Android key restoration and password recovery correction.
