@@ -56,7 +56,7 @@ jobs:
         run: |
           node --check app/src/main/assets/production-ui.js
           node --check app/src/main/assets/driver-profile.js
-          grep -q 'versionName = "5.12"' app/build.gradle.kts
+          grep -q 'versionName = "5.13"' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
       - name: Compile Android debug
