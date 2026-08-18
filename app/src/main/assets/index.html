@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://tiles.openfreemap.org">
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="quick-destinations.css">
 <title>FAST N°1</title>
 </head>
 <body>
@@ -50,7 +51,11 @@
         <div class="route-line"></div>
         <div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div>
       </div>
-      <div class="quick-row"><button>⌂ Maison</button><button>▣ Travail</button><button>✈ Aéroport</button></div>
+      <div class="quick-row">
+        <button data-quick-destination="home"><span class="quick-icon">⌂</span><span class="quick-copy"><b>Maison</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
+        <button data-quick-destination="work"><span class="quick-icon">▣</span><span class="quick-copy"><b>Travail</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
+        <button data-quick-destination="airport"><span class="quick-icon">✈</span><span class="quick-copy"><b>Aéroport</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
+      </div>
       <div class="single-service-card">
         <div class="single-car"><div class="car-silhouette">🚕</div><div><small>Service FAST</small><b>Toyota • Brazzaville</b><span id="nearestEta">Recherche des véhicules proches…</span></div></div>
         <div class="single-price"><small>Estimation</small><strong id="priceText">—</strong></div>
@@ -83,6 +88,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script>window.mapboxgl=window.maplibregl;</script>
 <script src="app.js"></script>
+<script src="quick-destinations.js"></script>
 <script>window.osmFallbackStyle=function(){return 'https://tiles.openfreemap.org/styles/liberty'};</script>
 <script src="driver-gps.js"></script>
 </body>
