@@ -66,7 +66,10 @@ jobs:
           node --check app/src/main/assets/stability-fixes.js
           node --check app/src/main/assets/recovery-fix.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 601' app/build.gradle.kts
+          grep -q 'versionCode = 602' app/build.gradle.kts
+          grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
+          if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
+          if grep -q "\['searching','accepted','driver_arriving','in_progress'\]" app/src/main/assets/stability-fixes.js; then echo 'Stale searching ride is still auto-restored'; exit 1; fi
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
