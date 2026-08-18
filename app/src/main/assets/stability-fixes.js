@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 let bookingLocked=false,restoring=false,lastRestoredRide=null;
+let signupLockedUntil=0,recoveryLockedUntil=0;
 const retryCounts=new Map();
 const q=id=>document.getElementById(id);
 const validLoc=loc=>!!loc&&Number.isFinite(Number(loc.lat))&&Number.isFinite(Number(loc.lng));
@@ -8,7 +9,7 @@ const baseApi=api,baseSupa=supa,baseBookRide=bookRide,baseLogin=login,baseSignup
 
 function setBusy(btn,busy,label){if(!btn)return;if(busy){btn.dataset.oldText=btn.textContent;btn.disabled=true;if(label)btn.textContent=label}else{btn.disabled=false;if(btn.dataset.oldText){btn.textContent=btn.dataset.oldText;delete btn.dataset.oldText}}}
 function emailOk(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'').trim())}
-function friendlyError(e){const m=String(e?.message||e||'Erreur');if(/Failed to fetch|NetworkError|Load failed|timeout|AbortError/i.test(m))return 'Connexion internet instable. Réessayez dans quelques secondes.';if(/Invalid login credentials/i.test(m))return 'E-mail ou mot de passe incorrect.';if(/Email not confirmed/i.test(m))return 'Confirmez votre adresse e-mail avant de vous connecter.';if(/addresses_not_confirmed/i.test(m))return 'Confirmez le départ et la destination avant de démarrer.';if(/ride_pin_not_verified/i.test(m))return 'Le code PIN doit être vérifié avant le démarrage.';if(/invalid_ride_transition/i.test(m))return 'Cette action n’est plus disponible pour cette course.';return m}
+function friendlyError(e){const m=String(e?.message||e||'Erreur');if(/Failed to fetch|NetworkError|Load failed|timeout|AbortError/i.test(m))return 'Connexion internet instable. Réessayez dans quelques secondes.';if(/Invalid login credentials/i.test(m))return 'E-mail ou mot de passe incorrect.';if(/Email not confirmed/i.test(m))return 'Confirmez votre adresse e-mail avant de vous connecter.';if(/rate limit|429|security purposes/i.test(m))return 'Trop de demandes rapprochées. Patientez quelques instants avant de réessayer.';if(/addresses_not_confirmed/i.test(m))return 'Confirmez le départ et la destination avant de démarrer.';if(/ride_pin_not_verified/i.test(m))return 'Le code PIN doit être vérifié avant le démarrage.';if(/invalid_ride_transition/i.test(m))return 'Cette action n’est plus disponible pour cette course.';return m}
 
 api=async function(path,opts={}){
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
@@ -37,13 +38,15 @@ login=async function(){
 
 signup=async function(){
   const email=q('signupEmail')?.value.trim(),password=q('signupPassword')?.value||'',first=q('firstName')?.value.trim(),last=q('lastName')?.value.trim(),btn=q('signupBtn');
+  const now=Date.now();if(now<signupLockedUntil)return toast('Création déjà demandée. Patientez quelques secondes.');
   if(!first||!last)return toast('Entrez votre prénom et votre nom');if(!emailOk(email))return toast('Entrez une adresse e-mail valide');if(password.length<8)return toast('Choisissez un mot de passe d’au moins 8 caractères');
-  setBusy(btn,true,'Création…');try{await baseSignup()}catch(e){toast(friendlyError(e))}finally{setBusy(btn,false)}
+  signupLockedUntil=now+15000;setBusy(btn,true,'Création…');try{await baseSignup()}catch(e){toast(friendlyError(e));if(!/rate limit|429/i.test(String(e?.message||'')))signupLockedUntil=Date.now()+4000}finally{setBusy(btn,false)}
 };
 
 forgotPassword=async function(){
-  const email=q('loginEmail')?.value.trim(),btn=q('forgotBtn');if(!emailOk(email))return toast('Entrez votre e-mail de connexion');
-  setBusy(btn,true,'Envoi…');try{await baseForgot();toast('E-mail de réinitialisation envoyé. Vérifiez aussi les spams.')}catch(e){toast(friendlyError(e))}finally{setBusy(btn,false)}
+  const email=q('loginEmail')?.value.trim(),btn=q('forgotBtn'),now=Date.now();if(!emailOk(email))return toast('Entrez votre e-mail de connexion');
+  if(now<recoveryLockedUntil)return toast('Un lien vient déjà d’être demandé. Patientez quelques secondes.');
+  recoveryLockedUntil=now+20000;setBusy(btn,true,'Envoi…');try{await baseForgot();toast('E-mail de réinitialisation envoyé. Vérifiez aussi les spams.')}catch(e){toast(friendlyError(e));if(!/rate limit|429/i.test(String(e?.message||'')))recoveryLockedUntil=Date.now()+5000}finally{setBusy(btn,false)}
 };
 
 logout=function(){
