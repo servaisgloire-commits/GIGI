@@ -1,5 +1,6 @@
 /* FAST dedicated driver navigation layer.
    Passenger UI stays simple; verified driver accounts are routed directly to a driving GPS. */
+(()=>{const l=document.createElement('link');l.rel='stylesheet';l.href='driver-gps.css';document.head.appendChild(l)})();
 let driverNavPoll=null;
 let driverLastLocation=null;
 
@@ -44,7 +45,6 @@ window.showApp=function(){
   if(role==='client')startNearbyPolling();
 };
 
-// Passenger gets only trip summary; turn-by-turn instructions are reserved for driver navigation.
 window.renderRouteInsights=function(d){
   ensureAdvancedUi();
   const box=$('routeInsights'); if(!box)return;
@@ -153,13 +153,10 @@ window.respondOffer=async function(accept){
 window.showMode=function(){ setFastRoleUi(); };
 
 window.addEventListener('load',()=>{
-  // App's original listener runs first; force final role-safe UI afterwards.
   setTimeout(()=>{
     if(token&&profile)setFastRoleUi();
     const v=$('vehicleModeBtn'); if(v)v.onclick=()=>{};
     const back=$('backPassengerBtn'); if(back)back.onclick=()=>{};
-    if(role==='client'){
-      document.querySelector('.advanced-ride .live-nav')?.classList.add('hidden');
-    }
+    if(role==='client')document.querySelector('.advanced-ride .live-nav')?.classList.add('hidden');
   },350);
 });
