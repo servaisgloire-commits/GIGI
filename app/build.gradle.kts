@@ -11,8 +11,8 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.6.1"
+        versionCode = 13
+        versionName = "0.6.2"
 
         val mapboxToken = System.getenv("FAST_MAPBOX_PUBLIC_TOKEN") ?: ""
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
