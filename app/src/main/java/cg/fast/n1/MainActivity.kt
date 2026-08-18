@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity() {
                       js('fast-quality-js','app-quality.js');
                       js('fast-driver-profile-js','driver-profile.js');
                       js('fast-production-ui-js','production-ui.js');
+                      js('fast-recovery-fix-js','recovery-fix.js');
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(qualityLayer, null)
