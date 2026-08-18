@@ -66,12 +66,12 @@ class MainActivity : AppCompatActivity() {
                 val qualityLayer = """
                     (function(){
                       document.documentElement.style.webkitFontSmoothing='antialiased';
-                      if(!document.getElementById('fast-polish-css')){
-                        var l=document.createElement('link');l.id='fast-polish-css';l.rel='stylesheet';l.href='app-polish.css';document.head.appendChild(l);
-                      }
-                      if(!document.getElementById('fast-quality-js')){
-                        var s=document.createElement('script');s.id='fast-quality-js';s.src='app-quality.js';document.body.appendChild(s);
-                      }
+                      function css(id,href){if(!document.getElementById(id)){var l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l);}}
+                      function js(id,src){if(!document.getElementById(id)){var s=document.createElement('script');s.id=id;s.src=src;document.body.appendChild(s);}}
+                      css('fast-polish-css','app-polish.css');
+                      css('fast-driver-profile-css','driver-profile.css');
+                      js('fast-quality-js','app-quality.js');
+                      js('fast-driver-profile-js','driver-profile.js');
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(qualityLayer, null)
