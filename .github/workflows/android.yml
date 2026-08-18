@@ -43,13 +43,19 @@ jobs:
           node --check app/src/main/assets/stability-fixes.js
           node --check app/src/main/assets/driver-gps.js
           node --check app/src/main/assets/driver-motion.js
-      - name: Verify Google Maps only
+          node --check app/src/main/assets/production-ui.js
+      - name: Verify production presentation
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
-          grep -q 'competitive-235.js' app/src/main/assets/index.html
-          grep -q 'versionName = "5.11"' app/build.gradle.kts
+          grep -q 'versionName = "5.12"' app/build.gradle.kts
+          grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          test -f app/src/main/assets/production-ui.js
+          test -f app/src/main/assets/production-ui.css
           test -f app/src/main/assets/driver-profile.js
-          test -f app/src/main/assets/driver-profile.css
+          if grep -nE 'Dispatch Python|GPS précis|Trajet suivi' app/src/main/assets/production-ui.js; then
+            echo 'Technical prototype labels must not be rendered by production UI'; exit 1
+          fi
       - name: Build verification APK
         run: gradle assembleDebug
       - name: Decode production keystore
@@ -63,14 +69,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v5.11-debug
+          name: FAST-N1-v5.12-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v5.11-production
+          name: FAST-N1-v5.12-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
       - name: Publish signed production release
@@ -78,7 +84,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v5.11"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v5.11" --notes "FAST v5.11: Google Maps key integrated, cleaner map with non-essential POIs hidden, and redesigned chauffeur experience inspired by leading ride-hailing apps."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v5.11-production.apk
-          gh release upload "$TAG" FAST-N1-v5.11-production.apk --clobber
+          TAG="fast-v5.12"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v5.12" --notes "FAST v5.12: production passenger interface aligned with the approved design, technical prototype labels removed, cleaner booking/search flow, and stable driver profile navigation."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v5.12-production.apk
+          gh release upload "$TAG" FAST-N1-v5.12-production.apk --clobber
