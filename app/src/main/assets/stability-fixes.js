@@ -67,10 +67,10 @@ bookRide=async function(){
 async function safeRideSnapshot(id){try{return await api('/v1/rides/'+id)}catch(e){return null}}
 async function safeRetryDispatch(id){
   if(!id||id!==currentRideId||role!=='client')return;
-  const count=retryCounts.get(id)||0;if(count>=5){q('bookingMessage').textContent='Aucun chauffeur disponible pour le moment';q('dispatchDetails')&&(q('dispatchDetails').textContent='Réessayez un peu plus tard');bookingLocked=false;setBusy(q('bookBtn'),false);return}
   const snap=await safeRideSnapshot(id);if(!snap)return setTimeout(()=>safeRetryDispatch(id),9000);
   const s=snap.ride?.status;if(s!=='searching'){pollRide();return}
-  retryCounts.set(id,count+1);
+  const count=(retryCounts.get(id)||0)+1;retryCounts.set(id,count);
+  if(count%5===0){q('bookingMessage')&&(q('bookingMessage').textContent='Recherche élargie en cours…');q('dispatchDetails')&&(q('dispatchDetails').textContent='FAST recherche aussi les chauffeurs plus éloignés')}
   try{const d=await api('/v1/rides/'+id+'/dispatch',{method:'POST'});if(d.matched){pollRide();return}}catch(e){}
   setTimeout(()=>safeRetryDispatch(id),12000);
 }
@@ -92,13 +92,18 @@ async function restoreActiveRide(force=false){
   if(!token||!profile||restoring)return;if(!force&&lastRestoredRide===currentRideId&&currentRideId)return;restoring=true;
   try{
     const h=await api('/v1/rides/history'),items=h.items||[];
-    const active=role==='driver'?['accepted','driver_arriving','in_progress']:['searching','accepted','driver_arriving','in_progress'];
+    if(role==='client'&&!currentRideId){
+      const stale=items.find(r=>r.status==='searching');
+      if(stale){
+        try{await api('/v1/rides/'+stale.id+'/status',{method:'PATCH',body:JSON.stringify({status:'cancelled'})})}catch(e){console.warn('FAST stale search cleanup',e)}
+      }
+    }
+    const active=['accepted','driver_arriving','in_progress'];
     const ride=items.find(r=>active.includes(r.status));
     if(!ride)return;
     currentRideId=ride.id;lastRestoredRide=ride.id;
     if(role==='client'){
-      bookingLocked=true;clearInterval(nearbyPoll);clearDriverMarkers();q('bookingState')?.classList.remove('hidden');q('bookingMessage').textContent=ride.status==='searching'?'Recherche de votre chauffeur…':'Course restaurée';pollRide();
-      if(ride.status==='searching')setTimeout(()=>safeRetryDispatch(ride.id),28000);
+      bookingLocked=true;clearInterval(nearbyPoll);clearDriverMarkers();q('bookingState')?.classList.remove('hidden');q('bookingMessage').textContent='Course restaurée';pollRide();
     }else{
       q('driverTrip')?.classList.remove('hidden');q('driverRoadPhase').textContent=ride.status==='in_progress'?'Vers la destination':'Vers le passager';q('driverInstruction').textContent='Reprise de la navigation…';if(typeof startDriverNavigationPolling==='function')startDriverNavigationPolling();
     }
