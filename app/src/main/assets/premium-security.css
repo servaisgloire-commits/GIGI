@@ -1,3 +1,4 @@
+@import url('client-modern.css');
 :root{--fast-blue:#0b57d0;--fast-blue2:#1677ff;--fast-ink:#0b1220;--fast-muted:#6c7688;--fast-line:#e6ebf2;--fast-bg:#f6f8fc;--fast-green:#079455;--fast-red:#d92d20;--fast-shadow:0 18px 48px rgba(12,32,68,.12)}
 body{background:var(--fast-bg)}
 .booking-panel,.driver-guidance-card,.offer-card,.driver-trip,.card-lite,.wallet-card{border:1px solid rgba(218,226,238,.9);box-shadow:var(--fast-shadow)}
