@@ -84,7 +84,6 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface fun supabaseUrl(): String = BuildConfig.SUPABASE_URL
         @android.webkit.JavascriptInterface fun supabasePublishableKey(): String = BuildConfig.SUPABASE_PUBLISHABLE_KEY
         @android.webkit.JavascriptInterface fun pythonApiUrl(): String = BuildConfig.PYTHON_API_URL
-        @android.webkit.JavascriptInterface fun mapboxPublicToken(): String = BuildConfig.MAPBOX_PUBLIC_TOKEN
         @android.webkit.JavascriptInterface fun googleMapsApiKey(): String = BuildConfig.GOOGLE_MAPS_API_KEY
         @android.webkit.JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
 
