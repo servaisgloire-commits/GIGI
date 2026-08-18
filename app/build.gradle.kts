@@ -11,8 +11,8 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.5.0"
+        versionCode = 10
+        versionName = "0.5.1"
 
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
@@ -21,10 +21,33 @@ android {
 
     buildFeatures { buildConfig = true }
 
+    val releaseStorePath = System.getenv("FAST_KEYSTORE_PATH")
+    if (!releaseStorePath.isNullOrBlank()) {
+        signingConfigs {
+            create("production") {
+                storeFile = file(releaseStorePath)
+                storePassword = System.getenv("FAST_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("FAST_KEY_ALIAS")
+                keyPassword = System.getenv("FAST_KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
+            isDebuggable = false
+            isJniDebuggable = false
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("production")?.let { signingConfig = it }
         }
     }
     compileOptions {
