@@ -1,6 +1,6 @@
 import math
 
-from app.main import haversine_km, maneuver_label, parse_seconds
+from app.main import APP_VERSION, app, haversine_km, maneuver_label, parse_seconds
 
 
 def test_haversine_zero_distance():
@@ -23,3 +23,12 @@ def test_navigation_labels_are_localized():
     assert maneuver_label("turn-left") == "Tournez à gauche"
     assert maneuver_label("turn-right") == "Tournez à droite"
     assert maneuver_label("arrive") == "Arrivée"
+
+
+def test_final_backend_version_is_aligned():
+    assert APP_VERSION == "6.0"
+
+
+def test_history_route_precedes_dynamic_ride_route():
+    paths = [route.path for route in app.routes]
+    assert paths.index("/v1/rides/history") < paths.index("/v1/rides/{ride_id}")
