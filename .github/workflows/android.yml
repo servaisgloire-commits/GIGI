@@ -47,9 +47,9 @@ jobs:
           node --check app/src/main/assets/production-ui.js
       - name: Verify production presentation
         run: |
-          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
+          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 601' app/build.gradle.kts
+          grep -q 'versionCode = 602' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -58,6 +58,8 @@ jobs:
           grep -q "currentDriverPage='home'" app/src/main/assets/driver-profile.js
           grep -q "activateDriverHome(false)" app/src/main/assets/driver-profile.js
           grep -q "auth-email-memory" app/src/main/assets/recovery-fix.js
+          grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
+          if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           test -f app/src/main/assets/production-ui.js
           test -f app/src/main/assets/production-ui.css
           test -f app/src/main/assets/driver-profile.js
