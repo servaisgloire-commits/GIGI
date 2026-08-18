@@ -46,4 +46,12 @@ body.driver-mode .offer-card,body.driver-mode .driver-trip{margin:0 12px 12px;ba
 body.driver-mode .btn.outline,body.driver-mode .btn.ghost{background:#0f223b;color:#8fc0ff;border-color:#23476f}
 body.driver-mode .toggle span{background:#23344a}
 body.driver-mode .toggle input:checked+span{background:#1677ff}
+.fast-role-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 6px}
+.fast-role-card{border:1px solid #dbe5f1;background:#f8fbff;border-radius:18px;padding:14px 10px;text-align:left;min-height:116px;transition:.18s;box-shadow:none;color:#0f172a}
+.fast-role-card.active{border:2px solid #1677ff;background:linear-gradient(180deg,#eef6ff,#fff);box-shadow:0 10px 26px rgba(22,119,255,.14)}
+.fast-role-icon{display:block;font-size:28px;margin-bottom:8px}
+.fast-role-card b{display:block;font-size:14px}
+.fast-role-card small{display:block;color:#718096;font-size:9px;line-height:1.35;margin-top:5px}
+.fast-role-card.active b{color:#0b57d0}
+.fast-role-help{margin:7px 2px 10px;color:#64748b;font-size:10px;line-height:1.4}
 @media (min-height:850px){.driver-gps-map-host{height:61vh}.driver-gps-map-host #map{min-height:470px}}
