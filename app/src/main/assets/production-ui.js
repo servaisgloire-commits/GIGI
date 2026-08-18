@@ -2,6 +2,7 @@
 'use strict';
 const q=id=>document.getElementById(id);
 let lastSearching=null,lastRouteReady=null,lastDriverProfilePrepared=false;
+let resendCooldownTimer=null;
 
 function removePrototypeSignals(){
   document.querySelectorAll('.map-status,.safety-row,.fast-trust-strip,.local-fleet-card,.fast-driver-advantages').forEach(el=>el.remove());
@@ -129,11 +130,43 @@ function updateDriverState(){
   removePrototypeSignals();prepareDriverProfile();
 }
 
-function boot(){removePrototypeSignals();updateClientState();updateDriverState()}
+function startResendCooldown(button,seconds){
+  clearInterval(resendCooldownTimer);
+  let remaining=Math.max(1,Math.ceil(Number(seconds)||120));
+  button.disabled=true;
+  const render=()=>{button.textContent=`Nouvel envoi dans ${remaining} s`;remaining-=1;if(remaining<0){clearInterval(resendCooldownTimer);button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};
+  render();
+  resendCooldownTimer=setInterval(render,1000);
+}
+
+function patchAuthResend(){
+  const info=q('fastAuthInfo');
+  if(info)info.innerHTML='<b>E-mails de sécurité FAST</b><br>FAST protège les demandes de confirmation et évite les envois répétés. Vérifiez aussi le dossier spam.';
+  const button=q('resendConfirmation');
+  if(!button||button.dataset.fastPythonMemory==='1')return;
+  button.dataset.fastPythonMemory='1';
+  button.onclick=async()=>{
+    const email=(q('signupEmail')?.value||q('loginEmail')?.value||'').trim();
+    if(!email)return toast('Entrez votre adresse e-mail');
+    button.disabled=true;button.textContent='Envoi en cours…';
+    try{
+      const response=await fetch(API+'/v1/auth/resend-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+      let data={};try{data=await response.json()}catch(e){}
+      if(!response.ok)throw new Error(data.detail||data.message||'L’envoi est momentanément indisponible.');
+      toast(data.message||'Demande prise en compte');
+      startResendCooldown(button,data.retry_after_seconds||120);
+    }catch(e){
+      const message=/rate limit/i.test(String(e?.message||''))?'Un e-mail a déjà été demandé. Patientez quelques minutes puis vérifiez vos spams.':String(e?.message||'L’envoi est momentanément indisponible.');
+      toast(message);button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation';
+    }
+  };
+}
+
+function boot(){removePrototypeSignals();updateClientState();updateDriverState();patchAuthResend()}
 window.addEventListener('load',()=>{boot();setTimeout(boot,350);setTimeout(boot,1000)});
-document.addEventListener('click',()=>setTimeout(()=>{updateClientState();updateDriverState()},90),true);
+document.addEventListener('click',()=>setTimeout(()=>{updateClientState();updateDriverState();patchAuthResend()},90),true);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(boot,120)});
-const observer=new MutationObserver(()=>{updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState()});
+const observer=new MutationObserver(()=>{updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()});
 window.addEventListener('load',()=>observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']}));
-setInterval(()=>{updateClientState();updateDriverState()},1200);
+setInterval(()=>{updateClientState();updateDriverState();patchAuthResend()},1200);
 })();
