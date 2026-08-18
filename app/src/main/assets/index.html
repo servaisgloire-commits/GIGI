@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0b57d0">
-<link rel="preconnect" href="https://tiles.openfreemap.org">
-<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="preconnect" href="https://maps.googleapis.com">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="quick-destinations.css">
 <link rel="stylesheet" href="performance.css">
@@ -45,7 +44,7 @@
   <div id="passengerArea">
     <div class="mapwrap" id="sharedMapWrap">
       <div id="map"></div>
-      <div class="map-engine"><b>FAST MAP</b><small id="mapEngineText">FAST Map</small></div>
+      <div class="map-engine"><b>FAST MAP</b><small id="mapEngineText">Google Maps</small></div>
       <button id="locateBtn" class="floating-locate" aria-label="Ma position">◎</button>
     </div>
     <div class="booking-panel">
@@ -88,12 +87,10 @@
 </section>
 <div id="toast" class="toast"></div>
 </div>
-<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script>window.mapboxgl=window.maplibregl;</script>
+<script src="google-map-adapter.js"></script>
 <script src="app.js"></script>
 <script src="quick-destinations.js"></script>
 <script src="performance.js"></script>
-<script>window.osmFallbackStyle=function(){return 'https://tiles.openfreemap.org/styles/liberty'};</script>
 <script src="driver-gps.js"></script>
 <script src="driver-motion.js"></script>
 <script src="fast-security.js"></script>
