@@ -21,6 +21,30 @@ function ensureClientPrompt(){
   const h=document.createElement('h2');h.id='fastClientPrompt';h.className='fast-client-prompt';h.textContent='Où allez-vous ?';fields.insertAdjacentElement('beforebegin',h);
 }
 
+function setPickupMode(mode){
+  const input=q('pickupInput');
+  const chooser=q('fastPickupChoice');
+  if(!input||!chooser)return;
+  const addressMode=mode==='address';
+  document.body.classList.toggle('fast-pickup-address-mode',addressMode);
+  chooser.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.pickupMode===mode));
+  if(addressMode){
+    if(input.value==='Ma position')input.value='';
+    setTimeout(()=>input.focus(),80);
+  }else{
+    input.value='Ma position';
+    try{if(typeof getLocation==='function')getLocation()}catch(e){}
+  }
+}
+
+function ensurePickupChoice(){
+  const fields=document.querySelector('#passengerArea .route-fields');if(!fields||q('fastPickupChoice'))return;
+  const box=document.createElement('div');box.id='fastPickupChoice';box.className='fast-pickup-choice';
+  box.innerHTML='<small>Départ</small><div><button type="button" class="active" data-pickup-mode="current"><span>◎</span>Ma position</button><button type="button" data-pickup-mode="address"><span>⌕</span>Adresse précise</button></div>';
+  fields.insertAdjacentElement('beforebegin',box);
+  box.querySelectorAll('button').forEach(btn=>btn.onclick=()=>setPickupMode(btn.dataset.pickupMode));
+}
+
 function openSavedPlace(kind,label){
   document.querySelector('.fast-saved-place-sheet')?.remove();
   const sheet=document.createElement('div');sheet.className='fast-saved-place-sheet';
@@ -67,7 +91,7 @@ function polishSearchingCard(){
 
 function updateClientState(){
   if(document.body.classList.contains('driver-mode'))return;
-  ensureClientPrompt();ensureQuickDestinations();removePrototypeSignals();
+  ensureClientPrompt();ensurePickupChoice();ensureQuickDestinations();removePrototypeSignals();
   const ready=routeIsReady(),searching=searchIsActive(),active=rideIsActive();
   if(lastRouteReady!==ready){document.body.classList.toggle('fast-client-route-ready',ready);lastRouteReady=ready}
   if(lastSearching!==searching){document.body.classList.toggle('fast-client-searching',searching);lastSearching=searching}
