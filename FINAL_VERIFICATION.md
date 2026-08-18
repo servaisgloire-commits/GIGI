@@ -1,0 +1,1 @@
+FAST N°1 6.0 final verification branch. No production design change.
