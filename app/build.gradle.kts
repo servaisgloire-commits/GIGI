@@ -11,10 +11,11 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 600
+        versionCode = 601
         versionName = "6.0"
 
-        val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY")?.takeIf { it.isNotBlank() } ?: ""
+        val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY")?.takeIf { it.isNotBlank() }
+            ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
         buildConfigField("String", "PYTHON_API_URL", "\"https://fast-n1-python-api.vercel.app\"")
