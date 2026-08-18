@@ -1,0 +1,1 @@
+Final CI verification for FAST N°1 6.0 after Google Maps Android and password-recovery fixes.
