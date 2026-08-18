@@ -1,0 +1,89 @@
+/* FAST production UI — final passenger/driver presentation */
+:root{--fast-blue:#1677ff;--fast-blue-dark:#0b57d0;--fast-ink:#111827;--fast-muted:#6b7280;--fast-line:#e5e7eb;--fast-bg:#f7f9fc}
+body{background:#fff;color:var(--fast-ink)}
+body.client-mode .app{background:#fff}
+body.client-mode #mainHeader{height:64px;background:#fff;border-bottom:1px solid #eef2f7;box-shadow:none;grid-template-columns:50px 1fr 50px}
+body.client-mode #mainHeader .fast-word{color:#111827}
+body.client-mode #homePage{background:#fff}
+body.client-mode #sharedMapWrap{height:61vh;min-height:420px;margin:0;border-radius:0;background:#eef3f8;overflow:hidden}
+body.client-mode #map{height:100%!important;min-height:420px}
+body.client-mode .map-engine,body.client-mode .map-status,body.client-mode .safety-row,body.client-mode .fast-trust-strip,body.client-mode .local-fleet-card,body.client-mode .route-insights,body.client-mode #dispatchDetails{display:none!important}
+body.client-mode .floating-locate{right:18px;bottom:22px;width:48px;height:48px;border-radius:16px;background:#fff;color:var(--fast-blue);border:1px solid #e5ebf3;box-shadow:0 10px 28px rgba(15,23,42,.14);font-size:22px}
+body.client-mode .booking-panel{position:relative;z-index:20;margin:-28px 0 0;background:#fff;border-radius:28px 28px 0 0;padding:17px 18px 102px;box-shadow:0 -8px 30px rgba(15,23,42,.08);min-height:245px}
+body.client-mode .booking-panel:before{content:'';display:block;width:44px;height:5px;border-radius:10px;background:#dbe3ed;margin:-6px auto 15px}
+body.client-mode .route-fields{background:transparent;border:0;padding:0;box-shadow:none;margin:0}
+body.client-mode .route-field:first-child,body.client-mode .route-line{display:none!important}
+body.client-mode .route-field{min-height:62px;border:1px solid #dfe5ec;border-radius:16px;background:#fafbfc;padding:0 12px;display:flex;align-items:center;gap:10px;box-shadow:none}
+body.client-mode .route-field .route-dot{display:none}
+body.client-mode .route-field .route-text{width:100%}
+body.client-mode .route-field .route-text small{display:none}
+body.client-mode .route-field input{font-size:15px;font-weight:650;color:#111827;background:transparent;padding:0;border:0;width:100%}
+body.client-mode .route-field input::placeholder{color:#7b8491;font-weight:500}
+body.client-mode .route-action{display:none!important}
+body.client-mode .suggestions{top:67px;left:0;right:0;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 16px 35px rgba(15,23,42,.12);overflow:hidden;z-index:100}
+body.client-mode .suggestion{padding:15px 14px;border-bottom:1px solid #eef2f6;font-size:13px}
+.fast-quick-destinations{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:11px}
+.fast-quick-destinations button{border:1px solid #e5e9ef;background:#fff;border-radius:13px;padding:11px 7px;color:#273142;font-size:10px;font-weight:750;display:flex;align-items:center;justify-content:center;gap:6px}
+.fast-quick-destinations button span{font-size:15px;color:var(--fast-blue)}
+.fast-client-prompt{font-size:20px;font-weight:850;letter-spacing:-.4px;margin:0 0 12px;color:#111827}
+body.client-mode .single-service-card,body.client-mode .payment-card,body.client-mode #bookBtn,body.client-mode .fast-client-actions{display:none}
+body.client-mode.fast-client-route-ready .single-service-card,body.client-mode.fast-client-route-ready .payment-card,body.client-mode.fast-client-route-ready #bookBtn{display:flex}
+body.client-mode.fast-client-route-ready .fast-client-actions{display:grid}
+body.client-mode.fast-client-route-ready .fast-client-prompt{display:none}
+body.client-mode.fast-client-route-ready .fast-quick-destinations{display:none}
+body.client-mode.fast-client-route-ready .booking-panel{padding-top:14px}
+body.client-mode .single-service-card{margin:14px 0 10px;border:1px solid #e4e9f0;border-radius:19px;background:#fff;color:#111827;box-shadow:none;padding:14px;align-items:center}
+body.client-mode .single-service-card .single-car small,body.client-mode .single-service-card .single-car span{color:#6b7280}
+body.client-mode .single-service-card .single-car b{color:#111827;font-size:15px}
+body.client-mode .single-service-card .single-price strong{color:#111827;font-size:21px}
+body.client-mode .single-service-card .single-price small{color:#6b7280}
+body.client-mode .single-car .car-silhouette{background:#f4f7fb;border:1px solid #e4e9f0;border-radius:15px}
+body.client-mode .payment-card{margin:0 0 11px;border:1px solid #e4e9f0;border-radius:17px;background:#fff;box-shadow:none;padding:13px 14px}
+body.client-mode .payment-card small{color:#818b98}
+body.client-mode .payment-card select{color:#111827;font-size:14px;font-weight:750}
+body.client-mode #bookBtn{width:100%;height:57px;border-radius:16px;background:var(--fast-blue);box-shadow:none;font-size:16px;font-weight:850;align-items:center;justify-content:center}
+body.client-mode .fast-client-actions{grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+body.client-mode .fast-action-btn{height:47px;border:1px solid #e3e8ef;background:#fff;border-radius:14px;color:#273142;font-size:10px;font-weight:800}
+body.client-mode .fast-action-btn span{font-size:16px}
+body.client-mode #bookingState{margin:14px 0 0!important;border:0!important;background:#fff!important;box-shadow:none!important;padding:24px 10px!important;text-align:center!important;border-radius:18px!important}
+body.client-mode #bookingState .spinner{margin:0 auto 18px}
+body.client-mode #bookingState b{display:block;font-size:18px;line-height:1.25;color:#111827}
+.fast-search-subtitle{display:block;margin-top:8px;color:#7b8491;font-size:12px}
+.fast-search-eta{margin:22px auto 4px;padding-top:18px;border-top:1px solid #edf1f5;color:#7b8491;font-size:10px;max-width:260px}
+.fast-search-eta strong{display:block!important;color:#123b88!important;font-size:27px!important;margin-top:5px}
+body.client-mode.fast-client-searching #sharedMapWrap{height:42vh;min-height:310px}
+body.client-mode.fast-client-searching .route-fields,body.client-mode.fast-client-searching .fast-client-prompt,body.client-mode.fast-client-searching .fast-quick-destinations,body.client-mode.fast-client-searching .single-service-card,body.client-mode.fast-client-searching .payment-card,body.client-mode.fast-client-searching #bookBtn,body.client-mode.fast-client-searching .fast-client-actions{display:none!important}
+body.client-mode.fast-client-searching .booking-panel{min-height:420px}
+body.client-mode #ridePanel{border:0;background:#fff;border-radius:20px;box-shadow:none;padding:14px;margin:12px 0 0}
+body.client-mode #ridePanel .driver-head{padding-bottom:12px;border-bottom:1px solid #eef2f6}
+body.client-mode #ridePanel .ride-meta{margin-top:11px}
+body.client-mode .advanced-ride{background:transparent;border:0;padding:10px 0}
+body.client-mode .gps-chip{display:none!important}
+body.client-mode .nav{background:rgba(255,255,255,.98);border-top:1px solid #edf1f5;box-shadow:0 -5px 20px rgba(15,23,42,.05)}
+body.client-mode .nav button{color:#8b95a3;background:transparent}
+body.client-mode .nav button.on{color:var(--fast-blue);background:transparent}
+.fast-saved-place-sheet{position:fixed;inset:0;z-index:5000;background:rgba(15,23,42,.35);display:grid;align-items:end}
+.fast-saved-place-card{background:#fff;border-radius:24px 24px 0 0;padding:20px 18px max(22px,env(safe-area-inset-bottom));box-shadow:0 -15px 40px rgba(15,23,42,.15)}
+.fast-saved-place-card h3{margin:0 0 5px;font-size:19px}.fast-saved-place-card p{margin:0 0 14px;color:#7b8491;font-size:11px}.fast-saved-place-card input{width:100%;border:1px solid #dfe5ec;border-radius:14px;padding:14px;font-size:14px;box-sizing:border-box}.fast-saved-place-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:9px;margin-top:12px}.fast-saved-place-actions button{border:1px solid #e0e6ee;background:#fff;border-radius:14px;padding:13px;font-weight:800}.fast-saved-place-actions .save{border:0;background:var(--fast-blue);color:#fff}
+/* Driver navigation stays map-first, profile becomes a stable production account screen. */
+body.driver-mode #mainHeader{display:none!important}
+body.driver-mode #homePage{min-height:100vh}
+body.driver-mode .fast-driver-advantages{display:none!important}
+body.driver-mode .driver-nav-top{background:#fff;color:#111827;height:64px;border-bottom:1px solid #eef2f7}
+body.driver-mode .driver-nav-top small{color:#6b7280}body.driver-mode .driver-nav-top b{color:#111827}
+body.driver-mode .driver-gps-map-host{height:62vh;background:#eef3f8}
+body.driver-mode .driver-guidance-card{background:#fff;color:#111827;border:1px solid #e4e9f0;box-shadow:0 14px 36px rgba(15,23,42,.12);backdrop-filter:none}
+body.driver-mode .driver-guidance-main small{color:#6b7280}body.driver-mode .driver-guidance-main b{color:#111827}body.driver-mode .driver-guidance-main span{color:#4b5563}
+body.driver-mode .driver-eta-box{background:#f2f6fb}body.driver-mode .driver-eta-box b{color:#111827}body.driver-mode .driver-eta-box small{color:#6b7280}
+body.driver-mode .driver-nav-stats>div{background:#fff;border:1px solid #e4e9f0}body.driver-mode .driver-nav-stats small{color:#7b8491}body.driver-mode .driver-nav-stats b{color:#111827}
+body.driver-mode .driver-steps-panel{background:#fff;border:1px solid #e4e9f0;color:#111827}body.driver-mode .driver-steps-panel .section h3,body.driver-mode .driver-gps-step b{color:#111827}
+body.driver-mode .driver-offer-choice,body.driver-mode .no-offer{background:#fff;color:#111827}
+.driver-profile-page{background:#fff!important;padding:18px 16px 105px!important;min-height:100vh!important}
+.driver-profile-head{display:block!important;text-align:center!important;background:#fff!important;color:#111827!important;border-radius:0!important;box-shadow:none!important;padding:14px 12px 18px!important;margin:0!important}
+.driver-avatar{width:82px!important;height:82px!important;margin:0 auto 12px!important;border-radius:50%!important;background:#eef3f8!important;border:1px solid #dde5ef!important;font-size:36px!important}
+.driver-profile-head small{color:#7b8491!important;font-size:9px!important}.driver-profile-head h2{font-size:21px!important;margin:4px 0 8px!important;color:#111827!important}.verify-pill{font-size:9px!important}
+.fast-driver-stats{display:grid;grid-template-columns:repeat(3,1fr);padding:15px 0;margin:0 4px 14px;border-top:1px solid #eef2f6;border-bottom:1px solid #eef2f6}.fast-driver-stats div{text-align:center;border-right:1px solid #eef2f6}.fast-driver-stats div:last-child{border-right:0}.fast-driver-stats b{display:block;font-size:16px;color:#111827}.fast-driver-stats small{display:block;font-size:8px;color:#7b8491;margin-top:3px}
+.fast-driver-menu{border:1px solid #e5e9ef;border-radius:17px;overflow:hidden;background:#fff;margin-bottom:14px}.fast-driver-menu button{width:100%;min-height:58px;border:0;border-bottom:1px solid #eef2f6;background:#fff;display:grid;grid-template-columns:32px 1fr 18px;align-items:center;text-align:left;padding:10px 12px;color:#111827}.fast-driver-menu button:last-child{border-bottom:0}.fast-driver-menu .ico{font-size:18px}.fast-driver-menu b{display:block;font-size:12px}.fast-driver-menu small{display:block;color:#7b8491;font-size:8px;margin-top:3px}.fast-driver-menu .arrow{color:#a0a8b3;font-size:17px}
+.driver-profile-card.fast-panel-collapsed{display:none!important}.driver-profile-card{box-shadow:none!important;border:1px solid #e5e9ef!important;border-radius:17px!important}.driver-profile-card.fast-panel-open{display:block!important}
+.driver-bottom-nav{box-shadow:0 -5px 18px rgba(15,23,42,.06)!important}.driver-bottom-nav button.on{background:transparent!important;color:var(--fast-blue)!important}
+@media(max-height:760px){body.client-mode #sharedMapWrap{height:54vh;min-height:350px}.driver-gps-map-host{min-height:420px!important}}
