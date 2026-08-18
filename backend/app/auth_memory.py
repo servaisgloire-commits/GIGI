@@ -1,11 +1,12 @@
 import hashlib
 import math
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from supabase import create_client
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://hmwxwzfcpdvgzjgxruup.supabase.co")
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
 class ResendConfirmationRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 def _db():
@@ -26,9 +27,15 @@ def _db():
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
+def _normalize_email(value: str) -> str:
+    email = str(value or "").strip().lower()
+    if len(email) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        raise HTTPException(400, "Adresse e-mail invalide")
+    return email
+
+
 def _email_hash(email: str) -> str:
-    normalized = email.strip().lower()
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return hashlib.sha256(email.encode("utf-8")).hexdigest()
 
 
 def _parse_time(value):
@@ -51,11 +58,11 @@ def _seconds_until(dt, now):
 async def resend_confirmation(body: ResendConfirmationRequest):
     """Resend signup confirmation with persistent server-side cooldown memory.
 
-    The database row is keyed by SHA-256(email), so the raw email address is not
-    persisted.  The cooldown is written before calling Supabase Auth to prevent
-    repeated taps and concurrent requests from exhausting the provider quota.
+    Only SHA-256(email) is persisted.  The cooldown is written before calling
+    Supabase Auth so repeated taps and concurrent requests cannot exhaust the
+    provider quota.
     """
-    email = str(body.email).strip().lower()
+    email = _normalize_email(body.email)
     key = _email_hash(email)
     now = datetime.now(timezone.utc)
     client = _db()
