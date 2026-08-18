@@ -12,6 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      FAST_MAPBOX_PUBLIC_TOKEN: ${{ secrets.FAST_MAPBOX_PUBLIC_TOKEN }}
       FAST_KEYSTORE_BASE64: ${{ secrets.FAST_KEYSTORE_BASE64 }}
       FAST_KEYSTORE_PASSWORD: ${{ secrets.FAST_KEYSTORE_PASSWORD }}
       FAST_KEY_ALIAS: ${{ secrets.FAST_KEY_ALIAS }}
@@ -48,7 +49,7 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v0.5.1-debug
+          name: FAST-N1-v0.6.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
@@ -56,7 +57,7 @@ jobs:
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v0.5.1-production
+          name: FAST-N1-v0.6.0-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
 
@@ -65,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v0.5.1"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v0.5.1" --notes "Production hardening: background driver offers, database security, dispatch scale indexes and production signing pipeline."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v0.5.1-production.apk
-          gh release upload "$TAG" FAST-N1-v0.5.1-production.apk --clobber
+          TAG="fast-v0.6.0"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v0.6.0" --notes "Blue high-definition interface, Mapbox GL map engine, single FAST service and dedicated vehicle mode."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v0.6.0-production.apk
+          gh release upload "$TAG" FAST-N1-v0.6.0-production.apk --clobber
