@@ -36,8 +36,8 @@ jobs:
           if git grep -nE 'sb_secret_[A-Za-z0-9_-]+' -- ':!*.md'; then
             echo 'Supabase secret key found in repository'; exit 1
           fi
-          if git grep -nE 'AIza[0-9A-Za-z_-]{20,}' -- ':!*.md' ':!backend/app/main.py'; then
-            echo 'Unexpected Google API key found outside backend legacy fallback'; exit 1
+          if git grep -nE 'AIza[0-9A-Za-z_-]{20,}' -- ':!*.md'; then
+            echo 'Google API key found in repository'; exit 1
           fi
 
   android-build:
