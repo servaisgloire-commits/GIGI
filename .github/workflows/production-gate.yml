@@ -1,0 +1,63 @@
+name: FAST Production Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+      - name: Compile Python
+        run: python -m compileall -q backend/app
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest -q
+      - name: Reject committed server secrets
+        shell: bash
+        run: |
+          if git grep -nE 'sb_secret_[A-Za-z0-9_-]+' -- ':!*.md'; then
+            echo 'Supabase secret key found in repository'; exit 1
+          fi
+          if git grep -nE 'AIza[0-9A-Za-z_-]{20,}' -- ':!*.md'; then
+            echo 'Google API key found in repository'; exit 1
+          fi
+
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compile Android debug
+        run: gradle assembleDebug
+      - name: Compile Android release
+        run: gradle assembleRelease
+      - name: Upload verification APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-production-gate-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
