@@ -1,1 +1,75 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#05080d"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="styles.css"><title>FAST N°1</title></head><body><div class="app"><section id="auth" class="auth"><div class="auth-hero"><div class="logo">F</div><div class="muted" style="margin-top:16px">FAST N°1</div><h1>Bougeons mieux.</h1><p class="muted">Transport passager et chauffeur connecté à FAST Python + Supabase.</p></div><div class="card"><h3>Connexion</h3><input id="loginEmail" class="input" type="email" placeholder="E-mail"><input id="loginPassword" class="input" type="password" placeholder="Mot de passe"><button id="loginBtn" class="btn">Se connecter</button></div><div class="card"><h3>Créer un compte</h3><div class="row"><input id="firstName" class="input" placeholder="Prénom"><input id="lastName" class="input" placeholder="Nom"></div><input id="phone" class="input" placeholder="Téléphone"><input id="signupEmail" class="input" type="email" placeholder="E-mail"><input id="signupPassword" class="input" type="password" placeholder="Mot de passe (6 caractères minimum)"><select id="signupRole" class="input"><option value="client">Passager</option><option value="driver">Chauffeur</option></select><button id="signupBtn" class="btn secondary">Créer mon compte FAST</button></div></section><section id="mainApp" class="hidden"><header class="top"><div class="brand"><div class="brand-left"><div class="logo">F</div><div><strong>FAST</strong><div id="userName" class="muted">Utilisateur</div></div></div><span class="pill">v0.3</span></div><div class="mode"><button id="passengerModeBtn" class="on">Passager</button><button id="driverModeBtn">Chauffeur</button></div></header><section id="homePage" class="pageview"><div id="passengerArea"><div class="mapwrap"><div id="map"></div><div class="search-panel"><div class="field"><span class="dot"></span><input id="pickupInput" value="Ma position" placeholder="Adresse de départ"><button id="locateBtn" class="smallbtn">GPS</button><div id="pickupSuggestions" class="suggestions hidden"></div></div><div class="field"><span class="dot red"></span><input id="destinationInput" placeholder="Où allez-vous ?"><div id="destinationSuggestions" class="suggestions hidden"></div></div></div></div><div class="sheet"><div class="handle"></div><div class="section"><h3>Choisissez votre FAST</h3><span class="muted">Tarif recalculé automatiquement</span></div><div class="vehicle-list"><button class="vehicle on" data-type="standard"><span class="car">🚗</span><span class="grow"><b>Standard</b><span class="muted"><br>4 places • économique</span></span><span class="price">Standard</span></button><button class="vehicle" data-type="comfort"><span class="car">🚘</span><span class="grow"><b>Confort</b><span class="muted"><br>Premium • 4 places</span></span><span class="price">Confort</span></button><button class="vehicle" data-type="xl"><span class="car">🚙</span><span class="grow"><b>XL</b><span class="muted"><br>6 places</span></span><span class="price">XL</span></button><button class="vehicle" data-type="moto"><span class="car">🏍</span><span class="grow"><b>Moto</b><span class="muted"><br>Rapide • 1 place</span></span><span class="price">Moto</span></button></div><div class="section"><h3>Paiement</h3><span class="muted">Sécurisé</span></div><select id="paymentMethod" class="input"><option value="wallet">Portefeuille FAST</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="orange_money">Orange Money</option><option value="card">Carte bancaire</option></select><div class="card"><div class="row"><div><b>Estimation</b><div id="distanceText" class="muted">Choisissez une destination</div></div><div id="priceText" class="big">—</div></div></div><button id="bookBtn" class="btn">Commander FAST</button><div id="bookingState" class="card hidden"><div class="spinner"></div><div id="bookingMessage" style="text-align:center">Recherche en cours…</div></div><div id="ridePanel" class="card hidden"><div class="row"><div><b id="rideStatus">Chauffeur confirmé</b><div class="muted">Suivi automatique</div></div><span class="pill"><span id="rideEta">—</span></span></div><div class="row" style="margin-top:10px"><span>Prix estimé</span><b id="ridePrice">—</b></div></div></div></div><div id="driverArea" class="hidden"><div class="driver-hero"><div class="row"><div style="display:flex;align-items:center;gap:12px"><div class="avatar">F</div><div><b>Mode chauffeur</b><div id="driverStatus" class="muted">Hors ligne</div></div></div><div id="driverSwitch" class="switch"><span></span></div></div><div class="stats"><div class="stat"><strong>GPS</strong><small>Haute précision</small></div><div class="stat"><strong>25 s</strong><small>Offre</small></div><div class="stat"><strong>FAST</strong><small>Dispatch</small></div></div></div><div class="page"><div id="offerCard" class="card hidden"><div class="row"><div><div class="muted">Nouvelle course</div><b>Passager à proximité</b></div><span class="pill" id="offerEta">—</span></div><div class="row" style="margin-top:10px"><span>Distance</span><b id="offerDistance">—</b></div><div class="row"><button id="rejectOffer" class="btn red">Refuser</button><button id="acceptOffer" class="btn orange">Accepter</button></div></div><div id="driverTrip" class="card hidden"><h3>Course active</h3><button id="arrivingBtn" class="btn secondary">Je suis en approche</button><button id="startRideBtn" class="btn orange">Démarrer la course</button><button id="completeRideBtn" class="btn">Terminer la course</button></div><div class="card"><b>Important</b><p class="muted">Un chauffeur doit être vérifié par FAST avant de pouvoir passer en ligne.</p></div></div></div></section><section id="historyPage" class="pageview hidden page"><div class="section"><h3>Mes courses</h3><span class="muted">Historique réel</span></div><div id="historyList"></div></section><section id="walletPage" class="pageview hidden page"><div class="card"><div class="muted">Solde FAST</div><div id="walletBalance" class="big">0 FCFA</div></div><div class="card"><b>Moyens de paiement prévus</b><p class="muted">Carte bancaire tokenisée • MTN MoMo • Airtel Money • Orange Money • Wallet FAST.</p></div></section><section id="profilePage" class="pageview hidden page"><div class="card"><b>Assistance FAST</b><p class="muted">Support officiel de l’application</p><div class="support-grid"><button id="callSupport" class="btn secondary">☎ <span id="supportPhone">0748413996</span></button><button id="emailSupport" class="btn secondary">✉ <span id="supportEmail">servaisgloire@hotmail.com</span></button></div></div><button id="logoutBtn" class="btn red">Se déconnecter</button></section><nav class="nav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>◴</b>Courses</button><button data-page="walletPage"><b>▣</b>Wallet</button><button data-page="profilePage"><b>☰</b>Profil</button></nav></section><div id="toast" class="toast"></div></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+<title>FAST N°1</title>
+</head>
+<body>
+<div class="app">
+<section id="auth" class="auth">
+  <div class="auth-top"><div class="fast-mark"><span></span><span></span><span></span></div><div class="fast-word">FAST</div></div>
+  <div class="auth-visual"><h1>Le déplacement,<br><em>réinventé.</em></h1><p>Rapide. Sûr. Accessible.</p></div>
+  <div class="auth-card">
+    <h2>Bienvenue sur FAST</h2>
+    <input id="loginEmail" class="input" type="email" placeholder="Adresse e-mail">
+    <input id="loginPassword" class="input" type="password" placeholder="Mot de passe">
+    <button id="loginBtn" class="btn">Se connecter</button>
+    <button id="forgotBtn" class="text-btn">Mot de passe oublié ?</button>
+    <div class="separator"><span></span><b>ou</b><span></span></div>
+    <h3>Créer un compte</h3>
+    <div class="two"><input id="firstName" class="input" placeholder="Prénom"><input id="lastName" class="input" placeholder="Nom"></div>
+    <input id="phone" class="input" placeholder="Téléphone">
+    <input id="signupEmail" class="input" type="email" placeholder="E-mail">
+    <input id="signupPassword" class="input" type="password" placeholder="Mot de passe">
+    <select id="signupRole" class="input"><option value="client">Je suis passager</option><option value="driver">Je suis chauffeur</option></select>
+    <button id="signupBtn" class="btn outline">Créer mon compte FAST</button>
+    <p class="help">La confirmation du compte est envoyée par e-mail. Assistance : <span id="authSupportEmail">servaisgloire@hotmail.com</span></p>
+  </div>
+</section>
+<section id="mainApp" class="hidden">
+<header class="top"><button class="icon-btn" id="menuBtn">☰</button><div class="brand-center"><div class="fast-mark small"><span></span><span></span><span></span></div><div class="fast-word smallword">FAST</div></div><button class="icon-btn">🎁</button></header>
+<section id="homePage" class="pageview">
+  <div id="passengerArea">
+    <div class="mapwrap"><div id="map"></div><button id="locateBtn" class="floating-locate">◎</button></div>
+    <div class="booking-panel">
+      <div class="route-fields">
+        <div class="route-field"><span class="route-dot green"></span><div class="route-text"><small>Départ</small><input id="pickupInput" value="Ma position" placeholder="Votre position"></div><button class="route-action">◎</button><div id="pickupSuggestions" class="suggestions hidden"></div></div>
+        <div class="route-line"></div>
+        <div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div>
+      </div>
+      <div class="quick-row"><button>⌂ Maison</button><button>▣ Travail</button><button>✈ Aéroport</button></div>
+      <div class="section"><h3>Choisir un service</h3><span>Voir tout</span></div>
+      <div class="services">
+        <button class="service on" data-type="standard"><div class="car-photo eco"></div><b>FAST Eco</b><small>2–4 min</small><strong class="svc-price">—</strong></button>
+        <button class="service" data-type="comfort"><div class="car-photo comfort"></div><b>FAST Confort</b><small>3–6 min</small><strong class="svc-price">—</strong></button>
+        <button class="service" data-type="xl"><div class="car-photo xl"></div><b>FAST XL</b><small>4–7 min</small><strong class="svc-price">—</strong></button>
+      </div>
+      <div class="payment-card"><div><small>Paiement</small><select id="paymentMethod"><option value="wallet">Portefeuille FAST</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="orange_money">Orange Money</option><option value="card">Carte bancaire</option></select></div><div class="estimate"><small id="distanceText">Choisissez une destination</small><b id="priceText">—</b></div></div>
+      <button id="bookBtn" class="btn">Commander FAST</button>
+      <div id="bookingState" class="status-card hidden"><div class="spinner"></div><b id="bookingMessage">Recherche en cours…</b></div>
+      <div id="ridePanel" class="ride-card hidden"><div class="driver-head"><div class="photo">JM</div><div><b id="rideStatus">Chauffeur confirmé</b><small>FAST Chauffeur</small></div><span class="eta" id="rideEta">—</span></div><div class="ride-meta"><span>Prix estimé</span><b id="ridePrice">—</b></div></div>
+    </div>
+  </div>
+  <div id="driverArea" class="hidden driver-page">
+    <div class="driver-header"><div class="photo lg">JM</div><div class="driver-name"><small>Bonjour,</small><b id="driverName">Chauffeur FAST</b></div><label class="toggle"><input id="driverToggleInput" type="checkbox"><span></span></label></div>
+    <div class="earnings-card"><small>Gains du jour</small><div class="earnings">0 FCFA</div><div class="spark">╱╲╱╲╱╲</div></div>
+    <div class="driver-shortcuts"><button>▣<span>Portefeuille</span></button><button>◷<span>Historique</span></button><button>▥<span>Statistiques</span></button><button>◉<span>Profil</span></button></div>
+    <div class="section"><h3>Demandes de course</h3><span>Temps réel</span></div>
+    <div id="offerCard" class="offer-card hidden"><div class="offer-top"><div class="countdown">25<br><small>sec</small></div><div><b>Nouvelle course</b><small id="offerDistance">—</small></div><strong id="offerEta">—</strong></div><div class="offer-actions"><button id="acceptOffer" class="btn">Accepter</button><button id="rejectOffer" class="btn ghost">Refuser</button></div></div>
+    <div id="driverTrip" class="driver-trip hidden"><h3>Course active</h3><button id="arrivingBtn" class="btn outline">Je suis en approche</button><button id="startRideBtn" class="btn">Démarrer</button><button id="completeRideBtn" class="btn dark">Terminer</button></div>
+    <div class="verification-card"><b>Validation chauffeur</b><p>Votre compte doit être vérifié par FAST avant de recevoir des courses.</p><button id="requestDriverValidation" class="btn outline">Demander ma validation</button></div>
+  </div>
+</section>
+<section id="historyPage" class="pageview hidden page"><div class="section"><h3>Mes courses</h3><span>Historique</span></div><div id="historyList"></div></section>
+<section id="walletPage" class="pageview hidden page"><div class="wallet-card"><small>Solde FAST</small><div id="walletBalance" class="wallet-balance">0 FCFA</div></div><div class="card-lite"><b>Moyens de paiement</b><p>Carte bancaire • MTN MoMo • Airtel Money • Orange Money • Wallet FAST</p></div></section>
+<section id="profilePage" class="pageview hidden page"><div class="card-lite"><b>Assistance FAST</b><p>Support officiel</p><div class="support-grid"><button id="callSupport" class="btn outline">Appeler</button><button id="emailSupport" class="btn outline">E-mail</button></div><p id="supportEmail" class="help">servaisgloire@hotmail.com</p><span id="supportPhone" class="hidden">0748413996</span></div><button id="logoutBtn" class="btn dark">Se déconnecter</button></section>
+<nav class="nav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>▣</b>Courses</button><button data-page="walletPage"><b>◫</b>Portefeuille</button><button data-page="profilePage"><b>◉</b>Profil</button></nav>
+</section>
+<div id="toast" class="toast"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js"></script>
+</body></html>
