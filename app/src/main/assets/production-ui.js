@@ -139,6 +139,26 @@ function startResendCooldown(button,seconds){
   resendCooldownTimer=setInterval(render,1000);
 }
 
+async function readJson(response){let data={};try{data=await response.json()}catch(e){}return data}
+
+async function requestResendWithMemory(email){
+  let pythonUnavailable=false;
+  try{
+    const response=await fetch(API+'/v1/auth/resend-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const data=await readJson(response);
+    if(response.ok)return data;
+    if(response.status!==404&&response.status<500)throw new Error(data.detail||data.message||'Demande refusée');
+    pythonUnavailable=true;
+  }catch(e){pythonUnavailable=true}
+  if(pythonUnavailable){
+    const response=await fetch(SUPABASE_URL+'/functions/v1/auth-email-memory',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify({email})});
+    const data=await readJson(response);
+    if(!response.ok)throw new Error(data.message||data.detail||'L’envoi est momentanément indisponible.');
+    return data;
+  }
+  throw new Error('L’envoi est momentanément indisponible.');
+}
+
 function patchAuthResend(){
   const info=q('fastAuthInfo');
   if(info)info.innerHTML='<b>E-mails de sécurité FAST</b><br>FAST protège les demandes de confirmation et évite les envois répétés. Vérifiez aussi le dossier spam.';
@@ -150,9 +170,7 @@ function patchAuthResend(){
     if(!email)return toast('Entrez votre adresse e-mail');
     button.disabled=true;button.textContent='Envoi en cours…';
     try{
-      const response=await fetch(API+'/v1/auth/resend-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-      let data={};try{data=await response.json()}catch(e){}
-      if(!response.ok)throw new Error(data.detail||data.message||'L’envoi est momentanément indisponible.');
+      const data=await requestResendWithMemory(email);
       toast(data.message||'Demande prise en compte');
       startResendCooldown(button,data.retry_after_seconds||120);
     }catch(e){
