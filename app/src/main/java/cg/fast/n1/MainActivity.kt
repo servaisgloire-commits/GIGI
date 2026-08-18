@@ -70,8 +70,10 @@ class MainActivity : AppCompatActivity() {
                       function js(id,src){if(!document.getElementById(id)){var s=document.createElement('script');s.id=id;s.src=src;document.body.appendChild(s);}}
                       css('fast-polish-css','app-polish.css');
                       css('fast-driver-profile-css','driver-profile.css');
+                      css('fast-production-ui-css','production-ui.css');
                       js('fast-quality-js','app-quality.js');
                       js('fast-driver-profile-js','driver-profile.js');
+                      js('fast-production-ui-js','production-ui.js');
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(qualityLayer, null)
