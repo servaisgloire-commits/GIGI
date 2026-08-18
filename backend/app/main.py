@@ -15,10 +15,9 @@ from supabase import create_client
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://hmwxwzfcpdvgzjgxruup.supabase.co")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-# Keep the existing configured key as a fallback when Vercel defines an empty variable.
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY") or "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
-APP_VERSION = os.getenv("APP_VERSION") or "0.6.0"
-MIN_ANDROID_VERSION = os.getenv("MIN_ANDROID_VERSION") or "5.12"
+GOOGLE_MAPS_API_KEY = (os.getenv("GOOGLE_MAPS_API_KEY") or "").strip()
+APP_VERSION = os.getenv("APP_VERSION") or "6.0"
+MIN_ANDROID_VERSION = os.getenv("MIN_ANDROID_VERSION") or "6.0"
 ANDROID_UPDATE_URL = os.getenv("ANDROID_UPDATE_URL", "")
 
 app = FastAPI(title="FAST N°1 API", version=APP_VERSION)
@@ -31,6 +30,14 @@ app.add_middleware(
 )
 
 _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if SUPABASE_SERVICE_ROLE_KEY else None
+
+# Backend-only fallback: retrieve the Google key from Supabase Vault through a
+# service-role-only RPC. No raw Google credential is committed in FAST 6.0.
+if not GOOGLE_MAPS_API_KEY and _supabase is not None:
+    try:
+        GOOGLE_MAPS_API_KEY = str(_supabase.rpc("get_fast_google_maps_key").execute().data or "").strip()
+    except Exception:
+        GOOGLE_MAPS_API_KEY = ""
 
 
 def db():
@@ -298,7 +305,7 @@ async def osrm_route(origin: Location, destination: Location):
         "annotations": "false",
     }
     try:
-        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "FAST-N1/0.6"}) as client:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "FAST-N1/6.0"}) as client:
             r = await client.get(f"https://router.project-osrm.org/route/v1/driving/{coords}", params=params)
     except httpx.HTTPError:
         return None
@@ -588,7 +595,7 @@ async def autocomplete(q: str = Query(min_length=2, max_length=120)):
             pass
 
     try:
-        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "FAST-N1/0.6 support=servaisgloire@hotmail.com"}) as client:
+        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "FAST-N1/6.0 support=servaisgloire@hotmail.com"}) as client:
             r = await client.get(
                 "https://nominatim.openstreetmap.org/search",
                 params={"q": q_clean, "format": "jsonv2", "limit": 6, "countrycodes": "cg", "addressdetails": 1},
