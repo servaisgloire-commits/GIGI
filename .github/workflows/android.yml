@@ -2,6 +2,8 @@ name: Build FAST Android
 
 on:
   push:
+    branches: [ main, fast-v0.7.1-bugfix ]
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -33,40 +35,48 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Check JavaScript syntax
+        run: |
+          node --check app/src/main/assets/app.js
+          node --check app/src/main/assets/quick-destinations.js
+          node --check app/src/main/assets/fast-security.js
+          node --check app/src/main/assets/stability-fixes.js
+          node --check app/src/main/assets/driver-gps.js
+
       - name: Build verification APK
         run: gradle assembleDebug
 
       - name: Decode production keystore
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: |
           echo "$FAST_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fast-production.jks"
           echo "FAST_KEYSTORE_PATH=$RUNNER_TEMP/fast-production.jks" >> "$GITHUB_ENV"
 
       - name: Build production release
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: gradle assembleRelease
 
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v0.7.0-debug
+          name: FAST-N1-v0.7.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
       - name: Upload signed production APK
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v0.7.0-production
+          name: FAST-N1-v0.7.1-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
 
       - name: Publish signed production release
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v0.7.0"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v0.7.0" --notes "Premium driver UI, confirmed addresses, ride safety PIN, SOS and improved authentication email flows."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v0.7.0-production.apk
-          gh release upload "$TAG" FAST-N1-v0.7.0-production.apk --clobber
+          TAG="fast-v0.7.1"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v0.7.1" --notes "Bugfix release: safer ride states, restored active rides, stable booking, PIN sync, quick-address confirmation and network resilience."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v0.7.1-production.apk
+          gh release upload "$TAG" FAST-N1-v0.7.1-production.apk --clobber
