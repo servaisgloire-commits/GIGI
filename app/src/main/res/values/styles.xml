@@ -1,9 +1,10 @@
 <resources>
     <style name="Theme.Fast" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#05080D</item>
-        <item name="android:navigationBarColor">#05080D</item>
-        <item name="android:colorAccent">#2BC866</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:colorAccent">#A7E800</item>
     </style>
 </resources>
