@@ -53,13 +53,28 @@ class MainActivity : AppCompatActivity() {
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
-                callback?.invoke(origin, ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED, false)
+                callback?.invoke(
+                    origin,
+                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED,
+                    false
+                )
             }
         }
         web.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                view?.evaluateJavascript("document.documentElement.style.webkitFontSmoothing='antialiased';", null)
+                val qualityLayer = """
+                    (function(){
+                      document.documentElement.style.webkitFontSmoothing='antialiased';
+                      if(!document.getElementById('fast-polish-css')){
+                        var l=document.createElement('link');l.id='fast-polish-css';l.rel='stylesheet';l.href='app-polish.css';document.head.appendChild(l);
+                      }
+                      if(!document.getElementById('fast-quality-js')){
+                        var s=document.createElement('script');s.id='fast-quality-js';s.src='app-quality.js';document.body.appendChild(s);
+                      }
+                    })();
+                """.trimIndent()
+                view?.evaluateJavascript(qualityLayer, null)
             }
         }
         web.addJavascriptInterface(FastBridge(), "FASTNative")
@@ -98,7 +113,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, DriverLocationService::class.java))
         }
 
-        @android.webkit.JavascriptInterface fun stopDriverTracking() { stopService(Intent(this@MainActivity, DriverLocationService::class.java)) }
+        @android.webkit.JavascriptInterface
+        fun stopDriverTracking() {
+            stopService(Intent(this@MainActivity, DriverLocationService::class.java))
+        }
 
         @android.webkit.JavascriptInterface
         fun notifyDriverOffer(title: String, body: String) {
@@ -118,8 +136,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        @android.webkit.JavascriptInterface fun callSupport(phone: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) } }
-        @android.webkit.JavascriptInterface fun emailSupport(email: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email"))) } }
+        @android.webkit.JavascriptInterface
+        fun callSupport(phone: String) {
+            runOnUiThread { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun emailSupport(email: String) {
+            runOnUiThread { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email"))) }
+        }
 
         @android.webkit.JavascriptInterface
         fun emailSupportRequest(email: String, subject: String, body: String) {
@@ -131,5 +156,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Deprecated("Deprecated in Java")
-    override fun onBackPressed() { if (::web.isInitialized && web.canGoBack()) web.goBack() else super.onBackPressed() }
+    override fun onBackPressed() {
+        if (::web.isInitialized && web.canGoBack()) web.goBack() else super.onBackPressed()
+    }
 }
