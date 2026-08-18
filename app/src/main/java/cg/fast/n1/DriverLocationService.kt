@@ -25,12 +25,17 @@ import java.util.concurrent.Executors
 class DriverLocationService : Service() {
     private lateinit var fused: FusedLocationProviderClient
     private val executor = Executors.newSingleThreadExecutor()
+    private var lastSentAt = 0L
 
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val location = result.lastLocation ?: return
             val token = getSharedPreferences("fast", MODE_PRIVATE).getString("access_token", "") ?: ""
             if (token.isBlank()) return
+
+            // Reject very poor fixes when a more useful GPS point is likely to arrive immediately.
+            if (location.accuracy > 120f && System.currentTimeMillis() - lastSentAt < 10_000L) return
+
             val body = JSONObject().apply {
                 put("lat", location.latitude)
                 put("lng", location.longitude)
@@ -38,17 +43,19 @@ class DriverLocationService : Service() {
                 if (location.hasBearing()) put("heading", location.bearing.toDouble())
                 if (location.hasSpeed()) put("speed_kmh", location.speed * 3.6)
             }
+            lastSentAt = System.currentTimeMillis()
             executor.execute {
                 try {
                     val conn = URL(BuildConfig.PYTHON_API_URL + "/v1/driver/location").openConnection() as HttpURLConnection
                     conn.requestMethod = "POST"
-                    conn.connectTimeout = 8000
-                    conn.readTimeout = 8000
+                    conn.connectTimeout = 6000
+                    conn.readTimeout = 6000
                     conn.doOutput = true
                     conn.setRequestProperty("Authorization", "Bearer $token")
                     conn.setRequestProperty("Content-Type", "application/json")
                     conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                    conn.inputStream.close()
+                    val code = conn.responseCode
+                    if (code in 200..299) conn.inputStream.close() else conn.errorStream?.close()
                     conn.disconnect()
                 } catch (_: Exception) { }
             }
@@ -64,7 +71,7 @@ class DriverLocationService : Service() {
         val notification = NotificationCompat.Builder(this, "fast_driver_tracking")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle("FAST chauffeur en ligne")
-            .setContentText("Votre position est partagée pour recevoir et effectuer des courses.")
+            .setContentText("GPS haute précision actif • suivi de course en temps réel")
             .setOngoing(true)
             .setContentIntent(pending)
             .build()
@@ -75,9 +82,12 @@ class DriverLocationService : Service() {
     private fun startTracking() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L)
-            .setMinUpdateIntervalMillis(3000L)
-            .setMinUpdateDistanceMeters(8f)
+
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
+            .setMinUpdateIntervalMillis(1500L)
+            .setMaxUpdateDelayMillis(5000L)
+            .setMinUpdateDistanceMeters(4f)
+            .setWaitForAccurateLocation(true)
             .build()
         fused.requestLocationUpdates(request, callback, mainLooper)
     }
