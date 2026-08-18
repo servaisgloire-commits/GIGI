@@ -47,7 +47,7 @@ jobs:
       - name: Verify production presentation
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
-          grep -q 'versionName = "5.12"' app/build.gradle.kts
+          grep -q 'versionName = "5.13"' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "currentDriverPage='home'" app/src/main/assets/driver-profile.js
@@ -68,14 +68,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v5.12-debug
+          name: FAST-N1-v5.13-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v5.12-production
+          name: FAST-N1-v5.13-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
       - name: Publish signed production release
@@ -83,7 +83,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v5.12"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v5.12" --notes "FAST v5.12: production passenger interface aligned with the approved design, technical prototype labels removed, cleaner booking/search flow, and stable driver profile navigation."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v5.12-production.apk
-          gh release upload "$TAG" FAST-N1-v5.12-production.apk --clobber
+          TAG="fast-v5.13"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v5.13" --notes "FAST v5.13: capacity hardening, geospatial dispatch, reduced network load, auth/recovery fixes and stability improvements."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v5.13-production.apk
+          gh release upload "$TAG" FAST-N1-v5.13-production.apk --clobber
