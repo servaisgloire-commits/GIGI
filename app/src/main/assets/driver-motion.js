@@ -1,159 +1,29 @@
-/* FAST Driver Motion Engine v1
-   Smooths GPS jumps, animates vehicle movement, rotates by heading and follows intelligently. */
+/* FAST Driver Motion Engine v2
+   Smooth GPS, reject drift, animate vehicle, rotate heading and follow camera. */
 (function(){
-  const STATE={
-    raw:null,
-    smooth:null,
-    heading:0,
-    speed:0,
-    accuracy:999,
-    lastTs:0,
-    follow:true,
-    lastCameraTs:0,
-    animFrame:null,
-    navRoute:null
-  };
-
-  function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
-  function normHeading(h){h=Number(h||0)%360;return h<0?h+360:h;}
-  function headingDelta(a,b){return ((b-a+540)%360)-180;}
-  function lerp(a,b,t){return a+(b-a)*t;}
-  function lerpHeading(a,b,t){return normHeading(a+headingDelta(a,b)*t);}
-
-  function haversine(a,b){
-    const R=6371000,p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dp=(b.lat-a.lat)*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180;
-    const x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
-    return 2*R*Math.asin(Math.sqrt(x));
-  }
-
-  function bearing(a,b){
-    const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180;
-    const y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
-    return normHeading(Math.atan2(y,x)*180/Math.PI);
-  }
-
-  function validPoint(p){
-    return p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lng));
-  }
-
-  function rejectJump(prev,next,dtMs){
-    if(!prev||!next)return false;
-    const m=haversine(prev,next),secs=Math.max(.5,dtMs/1000),kmh=(m/secs)*3.6;
-    const acc=Number(next.accuracy_m||999);
-    if(acc>120)return true;
-    if(m>350&&secs<5)return true;
-    if(kmh>190&&Number(next.speed_kmh||0)<150)return true;
-    return false;
-  }
-
-  function chooseHeading(prev,next){
-    const reported=Number(next.heading);
-    const speed=Number(next.speed_kmh||0);
-    if(Number.isFinite(reported)&&reported>=0&&reported<=360&&speed>4)return reported;
-    if(prev&&haversine(prev,next)>4)return bearing(prev,next);
-    return STATE.heading;
-  }
-
-  function smoothingFactor(speed,accuracy){
-    let t=.22;
-    if(speed>10)t=.34;
-    if(speed>35)t=.48;
-    if(speed>70)t=.62;
-    if(accuracy>35)t*=.55;
-    if(accuracy<12)t*=1.12;
-    return clamp(t,.12,.72);
-  }
-
-  function animateMarker(from,to,duration=900){
-    if(!window.map||!window.driverLiveMarker||!validPoint(to))return;
-    if(STATE.animFrame)cancelAnimationFrame(STATE.animFrame);
-    const start=performance.now();
-    const a=from&&validPoint(from)?from:to;
-    const ah=STATE.heading,bh=normHeading(to.heading||STATE.heading);
-    const tick=now=>{
-      const p=clamp((now-start)/duration,0,1);
-      const eased=1-Math.pow(1-p,3);
-      const lng=lerp(Number(a.lng),Number(to.lng),eased);
-      const lat=lerp(Number(a.lat),Number(to.lat),eased);
-      const h=lerpHeading(ah,bh,eased);
-      driverLiveMarker.setLngLat([lng,lat]);
-      const el=driverLiveMarker.getElement();
-      const car=el&&el.querySelector?el.querySelector('.car-body'):null;
-      if(car)car.style.transform='rotate('+h+'deg)';
-      if(p<1)STATE.animFrame=requestAnimationFrame(tick);
-    };
-    STATE.animFrame=requestAnimationFrame(tick);
-  }
-
-  function cameraFor(speed){
-    if(speed<5)return {zoom:17.8,pitch:50};
-    if(speed<30)return {zoom:17.3,pitch:58};
-    if(speed<70)return {zoom:16.7,pitch:62};
-    return {zoom:16.1,pitch:64};
-  }
-
-  function followCamera(point){
-    if(!window.map||!STATE.follow||!validPoint(point))return;
-    const now=Date.now();
-    if(now-STATE.lastCameraTs<450)return;
-    STATE.lastCameraTs=now;
-    const c=cameraFor(STATE.speed);
-    map.easeTo({
-      center:[point.lng,point.lat],
-      zoom:c.zoom,
-      pitch:c.pitch,
-      bearing:STATE.heading,
-      duration:650,
-      easing:t=>t*(2-t)
-    });
-  }
-
-  function ensureFollowButton(){
-    const host=document.getElementById('driverGpsMapHost')||document.getElementById('sharedMapWrap');
-    if(!host||document.getElementById('driverFollowBtn'))return;
-    host.style.position='relative';
-    const b=document.createElement('button');
-    b.id='driverFollowBtn';b.className='driver-follow-btn active';b.innerHTML='➤';b.title='Suivre mon véhicule';
-    b.onclick=()=>{
-      STATE.follow=true;b.classList.add('active');
-      if(STATE.smooth)followCamera(STATE.smooth);
-    };
-    host.appendChild(b);
-    if(window.map){
-      map.on('dragstart',()=>{STATE.follow=false;b.classList.remove('active')});
-      map.on('rotatestart',()=>{STATE.follow=false;b.classList.remove('active')});
-      map.on('zoomstart',()=>{if(!map._fastProgrammatic){STATE.follow=false;b.classList.remove('active')}});
-    }
-  }
-
-  function process(dl){
-    if(!validPoint(dl))return null;
-    const now=Date.now();
-    const next={lat:Number(dl.lat),lng:Number(dl.lng),accuracy_m:Number(dl.accuracy_m||999),speed_kmh:Number(dl.speed_kmh||0),heading:Number(dl.heading)};
-    const dt=STATE.lastTs?now-STATE.lastTs:1000;
-    if(STATE.raw&&rejectJump(STATE.raw,next,dt))return STATE.smooth;
-    const h=chooseHeading(STATE.raw,next);
-    const speed=Math.max(0,Number(next.speed_kmh||0));
-    const accuracy=Math.max(1,Number(next.accuracy_m||999));
-    let smooth;
-    if(!STATE.smooth){smooth={...next,heading:h};}
-    else{
-      const t=smoothingFactor(speed,accuracy);
-      smooth={
-        lat:lerp(STATE.smooth.lat,next.lat,t),
-        lng:lerp(STATE.smooth.lng,next.lng,t),
-        heading:lerpHeading(STATE.heading,h,clamp(t*1.35,.18,.82)),
-        speed_kmh:speed,
-        accuracy_m:accuracy
-      };
-    }
-    const previous=STATE.smooth;
-    STATE.raw=next;STATE.smooth=smooth;STATE.heading=smooth.heading;STATE.speed=speed;STATE.accuracy=accuracy;STATE.lastTs=now;
-    animateMarker(previous,smooth,clamp(dt*.82,500,1200));
-    followCamera(smooth);
-    return smooth;
-  }
-
+  const STATE={raw:null,smooth:null,heading:0,speed:0,accuracy:999,lastTs:0,follow:true,lastCameraTs:0,animFrame:null,lastRouteKey:''};
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const normHeading=h=>{h=Number(h||0)%360;return h<0?h+360:h};
+  const headingDelta=(a,b)=>((b-a+540)%360)-180;
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const lerpHeading=(a,b,t)=>normHeading(a+headingDelta(a,b)*t);
+  function haversine(a,b){const R=6371000,p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dp=(b.lat-a.lat)*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180,x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+  function bearing(a,b){const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180,y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);return normHeading(Math.atan2(y,x)*180/Math.PI);}
+  const valid=p=>p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lng));
+  function rejectJump(prev,next,dt){if(!prev)return false;const m=haversine(prev,next),s=Math.max(.5,dt/1000),kmh=m/s*3.6,acc=Number(next.accuracy_m||999);if(acc>100)return true;if(m>250&&s<5)return true;if(kmh>180&&Number(next.speed_kmh||0)<140)return true;return false;}
+  function chooseHeading(prev,next){const h=Number(next.heading),speed=Number(next.speed_kmh||0);if(Number.isFinite(h)&&h>=0&&h<=360&&speed>4)return h;if(prev&&haversine(prev,next)>3)return bearing(prev,next);return STATE.heading;}
+  function factor(speed,accuracy){let t=.20;if(speed>8)t=.31;if(speed>30)t=.45;if(speed>65)t=.60;if(accuracy>35)t*=.55;if(accuracy<12)t*=1.15;return clamp(t,.10,.72);}
+  function ensureMarker(p){if(!window.map||!valid(p))return;if(!window.driverLiveMarker){driverLiveMarker=new mapboxgl.Marker({element:makeCarElement({heading:p.heading},true),anchor:'center'}).setLngLat([p.lng,p.lat]).addTo(map);}}
+  function animateMarker(from,to,duration){if(!window.map||!window.driverLiveMarker||!valid(to))return;if(STATE.animFrame)cancelAnimationFrame(STATE.animFrame);const start=performance.now(),a=from&&valid(from)?from:to,ah=Number(a.heading||STATE.heading),bh=Number(to.heading||STATE.heading);const tick=now=>{const p=clamp((now-start)/duration,0,1),e=1-Math.pow(1-p,3),lng=lerp(Number(a.lng),Number(to.lng),e),lat=lerp(Number(a.lat),Number(to.lat),e),h=lerpHeading(ah,bh,e);driverLiveMarker.setLngLat([lng,lat]);const el=driverLiveMarker.getElement(),car=el?.querySelector?.('.car-body');if(car)car.style.transform='rotate('+h+'deg)';if(p<1)STATE.animFrame=requestAnimationFrame(tick)};STATE.animFrame=requestAnimationFrame(tick);}
+  function cameraFor(speed){if(speed<5)return{zoom:17.8,pitch:48};if(speed<30)return{zoom:17.3,pitch:57};if(speed<70)return{zoom:16.7,pitch:61};return{zoom:16.15,pitch:64};}
+  function followCamera(p){if(!window.map||!STATE.follow||!valid(p))return;const now=Date.now();if(now-STATE.lastCameraTs<450)return;STATE.lastCameraTs=now;const c=cameraFor(STATE.speed);map.easeTo({center:[p.lng,p.lat],zoom:c.zoom,pitch:c.pitch,bearing:STATE.heading,duration:600,easing:t=>t*(2-t)});}
+  function process(dl){if(!valid(dl))return null;const now=Date.now(),next={lat:Number(dl.lat),lng:Number(dl.lng),accuracy_m:Number(dl.accuracy_m||999),speed_kmh:Math.max(0,Number(dl.speed_kmh||0)),heading:Number(dl.heading)},dt=STATE.lastTs?now-STATE.lastTs:1000;if(STATE.raw&&rejectJump(STATE.raw,next,dt))return STATE.smooth;const h=chooseHeading(STATE.raw,next),acc=Math.max(1,next.accuracy_m),speed=next.speed_kmh;let smooth;if(!STATE.smooth)smooth={...next,heading:h};else{const t=factor(speed,acc);smooth={lat:lerp(STATE.smooth.lat,next.lat,t),lng:lerp(STATE.smooth.lng,next.lng,t),heading:lerpHeading(STATE.heading,h,clamp(t*1.4,.18,.84)),speed_kmh:speed,accuracy_m:acc};}const prev=STATE.smooth;STATE.raw=next;STATE.smooth=smooth;STATE.heading=smooth.heading;STATE.speed=speed;STATE.accuracy=acc;STATE.lastTs=now;ensureMarker(smooth);animateMarker(prev,smooth,clamp(dt*.78,450,1050));followCamera(smooth);return smooth;}
+  function renderRoute(nav){if(!window.map||!map.isStyleLoaded()||!nav?.active)return;const key=String(nav.polyline||'')+'|'+String(nav.phase||'');if(key===STATE.lastRouteKey)return;STATE.lastRouteKey=key;const coords=nav.polyline?decodePolyline(nav.polyline):[];try{if(map.getLayer('driver-nav-route'))map.removeLayer('driver-nav-route');if(map.getSource('driver-nav-route'))map.removeSource('driver-nav-route');if(coords.length>1){map.addSource('driver-nav-route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords},properties:{}}});map.addLayer({id:'driver-nav-route',type:'line',source:'driver-nav-route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#1677ff','line-width':9,'line-opacity':.98}});}}catch(e){}}
+  function ensureFollowButton(){const host=document.getElementById('driverGpsMapHost')||document.getElementById('sharedMapWrap');if(!host||document.getElementById('driverFollowBtn'))return;host.style.position='relative';const b=document.createElement('button');b.id='driverFollowBtn';b.className='driver-follow-btn active';b.innerHTML='➤';b.title='Suivre mon véhicule';b.onclick=()=>{STATE.follow=true;b.classList.add('active');if(STATE.smooth)followCamera(STATE.smooth)};host.appendChild(b);if(window.map){['dragstart','rotatestart'].forEach(ev=>map.on(ev,()=>{STATE.follow=false;b.classList.remove('active')}));}}
+  function renderUi(nav,dl){const steps=nav.steps||[],step=steps[0]||{};if($('driverRoadPhase'))$('driverRoadPhase').textContent=nav.phase==='to_pickup'?'Vers le passager':'Vers la destination';if($('driverInstruction'))$('driverInstruction').textContent=step.instruction||'Continuez sur l’itinéraire';if($('driverTurnIcon'))$('driverTurnIcon').textContent=driverStepIcon(step.maneuver);if($('driverStepDistance'))$('driverStepDistance').textContent=step.distance_m!=null?driverFormatDistance(step.distance_m):driverFormatDistance(Number(nav.distance_km||0)*1000);if($('driverNavEta'))$('driverNavEta').textContent=(nav.eta_min||'—')+' min';if($('driverNavDistance'))$('driverNavDistance').textContent=(nav.distance_km||'—')+' km';if($('driverSpeed'))$('driverSpeed').textContent=Math.round(Number(dl.speed_kmh||0))+' km/h';const acc=Number(dl.accuracy_m||0);if($('driverGpsAccuracy'))$('driverGpsAccuracy').textContent=acc?('±'+Math.round(acc)+' m'):'—';try{renderDriverSteps(steps)}catch(e){}window.driverLastLocation=dl;}
   window.FastDriverMotion={process,state:STATE,enableFollow(){STATE.follow=true;if(STATE.smooth)followCamera(STATE.smooth)},disableFollow(){STATE.follow=false}};
-  window.addEventListener('load',()=>setTimeout(ensureFollowButton,700));
+  if(typeof window.updateDriverOnMap==='function'){
+    window.updateDriverOnMap=function(nav){if(!nav||!nav.active)return;renderRoute(nav);const smooth=process(nav.driver_location||{});if(!smooth)return;renderUi(nav,smooth);};
+  }
+  window.addEventListener('load',()=>setTimeout(ensureFollowButton,750));
 })();
