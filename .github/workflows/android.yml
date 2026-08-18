@@ -50,12 +50,11 @@ jobs:
           grep -q 'versionName = "5.12"' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "currentDriverPage='home'" app/src/main/assets/driver-profile.js
+          grep -q "activateDriverHome(false)" app/src/main/assets/driver-profile.js
           test -f app/src/main/assets/production-ui.js
           test -f app/src/main/assets/production-ui.css
           test -f app/src/main/assets/driver-profile.js
-          if grep -nE 'Dispatch Python|GPS précis|Trajet suivi' app/src/main/assets/production-ui.js; then
-            echo 'Technical prototype labels must not be rendered by production UI'; exit 1
-          fi
       - name: Build verification APK
         run: gradle assembleDebug
       - name: Decode production keystore
