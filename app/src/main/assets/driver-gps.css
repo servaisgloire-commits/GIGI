@@ -10,9 +10,9 @@ body.driver-mode #homePage{background:#07111f;min-height:calc(100vh - 54px)}
 .driver-nav-top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#07111f;position:relative;z-index:900}
 .driver-nav-top small{display:block;color:#7db2ff;font-size:9px;letter-spacing:1.5px;font-weight:900}
 .driver-nav-top b{display:block;font-size:16px;margin-top:2px}
-.driver-gps-map-host{position:relative;height:58vh;min-height:420px;background:#dfe8f5;overflow:hidden}
+.driver-gps-map-host{position:relative;height:68vh;min-height:520px;background:#dfe8f5;overflow:hidden}
 .driver-gps-map-host .mapwrap{height:100%;margin:0;background:#dfe8f5}
-.driver-gps-map-host #map{height:100%!important;min-height:420px}
+.driver-gps-map-host #map{height:100%!important;min-height:520px}
 body.driver-mode .map-engine{top:12px;right:12px}
 body.driver-mode .floating-locate{bottom:18px}
 .driver-guidance-card{position:relative;z-index:1000;margin:-42px 12px 0;background:rgba(7,17,31,.96);border:1px solid rgba(125,178,255,.25);border-radius:22px;padding:14px;display:grid;grid-template-columns:64px 1fr 72px;gap:12px;align-items:center;box-shadow:0 18px 45px rgba(0,0,0,.38);backdrop-filter:blur(18px)}
@@ -54,4 +54,4 @@ body.driver-mode .toggle input:checked+span{background:#1677ff}
 .fast-role-card small{display:block;color:#718096;font-size:9px;line-height:1.35;margin-top:5px}
 .fast-role-card.active b{color:#0b57d0}
 .fast-role-help{margin:7px 2px 10px;color:#64748b;font-size:10px;line-height:1.4}
-@media (min-height:850px){.driver-gps-map-host{height:61vh}.driver-gps-map-host #map{min-height:470px}}
+@media (min-height:850px){.driver-gps-map-host{height:72vh}.driver-gps-map-host #map{min-height:600px}}
