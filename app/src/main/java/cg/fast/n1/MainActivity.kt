@@ -2,6 +2,9 @@ package cg.fast.n1
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -14,6 +17,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
@@ -22,8 +27,9 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        createDriverOfferChannel()
         web = WebView(this)
-        web.setBackgroundColor(android.graphics.Color.rgb(5, 8, 13))
+        web.setBackgroundColor(android.graphics.Color.WHITE)
         with(web.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -40,29 +46,23 @@ class MainActivity : AppCompatActivity() {
                 callback?.invoke(origin, ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED, false)
             }
         }
-        web.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                view?.evaluateJavascript("""
-                    try {
-                      startDriverTracking = function(){
-                        try { FASTNative.setAccessToken(token); FASTNative.startDriverTracking(); watchId = -1; }
-                        catch(e) { console.log(e); }
-                      };
-                      stopDriverTracking = function(){
-                        try { FASTNative.stopDriverTracking(); watchId = null; }
-                        catch(e) { console.log(e); }
-                      };
-                    } catch(e) { console.log(e); }
-                """.trimIndent(), null)
-            }
-        }
+        web.webViewClient = WebViewClient()
         web.addJavascriptInterface(FastBridge(), "FASTNative")
         web.loadUrl("file:///android_asset/index.html")
         setContentView(web)
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms.add(Manifest.permission.POST_NOTIFICATIONS)
         ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1001)
+    }
+
+    private fun createDriverOfferChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel("fast_driver_offers", "FAST nouvelles courses", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Notifications des nouvelles courses proposées aux chauffeurs FAST"
+                enableVibration(true)
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
     }
 
     inner class FastBridge {
@@ -82,14 +82,36 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, DriverLocationService::class.java))
         }
 
-        @android.webkit.JavascriptInterface
-        fun stopDriverTracking() { stopService(Intent(this@MainActivity, DriverLocationService::class.java)) }
+        @android.webkit.JavascriptInterface fun stopDriverTracking() { stopService(Intent(this@MainActivity, DriverLocationService::class.java)) }
 
         @android.webkit.JavascriptInterface
-        fun callSupport(phone: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) } }
+        fun notifyDriverOffer(title: String, body: String) {
+            val intent = Intent(this@MainActivity, MainActivity::class.java)
+            val pending = PendingIntent.getActivity(this@MainActivity, 401, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            val n = NotificationCompat.Builder(this@MainActivity, "fast_driver_offers")
+                .setSmallIcon(android.R.drawable.ic_dialog_map)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pending)
+                .build()
+            if (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                NotificationManagerCompat.from(this@MainActivity).notify((System.currentTimeMillis() % 100000).toInt(), n)
+            }
+        }
+
+        @android.webkit.JavascriptInterface fun callSupport(phone: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) } }
+        @android.webkit.JavascriptInterface fun emailSupport(email: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email"))) } }
 
         @android.webkit.JavascriptInterface
-        fun emailSupport(email: String) { runOnUiThread { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email"))) } }
+        fun emailSupportRequest(email: String, subject: String, body: String) {
+            runOnUiThread {
+                val uri = Uri.parse("mailto:$email?subject=${Uri.encode(subject)}&body=${Uri.encode(body)}")
+                startActivity(Intent(Intent.ACTION_SENDTO, uri))
+            }
+        }
     }
 
     @Deprecated("Deprecated in Java")
