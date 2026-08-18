@@ -1,0 +1,49 @@
+body.client-mode .advanced-ride .live-nav{display:none!important}
+body.client-mode #driverArea{display:none!important}
+body.driver-mode .app{padding-bottom:0;background:#07111f}
+body.driver-mode #mainHeader{height:54px;background:#07111f;color:#fff;border-bottom:0;grid-template-columns:44px 1fr 44px}
+body.driver-mode #mainHeader .icon-btn{visibility:hidden}
+body.driver-mode #mainHeader .fast-word{color:#fff}
+body.driver-mode #clientNav{display:none!important}
+body.driver-mode #homePage{background:#07111f;min-height:calc(100vh - 54px)}
+.driver-navigation-page{padding:0;background:#07111f;min-height:calc(100vh - 54px);color:#fff;position:relative}
+.driver-nav-top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#07111f;position:relative;z-index:900}
+.driver-nav-top small{display:block;color:#7db2ff;font-size:9px;letter-spacing:1.5px;font-weight:900}
+.driver-nav-top b{display:block;font-size:16px;margin-top:2px}
+.driver-gps-map-host{position:relative;height:58vh;min-height:420px;background:#dfe8f5;overflow:hidden}
+.driver-gps-map-host .mapwrap{height:100%;margin:0;background:#dfe8f5}
+.driver-gps-map-host #map{height:100%!important;min-height:420px}
+body.driver-mode .map-engine{top:12px;right:12px}
+body.driver-mode .floating-locate{bottom:18px}
+.driver-guidance-card{position:relative;z-index:1000;margin:-42px 12px 0;background:rgba(7,17,31,.96);border:1px solid rgba(125,178,255,.25);border-radius:22px;padding:14px;display:grid;grid-template-columns:64px 1fr 72px;gap:12px;align-items:center;box-shadow:0 18px 45px rgba(0,0,0,.38);backdrop-filter:blur(18px)}
+.driver-turn-icon{width:62px;height:62px;border-radius:18px;background:linear-gradient(135deg,#0b57d0,#2793ff);display:grid;place-items:center;font-size:36px;font-weight:950;color:#fff}
+.driver-guidance-main{min-width:0}
+.driver-guidance-main small{display:block;color:#8cbcff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.8px}
+.driver-guidance-main b{display:block;font-size:16px;line-height:1.15;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.driver-guidance-main span{display:block;color:#d8e8ff;font-size:12px;font-weight:850}
+.driver-eta-box{text-align:center;background:#0d2039;border-radius:16px;padding:10px 7px}
+.driver-eta-box b{display:block;font-size:18px;color:#fff}
+.driver-eta-box small{display:block;font-size:8px;color:#8cbcff;margin-top:2px}
+.driver-nav-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:12px}
+.driver-nav-stats>div{background:#0c1b2e;border:1px solid #142a46;border-radius:15px;padding:10px 6px;text-align:center}
+.driver-nav-stats small{display:block;color:#7890ad;font-size:8px}
+.driver-nav-stats b{display:block;color:#fff;font-size:11px;margin-top:3px}
+.driver-steps-panel{margin:0 12px 12px;background:#0c1b2e;border:1px solid #142a46;border-radius:20px;padding:12px;color:#fff;max-height:250px;overflow:auto}
+.driver-steps-panel .section{margin:0 0 7px}
+.driver-steps-panel .section h3{font-size:13px}
+.driver-steps-panel .section span{color:#78adff}
+.driver-gps-step{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;padding:9px 4px;border-top:1px solid #172b45}
+.driver-gps-step:first-child{border-top:0}
+.driver-gps-step.next{background:linear-gradient(90deg,rgba(22,119,255,.14),transparent);border-radius:13px;padding-left:8px}
+.driver-gps-step-icon{width:38px;height:38px;border-radius:12px;background:#10294a;color:#6eaeff;display:grid;place-items:center;font-size:23px;font-weight:950}
+.driver-gps-step.next .driver-gps-step-icon{background:#1677ff;color:#fff}
+.driver-gps-step b{display:block;color:#fff;font-size:11px;line-height:1.25}
+.driver-gps-step small{display:block;color:#8195ad;font-size:9px;margin-top:3px}
+body.driver-mode .section{padding:0 12px;margin:14px 0 8px}
+body.driver-mode .section h3{color:#fff}
+body.driver-mode .offer-card,body.driver-mode .driver-trip{margin:0 12px 12px;background:#0c1b2e;border-color:#1c3554;color:#fff}
+.driver-trip-actions{display:grid;grid-template-columns:1fr;gap:6px}
+body.driver-mode .btn.outline,body.driver-mode .btn.ghost{background:#0f223b;color:#8fc0ff;border-color:#23476f}
+body.driver-mode .toggle span{background:#23344a}
+body.driver-mode .toggle input:checked+span{background:#1677ff}
+@media (min-height:850px){.driver-gps-map-host{height:61vh}.driver-gps-map-host #map{min-height:470px}}
