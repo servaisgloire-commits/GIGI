@@ -47,5 +47,10 @@ function bind(){
   const btn=q('forgotBtn');
   if(btn)btn.onclick=recoverPasswordFast;
 }
-window.addEventListener('load',()=>{bind();setTimeout(bind,900);setTimeout(bind,2200)});
+
+bind();
+setTimeout(bind,300);
+setTimeout(bind,900);
+setTimeout(bind,2200);
+if(document.readyState==='loading')window.addEventListener('load',bind,{once:true});
 })();
