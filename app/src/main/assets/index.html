@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#0b57d0">
 <link rel="preconnect" href="https://maps.googleapis.com">
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="quick-destinations.css">
 <link rel="stylesheet" href="performance.css">
 <link rel="stylesheet" href="driver-motion.css">
 <link rel="stylesheet" href="premium-security.css">
@@ -35,65 +34,9 @@
   </div>
 </section>
 <section id="mainApp" class="hidden">
-<header class="top" id="mainHeader">
-  <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
-  <div class="brand-center"><div class="fast-mark small"><span></span><span></span><span></span></div><div class="fast-word smallword">FAST</div></div>
-  <button class="vehicle-mode-btn hidden" id="vehicleModeBtn" aria-hidden="true"><span>🚘</span><small>Véhicule</small></button>
-</header>
-<section id="homePage" class="pageview">
-  <div id="passengerArea">
-    <div class="mapwrap" id="sharedMapWrap">
-      <div id="map"></div>
-      <div class="map-engine"><b>FAST MAP</b><small id="mapEngineText">Google Maps</small></div>
-      <button id="locateBtn" class="floating-locate" aria-label="Ma position">◎</button>
-    </div>
-    <div class="booking-panel">
-      <div class="route-fields">
-        <div class="route-field"><span class="route-dot blue"></span><div class="route-text"><small>Départ</small><input id="pickupInput" value="Ma position" autocomplete="off" placeholder="Votre position"></div><button class="route-action">◎</button><div id="pickupSuggestions" class="suggestions hidden"></div></div>
-        <div class="route-line"></div>
-        <div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" autocomplete="off" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div>
-      </div>
-      <div class="quick-row">
-        <button data-quick-destination="home"><span class="quick-icon">⌂</span><span class="quick-copy"><b>Maison</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
-        <button data-quick-destination="work"><span class="quick-icon">▣</span><span class="quick-copy"><b>Travail</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
-        <button data-quick-destination="airport"><span class="quick-icon">✈</span><span class="quick-copy"><b>Aéroport</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
-      </div>
-      <div class="single-service-card">
-        <div class="single-car"><div class="car-silhouette">🚕</div><div><small>Service FAST</small><b>Toyota • Brazzaville</b><span id="nearestEta">Recherche des véhicules proches…</span></div></div>
-        <div class="single-price"><small>Estimation</small><strong id="priceText">—</strong></div>
-      </div>
-      <div class="payment-card"><div><small>Paiement</small><select id="paymentMethod"><option value="wallet">Portefeuille FAST</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="orange_money">Orange Money</option><option value="card">Carte bancaire</option></select></div><div class="estimate"><small id="distanceText">Choisissez une destination</small></div></div>
-      <button id="bookBtn" class="btn">Commander FAST</button>
-      <div id="bookingState" class="status-card hidden"><div class="spinner"></div><b id="bookingMessage">Recherche en cours…</b></div>
-      <div id="ridePanel" class="ride-card hidden"><div class="driver-head"><div class="photo">JM</div><div><b id="rideStatus">Chauffeur confirmé</b><small>FAST Chauffeur</small></div><span class="eta" id="rideEta">—</span></div><div class="ride-meta"><span>Prix estimé</span><b id="ridePrice">—</b></div></div>
-    </div>
-  </div>
-  <div id="driverArea" class="hidden driver-navigation-page">
-    <div class="driver-nav-top"><div><small>FAST DRIVER</small><b id="driverName">Chauffeur FAST</b></div><label class="toggle"><input id="driverToggleInput" type="checkbox"><span></span></label></div>
-    <div id="driverGpsMapHost" class="driver-gps-map-host"></div>
-    <div class="driver-guidance-card" id="driverGuidanceCard"><div class="driver-turn-icon" id="driverTurnIcon">↑</div><div class="driver-guidance-main"><small id="driverRoadPhase">En attente d’une course</small><b id="driverInstruction">Mettez-vous en ligne pour recevoir une course</b><span id="driverStepDistance">—</span></div><div class="driver-eta-box"><b id="driverNavEta">—</b><small>arrivée</small></div></div>
-    <div class="driver-nav-stats"><div><small>Distance</small><b id="driverNavDistance">—</b></div><div><small>Vitesse</small><b id="driverSpeed">0 km/h</b></div><div><small>GPS</small><b id="driverGpsAccuracy">—</b></div><div><small>Étapes</small><b id="driverStepCount">0</b></div></div>
-    <div id="driverStepsPanel" class="driver-steps-panel hidden"><div class="section"><h3>Prochaines étapes</h3><span>Navigation</span></div><div id="driverStepsList"></div></div>
-    <div class="section"><h3>Demandes de course</h3><span>Temps réel</span></div>
-    <div id="offerCard" class="offer-card hidden"><div class="offer-top"><div class="countdown">25<br><small>sec</small></div><div><b>Nouvelle course</b><small id="offerDistance">—</small></div><strong id="offerEta">—</strong></div><div class="offer-actions"><button id="acceptOffer" class="btn">Accepter</button><button id="rejectOffer" class="btn ghost">Refuser</button></div></div>
-    <div id="driverTrip" class="driver-trip hidden"><div class="driver-trip-actions"><button id="arrivingBtn" class="btn outline">Je suis en approche</button><button id="startRideBtn" class="btn">Démarrer</button><button id="completeRideBtn" class="btn dark">Terminer</button></div></div>
-    <button id="requestDriverValidation" class="hidden">Validation</button><button id="backPassengerBtn" class="hidden">Retour passager</button>
-  </div>
-</section>
-<section id="historyPage" class="pageview hidden page"><div class="section"><h3>Mes courses</h3><span>Historique</span></div><div id="historyList"></div></section>
-<section id="walletPage" class="pageview hidden page"><div class="wallet-card"><small>Solde FAST</small><div id="walletBalance" class="wallet-balance">0 FCFA</div></div><div class="card-lite"><b>Moyens de paiement</b><p>Carte bancaire • MTN MoMo • Airtel Money • Orange Money • Wallet FAST</p></div></section>
-<section id="profilePage" class="pageview hidden page"><div class="card-lite"><b>Assistance FAST</b><p>Support officiel</p><div class="support-grid"><button id="callSupport" class="btn outline">Appeler</button><button id="emailSupport" class="btn outline">E-mail</button></div><p id="supportEmail" class="help">servaisgloire@hotmail.com</p><span id="supportPhone" class="hidden">0748413996</span></div><button id="logoutBtn" class="btn dark">Se déconnecter</button></section>
-<nav class="nav" id="clientNav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>▣</b>Courses</button><button data-page="walletPage"><b>◫</b>Portefeuille</button><button data-page="profilePage"><b>◉</b>Profil</button></nav>
-</section>
-<div id="toast" class="toast"></div>
-</div>
-<script src="google-map-adapter.js"></script>
-<script src="app.js"></script>
-<script src="quick-destinations.js"></script>
-<script src="performance.js"></script>
-<script src="driver-gps.js"></script>
-<script src="driver-motion.js"></script>
-<script src="fast-security.js"></script>
-<script src="stability-fixes.js"></script>
-</body>
-</html>
+<header class="top" id="mainHeader"><button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button><div class="brand-center"><div class="fast-mark small"><span></span><span></span><span></span></div><div class="fast-word smallword">FAST</div></div><button class="vehicle-mode-btn hidden" id="vehicleModeBtn" aria-hidden="true"><span>🚘</span><small>Véhicule</small></button></header>
+<section id="homePage" class="pageview"><div id="passengerArea"><div class="mapwrap" id="sharedMapWrap"><div id="map"></div><div class="map-engine"><b>FAST MAP</b><small id="mapEngineText">Google Maps</small></div><button id="locateBtn" class="floating-locate" aria-label="Ma position">◎</button></div><div class="booking-panel"><div class="route-fields"><div class="route-field"><span class="route-dot blue"></span><div class="route-text"><small>Départ</small><input id="pickupInput" value="Ma position" autocomplete="off" placeholder="Votre position"></div><button class="route-action">◎</button><div id="pickupSuggestions" class="suggestions hidden"></div></div><div class="route-line"></div><div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" autocomplete="off" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div></div><div class="single-service-card"><div class="single-car"><div class="car-silhouette">🚕</div><div><small>Service FAST</small><b>Toyota • Brazzaville</b><span id="nearestEta">Recherche des véhicules proches…</span></div></div><div class="single-price"><small>Estimation</small><strong id="priceText">—</strong></div></div><div class="payment-card"><div><small>Paiement</small><select id="paymentMethod"><option value="wallet">Portefeuille FAST</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="orange_money">Orange Money</option><option value="card">Carte bancaire</option></select></div><div class="estimate"><small id="distanceText">Choisissez une destination</small></div></div><button id="bookBtn" class="btn">Commander FAST</button><div id="bookingState" class="status-card hidden"><div class="spinner"></div><b id="bookingMessage">Recherche en cours…</b></div><div id="ridePanel" class="ride-card hidden"><div class="driver-head"><div class="photo">JM</div><div><b id="rideStatus">Chauffeur confirmé</b><small>FAST Chauffeur</small></div><span class="eta" id="rideEta">—</span></div><div class="ride-meta"><span>Prix estimé</span><b id="ridePrice">—</b></div></div></div></div>
+<div id="driverArea" class="hidden driver-navigation-page"><div class="driver-nav-top"><div><small>FAST DRIVER</small><b id="driverName">Chauffeur FAST</b></div><label class="toggle"><input id="driverToggleInput" type="checkbox"><span></span></label></div><div id="driverGpsMapHost" class="driver-gps-map-host"></div><div class="driver-guidance-card" id="driverGuidanceCard"><div class="driver-turn-icon" id="driverTurnIcon">↑</div><div class="driver-guidance-main"><small id="driverRoadPhase">En attente d’une course</small><b id="driverInstruction">Mettez-vous en ligne pour recevoir une course</b><span id="driverStepDistance">—</span></div><div class="driver-eta-box"><b id="driverNavEta">—</b><small>arrivée</small></div></div><div class="driver-nav-stats"><div><small>Distance</small><b id="driverNavDistance">—</b></div><div><small>Vitesse</small><b id="driverSpeed">0 km/h</b></div><div><small>GPS</small><b id="driverGpsAccuracy">—</b></div><div><small>Étapes</small><b id="driverStepCount">0</b></div></div><div id="driverStepsPanel" class="driver-steps-panel hidden"><div class="section"><h3>Prochaines étapes</h3><span>Navigation</span></div><div id="driverStepsList"></div></div><div class="section"><h3>Demandes de course</h3><span>Temps réel</span></div><div id="offerCard" class="offer-card hidden"><div class="offer-top"><div class="countdown">25<br><small>sec</small></div><div><b>Nouvelle course</b><small id="offerDistance">—</small></div><strong id="offerEta">—</strong></div><div class="offer-actions"><button id="acceptOffer" class="btn">Accepter</button><button id="rejectOffer" class="btn ghost">Refuser</button></div></div><div id="driverTrip" class="driver-trip hidden"><div class="driver-trip-actions"><button id="arrivingBtn" class="btn outline">Je suis en approche</button><button id="startRideBtn" class="btn">Démarrer</button><button id="completeRideBtn" class="btn dark">Terminer</button></div></div><button id="requestDriverValidation" class="hidden">Validation</button><button id="backPassengerBtn" class="hidden">Retour passager</button></div></section>
+<section id="historyPage" class="pageview hidden page"><div class="section"><h3>Mes courses</h3><span>Historique</span></div><div id="historyList"></div></section><section id="walletPage" class="pageview hidden page"><div class="wallet-card"><small>Solde FAST</small><div id="walletBalance" class="wallet-balance">0 FCFA</div></div><div class="card-lite"><b>Moyens de paiement</b><p>Carte bancaire • MTN MoMo • Airtel Money • Orange Money • Wallet FAST</p></div></section><section id="profilePage" class="pageview hidden page"><div class="card-lite"><b>Assistance FAST</b><p>Support officiel</p><div class="support-grid"><button id="callSupport" class="btn outline">Appeler</button><button id="emailSupport" class="btn outline">E-mail</button></div><p id="supportEmail" class="help">servaisgloire@hotmail.com</p><span id="supportPhone" class="hidden">0748413996</span></div><button id="logoutBtn" class="btn dark">Se déconnecter</button></section><nav class="nav" id="clientNav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>▣</b>Courses</button><button data-page="walletPage"><b>◫</b>Portefeuille</button><button data-page="profilePage"><b>◉</b>Profil</button></nav></section><div id="toast" class="toast"></div></div>
+<script src="google-map-adapter.js"></script><script src="app.js"></script><script src="performance.js"></script><script src="driver-gps.js"></script><script src="driver-motion.js"></script><script src="fast-security.js"></script><script src="stability-fixes.js"></script>
+</body></html>
