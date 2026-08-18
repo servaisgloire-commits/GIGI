@@ -20,16 +20,16 @@
   <div class="auth-visual"><h1>Le déplacement,<br><em>réinventé.</em></h1><p>Rapide. Sûr. Accessible.</p></div>
   <div class="auth-card">
     <h2>Bienvenue sur FAST</h2>
-    <input id="loginEmail" class="input" type="email" placeholder="Adresse e-mail">
-    <input id="loginPassword" class="input" type="password" placeholder="Mot de passe">
+    <input id="loginEmail" class="input" type="email" autocomplete="email" placeholder="Adresse e-mail">
+    <input id="loginPassword" class="input" type="password" autocomplete="current-password" placeholder="Mot de passe">
     <button id="loginBtn" class="btn">Se connecter</button>
     <button id="forgotBtn" class="text-btn">Mot de passe oublié ?</button>
     <div class="separator"><span></span><b>ou</b><span></span></div>
     <h3>Créer un compte passager</h3>
-    <div class="two"><input id="firstName" class="input" placeholder="Prénom"><input id="lastName" class="input" placeholder="Nom"></div>
-    <input id="phone" class="input" placeholder="Téléphone">
-    <input id="signupEmail" class="input" type="email" placeholder="E-mail">
-    <input id="signupPassword" class="input" type="password" placeholder="Mot de passe">
+    <div class="two"><input id="firstName" class="input" autocomplete="given-name" placeholder="Prénom"><input id="lastName" class="input" autocomplete="family-name" placeholder="Nom"></div>
+    <input id="phone" class="input" inputmode="tel" autocomplete="tel" placeholder="Téléphone">
+    <input id="signupEmail" class="input" type="email" autocomplete="email" placeholder="E-mail">
+    <input id="signupPassword" class="input" type="password" autocomplete="new-password" placeholder="Mot de passe (8 caractères minimum)">
     <select id="signupRole" class="hidden"><option value="client" selected>Passager</option></select>
     <button id="signupBtn" class="btn outline">Créer mon compte FAST</button>
     <p class="help">Confirmation par e-mail • Assistance : <span id="authSupportEmail">servaisgloire@hotmail.com</span></p>
@@ -50,9 +50,9 @@
     </div>
     <div class="booking-panel">
       <div class="route-fields">
-        <div class="route-field"><span class="route-dot blue"></span><div class="route-text"><small>Départ</small><input id="pickupInput" value="Ma position" placeholder="Votre position"></div><button class="route-action">◎</button><div id="pickupSuggestions" class="suggestions hidden"></div></div>
+        <div class="route-field"><span class="route-dot blue"></span><div class="route-text"><small>Départ</small><input id="pickupInput" value="Ma position" autocomplete="off" placeholder="Votre position"></div><button class="route-action">◎</button><div id="pickupSuggestions" class="suggestions hidden"></div></div>
         <div class="route-line"></div>
-        <div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div>
+        <div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" autocomplete="off" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div>
       </div>
       <div class="quick-row">
         <button data-quick-destination="home"><span class="quick-icon">⌂</span><span class="quick-copy"><b>Maison</b><small>À configurer</small></span><span class="quick-edit">Ajouter</span></button>
@@ -97,5 +97,6 @@
 <script src="driver-gps.js"></script>
 <script src="driver-motion.js"></script>
 <script src="fast-security.js"></script>
+<script src="stability-fixes.js"></script>
 </body>
 </html>
