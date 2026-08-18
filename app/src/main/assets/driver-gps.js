@@ -1,8 +1,41 @@
 /* FAST dedicated driver navigation layer.
-   Passenger UI stays simple; verified driver accounts are routed directly to a driving GPS. */
+   Passenger UI stays simple; driver accounts are routed directly to a driving GPS. */
 (()=>{const l=document.createElement('link');l.rel='stylesheet';l.href='driver-gps.css';document.head.appendChild(l)})();
 let driverNavPoll=null;
 let driverLastLocation=null;
+
+function setupSignupRoleSelector(){
+  const select=$('signupRole');
+  if(!select||$('fastRoleChoice'))return;
+  const title=select.previousElementSibling?.tagName==='H3'?select.previousElementSibling:document.querySelector('.auth-card h3:last-of-type');
+  if(title)title.textContent='Choisissez votre utilisation FAST';
+  select.innerHTML='<option value="client">Passager</option><option value="driver">Chauffeur</option>';
+  select.value='client';
+  select.classList.add('hidden');
+  const choice=document.createElement('div');
+  choice.id='fastRoleChoice';
+  choice.className='fast-role-choice';
+  choice.innerHTML=`
+    <button type="button" class="fast-role-card active" data-role="client">
+      <span class="fast-role-icon">👤</span><b>Passager</b><small>Commander et suivre mes courses</small>
+    </button>
+    <button type="button" class="fast-role-card" data-role="driver">
+      <span class="fast-role-icon">🚘</span><b>Chauffeur</b><small>Recevoir des courses et naviguer</small>
+    </button>`;
+  select.parentElement.insertBefore(choice,select);
+  const help=document.createElement('p');
+  help.id='fastRoleHelp';help.className='fast-role-help';
+  help.textContent='Votre choix détermine automatiquement les fonctions affichées après connexion.';
+  choice.insertAdjacentElement('afterend',help);
+  choice.querySelectorAll('.fast-role-card').forEach(btn=>btn.onclick=()=>{
+    choice.querySelectorAll('.fast-role-card').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    select.value=btn.dataset.role;
+    help.textContent=btn.dataset.role==='driver'
+      ? 'Compte chauffeur : validation FAST requise avant de recevoir des courses. Après connexion, le GPS chauffeur s’ouvre automatiquement.'
+      : 'Compte passager : réservation, paiement, ETA et suivi du chauffeur.';
+  });
+}
 
 const baseShowApp=window.showApp;
 const baseRespondOffer=window.respondOffer;
@@ -153,6 +186,7 @@ window.respondOffer=async function(accept){
 window.showMode=function(){ setFastRoleUi(); };
 
 window.addEventListener('load',()=>{
+  setupSignupRoleSelector();
   setTimeout(()=>{
     if(token&&profile)setFastRoleUi();
     const v=$('vehicleModeBtn'); if(v)v.onclick=()=>{};
