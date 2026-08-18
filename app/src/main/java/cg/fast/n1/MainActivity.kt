@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -30,6 +31,8 @@ class MainActivity : AppCompatActivity() {
         createDriverOfferChannel()
         web = WebView(this)
         web.setBackgroundColor(android.graphics.Color.WHITE)
+        web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        web.overScrollMode = View.OVER_SCROLL_NEVER
         with(web.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -37,16 +40,28 @@ class MainActivity : AppCompatActivity() {
             setGeolocationEnabled(true)
             allowFileAccess = true
             allowContentAccess = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+            loadsImagesAutomatically = true
+            blockNetworkImage = false
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            textZoom = 100
+            mediaPlaybackRequiresUserGesture = false
             @Suppress("DEPRECATION") allowFileAccessFromFileURLs = true
             @Suppress("DEPRECATION") allowUniversalAccessFromFileURLs = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
                 callback?.invoke(origin, ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED, false)
             }
         }
-        web.webViewClient = WebViewClient()
+        web.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                view?.evaluateJavascript("document.documentElement.style.webkitFontSmoothing='antialiased';", null)
+            }
+        }
         web.addJavascriptInterface(FastBridge(), "FASTNative")
         web.loadUrl("file:///android_asset/index.html")
         setContentView(web)
@@ -69,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface fun supabaseUrl(): String = BuildConfig.SUPABASE_URL
         @android.webkit.JavascriptInterface fun supabasePublishableKey(): String = BuildConfig.SUPABASE_PUBLISHABLE_KEY
         @android.webkit.JavascriptInterface fun pythonApiUrl(): String = BuildConfig.PYTHON_API_URL
+        @android.webkit.JavascriptInterface fun mapboxPublicToken(): String = BuildConfig.MAPBOX_PUBLIC_TOKEN
         @android.webkit.JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
 
         @android.webkit.JavascriptInterface
