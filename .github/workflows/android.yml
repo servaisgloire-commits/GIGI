@@ -45,25 +45,34 @@ jobs:
           node --check app/src/main/assets/driver-gps.js
           node --check app/src/main/assets/driver-motion.js
           node --check app/src/main/assets/production-ui.js
+          node --check app/src/main/assets/driver-cancel.js
+          node --check app/src/main/assets/update-manager.js
       - name: Verify production presentation
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 602' app/build.gradle.kts
+          grep -q 'versionCode = 603' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "update-manager.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "appBuildCode" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "openExternalUrl" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "currentDriverPage='home'" app/src/main/assets/driver-profile.js
           grep -q "activateDriverHome(false)" app/src/main/assets/driver-profile.js
           grep -q "auth-email-memory" app/src/main/assets/recovery-fix.js
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
+          grep -q '"build": 603' updates/latest.json
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           test -f app/src/main/assets/production-ui.js
           test -f app/src/main/assets/production-ui.css
           test -f app/src/main/assets/driver-profile.js
           test -f app/src/main/assets/recovery-fix.js
+          test -f app/src/main/assets/driver-cancel.js
+          test -f app/src/main/assets/update-manager.js
+          test -f updates/latest.json
       - name: Build verification APK
         run: gradle assembleDebug
       - name: Decode production keystore
@@ -93,6 +102,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="fast-v6.0"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final: Google Maps Android key restored, password recovery hardened, production stability validated."
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 603 : mises à jour intégrées, documents chauffeur corrigés, annulation chauffeur et stabilité finale."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
           gh release upload "$TAG" FAST-N1-v6.0-production.apk --clobber
