@@ -1,0 +1,8 @@
+{
+  "version": "6.0",
+  "build": 603,
+  "minimumBuild": 602,
+  "mandatory": false,
+  "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
+  "notes": "Mise à jour FAST N°1 : documents chauffeur, annulation chauffeur et système de mise à jour intégré."
+}
