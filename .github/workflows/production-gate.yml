@@ -40,9 +40,6 @@ jobs:
           if git grep -nE 'sb_secret_[A-Za-z0-9_-]+' -- ':!*.md'; then
             echo 'Supabase secret key found in repository'; exit 1
           fi
-          # Android Google Maps keys are publishable application credentials and are
-          # allowed only in the Android Gradle configuration. Server-side Google keys
-          # remain forbidden in source control.
           if git grep -nE 'AIza[0-9A-Za-z_-]{20,}' -- ':!*.md' ':!app/build.gradle.kts'; then
             echo 'Unexpected Google API key found outside Android configuration'; exit 1
           fi
@@ -65,14 +62,20 @@ jobs:
           node --check app/src/main/assets/driver-profile.js
           node --check app/src/main/assets/stability-fixes.js
           node --check app/src/main/assets/recovery-fix.js
+          node --check app/src/main/assets/driver-cancel.js
+          node --check app/src/main/assets/update-manager.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 602' app/build.gradle.kts
+          grep -q 'versionCode = 603' app/build.gradle.kts
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
+          grep -q '"build": 603' updates/latest.json
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           if grep -q "\['searching','accepted','driver_arriving','in_progress'\]" app/src/main/assets/stability-fixes.js; then echo 'Stale searching ride is still auto-restored'; exit 1; fi
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "update-manager.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "appBuildCode" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "openExternalUrl" app/src/main/java/cg/fast/n1/MainActivity.kt
       - name: Compile Android debug
         run: gradle assembleDebug
       - name: Compile Android release
