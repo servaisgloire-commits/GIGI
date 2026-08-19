@@ -162,6 +162,16 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface fun pythonApiUrl(): String = BuildConfig.PYTHON_API_URL
         @android.webkit.JavascriptInterface fun googleMapsApiKey(): String = BuildConfig.GOOGLE_MAPS_API_KEY
         @android.webkit.JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
+        @android.webkit.JavascriptInterface fun appBuildCode(): Int = BuildConfig.VERSION_CODE
+
+        @android.webkit.JavascriptInterface
+        fun openExternalUrl(url: String) {
+            val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
+            if (uri.scheme != "https") return
+            runOnUiThread {
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            }
+        }
 
         @android.webkit.JavascriptInterface
         fun setAccessToken(token: String) {
