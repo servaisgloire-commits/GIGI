@@ -9,7 +9,7 @@ const baseApi=api,baseSupa=supa,baseBookRide=bookRide,baseLogin=login,baseSignup
 
 function setBusy(btn,busy,label){if(!btn)return;if(busy){btn.dataset.oldText=btn.textContent;btn.disabled=true;if(label)btn.textContent=label}else{btn.disabled=false;if(btn.dataset.oldText){btn.textContent=btn.dataset.oldText;delete btn.dataset.oldText}}}
 function emailOk(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'').trim())}
-function friendlyError(e){const m=String(e?.message||e||'Erreur');if(/Failed to fetch|NetworkError|Load failed|timeout|AbortError/i.test(m))return 'Connexion internet instable. Réessayez dans quelques secondes.';if(/Invalid login credentials/i.test(m))return 'E-mail ou mot de passe incorrect.';if(/Email not confirmed/i.test(m))return 'Confirmez votre adresse e-mail avant de vous connecter.';if(/rate limit|429|security purposes/i.test(m))return 'Trop de demandes rapprochées. Patientez quelques instants avant de réessayer.';if(/addresses_not_confirmed/i.test(m))return 'Confirmez le départ et la destination avant de démarrer.';if(/ride_pin_not_verified/i.test(m))return 'Le code PIN doit être vérifié avant le démarrage.';if(/invalid_ride_transition/i.test(m))return 'Cette action n’est plus disponible pour cette course.';return m}
+function friendlyError(e){const m=String(e?.message||e||'Erreur');if(/Failed to fetch|NetworkError|Load failed|timeout|AbortError/i.test(m))return 'Connexion internet instable. Réessayez dans quelques secondes.';if(/Invalid login credentials/i.test(m))return 'E-mail ou mot de passe incorrect.';if(/Email not confirmed/i.test(m))return 'Confirmez votre adresse e-mail avant de vous connecter.';if(/rate limit|429|security purposes/i.test(m))return 'Trop de demandes rapprochées. Patientez quelques instants avant de réessayer.';if(/addresses_not_confirmed/i.test(m))return 'Confirmez le départ et la destination avant de démarrer.';if(/ride_pin_not_verified/i.test(m))return 'Le code PIN doit être vérifié avant le démarrage.';if(/invalid_ride_transition/i.test(m))return 'Cette action n’est plus disponible pour cette course.';if(/ride_not_searching/i.test(m))return 'La recherche est déjà terminée pour cette course.';return m}
 
 api=async function(path,opts={}){
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
@@ -65,6 +65,33 @@ bookRide=async function(){
 };
 
 async function safeRideSnapshot(id){try{return await api('/v1/rides/'+id)}catch(e){return null}}
+
+async function cancelSearch(){
+  if(role!=='client')return;
+  const id=currentRideId,btn=q('cancelSearchBtn');
+  if(!id){bookingLocked=false;q('bookingState')?.classList.add('hidden');setBusy(q('bookBtn'),false);return}
+  setBusy(btn,true,'Annulation…');
+  try{
+    const snap=await safeRideSnapshot(id);
+    if(snap?.ride?.status&&snap.ride.status!=='searching'){
+      toast('Un chauffeur vient d’être trouvé. La recherche ne peut plus être annulée ici.');
+      pollRide();
+      return;
+    }
+    await api('/v1/rides/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:'cancelled'})});
+    clearInterval(ridePoll);ridePoll=null;
+    currentRideId=null;lastRestoredRide=null;bookingLocked=false;retryCounts.delete(id);
+    q('bookingState')?.classList.add('hidden');q('ridePanel')?.classList.add('hidden');
+    if(q('bookingMessage'))q('bookingMessage').textContent='Recherche en cours…';
+    if(q('dispatchDetails'))q('dispatchDetails').textContent='FAST recherche les chauffeurs disponibles';
+    setBusy(q('bookBtn'),false);
+    try{clearDriverMarkers()}catch(e){}
+    if(typeof startNearbyPolling==='function')startNearbyPolling();
+    window.dispatchEvent(new CustomEvent('fast:ride-cancelled',{detail:{rideId:id}}));
+    toast('Recherche annulée');
+  }catch(e){toast(friendlyError(e))}finally{setBusy(btn,false)}
+}
+
 async function safeRetryDispatch(id){
   if(!id||id!==currentRideId||role!=='client')return;
   const snap=await safeRideSnapshot(id);if(!snap)return setTimeout(()=>safeRetryDispatch(id),9000);
@@ -113,8 +140,16 @@ async function restoreActiveRide(force=false){
 
 showApp=function(){baseShowApp();setTimeout(()=>restoreActiveRide(),450)};
 
+function ensureCancelSearchButton(){
+  const state=q('bookingState');if(!state)return null;
+  let btn=q('cancelSearchBtn');
+  if(!btn){btn=document.createElement('button');btn.id='cancelSearchBtn';btn.type='button';btn.className='text-btn';btn.textContent='Annuler la recherche';btn.setAttribute('aria-label','Annuler la recherche de chauffeur');btn.style.color='#b42318';btn.style.marginTop='8px';state.appendChild(btn)}
+  btn.onclick=cancelSearch;return btn;
+}
+
 function patchHandlers(){
   q('loginBtn')&&(q('loginBtn').onclick=login);q('signupBtn')&&(q('signupBtn').onclick=signup);q('forgotBtn')&&(q('forgotBtn').onclick=forgotPassword);q('logoutBtn')&&(q('logoutBtn').onclick=logout);q('bookBtn')&&(q('bookBtn').onclick=bookRide);
+  ensureCancelSearchButton();
   q('arrivingBtn')&&(q('arrivingBtn').onclick=()=>setRideStatus('driver_arriving'));q('startRideBtn')&&(q('startRideBtn').onclick=()=>setRideStatus('in_progress'));q('completeRideBtn')&&(q('completeRideBtn').onclick=()=>setRideStatus('completed'));
 }
 
