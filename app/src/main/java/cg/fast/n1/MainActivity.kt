@@ -12,10 +12,12 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.webkit.GeolocationPermissions
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -24,6 +26,24 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
+    private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
+
+    private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val callback = pendingFileCallback ?: return@registerForActivityResult
+        val data = result.data
+        val uris: Array<Uri>? = if (result.resultCode == RESULT_OK) {
+            when {
+                data?.clipData != null -> {
+                    val clip = data.clipData!!
+                    Array(clip.itemCount) { index -> clip.getItemAt(index).uri }
+                }
+                data?.data != null -> arrayOf(data.data!!)
+                else -> null
+            }
+        } else null
+        callback.onReceiveValue(uris)
+        pendingFileCallback = null
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +78,44 @@ class MainActivity : AppCompatActivity() {
                     ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED,
                     false
                 )
+            }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                pendingFileCallback?.onReceiveValue(null)
+                pendingFileCallback = filePathCallback
+
+                val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                    putExtra(
+                        Intent.EXTRA_MIME_TYPES,
+                        arrayOf(
+                            "application/pdf",
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp",
+                            "image/heic",
+                            "image/heif"
+                        )
+                    )
+                    putExtra(
+                        Intent.EXTRA_ALLOW_MULTIPLE,
+                        fileChooserParams?.mode == FileChooserParams.MODE_OPEN_MULTIPLE
+                    )
+                }
+
+                return try {
+                    fileChooserLauncher.launch(picker)
+                    true
+                } catch (_: Exception) {
+                    pendingFileCallback?.onReceiveValue(null)
+                    pendingFileCallback = null
+                    false
+                }
             }
         }
         web.webViewClient = object : WebViewClient() {
