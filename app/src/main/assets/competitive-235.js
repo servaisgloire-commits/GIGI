@@ -36,10 +36,35 @@ function ensureDriverAdvantages(){
   const top=area.querySelector('.driver-nav-top');if(!top)return;
   const box=document.createElement('div');box.className='fast-driver-advantages';box.innerHTML='<div><b>Prix visible</b><small>avant acceptation</small></div><div><b>ETA + distance</b><small>décision rapide</small></div><div><b>Navigation</b><small>Google intégrée</small></div>';top.insertAdjacentElement('afterend',box);
 }
+function ensureDriverCancel(){
+  const trip=byId('driverTrip');if(!trip||byId('cancelDriverRideBtn'))return;
+  const actions=trip.querySelector('.driver-trip-actions')||trip;
+  const b=document.createElement('button');b.type='button';b.id='cancelDriverRideBtn';b.className='btn outline fast-driver-cancel';b.textContent='Annuler la course';
+  b.style.borderColor='#ef4444';b.style.color='#b42318';b.style.background='#fff';
+  b.onclick=cancelDriverRide;actions.appendChild(b);
+}
+async function cancelDriverRide(){
+  if(typeof role!=='undefined'&&role!=='driver')return;
+  if(typeof currentRideId==='undefined'||!currentRideId){if(typeof toast==='function')toast('Aucune course active');return}
+  if(!confirm('Annuler cette course ? Le client sera immédiatement informé.'))return;
+  const b=byId('cancelDriverRideBtn');if(b){b.disabled=true;b.textContent='Annulation…'}
+  try{
+    const rideId=currentRideId;
+    await api('/v1/rides/'+rideId+'/status',{method:'PATCH',body:JSON.stringify({status:'cancelled'})});
+    currentRideId=null;
+    try{clearInterval(ridePoll)}catch(e){}
+    byId('driverTrip')?.classList.add('hidden');
+    byId('fastDriverPinBox')?.classList.add('hidden');
+    const pin=byId('fastDriverPin');if(pin){pin.value='';pin.disabled=false}
+    if(typeof startOfferPolling==='function'&&byId('driverToggleInput')?.checked)startOfferPolling();
+    if(typeof toast==='function')toast('Course annulée');
+  }catch(e){if(typeof toast==='function')toast(e?.message||'Annulation impossible')}
+  finally{if(b){b.disabled=false;b.textContent='Annuler la course'}}
+}
 function polishLabels(){
   const e=byId('mapEngineText');if(e&&/Mapbox|FAST Map/i.test(e.textContent))e.textContent='Google Maps';
   const support=byId('supportEmail');if(support)support.textContent='contact@gloire-group.com';const auth=byId('authSupportEmail');if(auth)auth.textContent='contact@gloire-group.com';
 }
-function boot(){ensureRouteInsights();ensureTrust();ensureDriverAdvantages();polishLabels()}
+function boot(){ensureRouteInsights();ensureTrust();ensureDriverAdvantages();ensureDriverCancel();polishLabels()}
 window.addEventListener('load',()=>{boot();setTimeout(boot,500);setTimeout(boot,1500)});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')boot()});
 })();
