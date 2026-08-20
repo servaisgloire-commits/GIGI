@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b57d0">
+  <title>FAST N°1 • Administration</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <div class="login-card">
+      <div class="brand"><span class="mark">F</span><div><b>FAST N°1</b><small>Administration interne</small></div></div>
+      <h1>Connexion administrateur</h1>
+      <p>Accès réservé aux comptes FAST autorisés.</p>
+      <label>E-mail<input id="loginEmail" type="email" autocomplete="username" placeholder="admin@fast..."></label>
+      <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+      <button id="loginBtn" class="primary">Se connecter</button>
+      <div id="loginError" class="error"></div>
+    </div>
+  </div>
+
+  <div id="adminView" class="admin-shell hidden">
+    <aside class="sidebar">
+      <div class="brand side"><span class="mark">F</span><div><b>FAST N°1</b><small>Gestion interne</small></div></div>
+      <nav id="nav">
+        <button class="active" data-page="dashboard">Tableau de bord</button>
+        <button data-page="drivers">Chauffeurs</button>
+        <button data-page="clients">Clients</button>
+        <button data-page="documents">Documents <span id="pendingDocBadge" class="badge">0</span></button>
+        <button data-page="payments">Paiements</button>
+        <button data-page="payouts">Paie chauffeurs</button>
+        <button data-page="rides">Courses</button>
+        <button data-page="markets">Pays & tarifs</button>
+      </nav>
+      <div class="side-bottom"><small id="adminIdentity">Administrateur FAST</small><button id="logoutBtn">Déconnexion</button></div>
+    </aside>
+
+    <main>
+      <header class="topbar"><div><small>FAST N°1</small><h1 id="pageTitle">Tableau de bord</h1></div><div class="top-actions"><button id="refreshBtn">Actualiser</button><button id="exportBtn" class="primary">Exporter Excel</button></div></header>
+
+      <section id="page-dashboard" class="page active">
+        <div id="stats" class="stats-grid"></div>
+        <div class="panel-grid">
+          <section class="panel"><div class="panel-head"><h2>Activité récente</h2><span>Courses</span></div><div id="recentRides"></div></section>
+          <section class="panel"><div class="panel-head"><h2>Documents à contrôler</h2><span>Validation</span></div><div id="recentDocs"></div></section>
+        </div>
+        <section class="panel"><div class="panel-head"><h2>Recettes par devise</h2><span>Paiements payés</span></div><div id="revenueByCurrency" class="revenue-grid"></div></section>
+      </section>
+
+      <section id="page-drivers" class="page"><div class="panel"><div class="toolbar"><input id="driverSearch" placeholder="Rechercher un chauffeur..."><select id="driverCountryFilter"><option value="">Tous les pays</option></select></div><div class="table-wrap"><table><thead><tr><th>Chauffeur</th><th>Pays</th><th>Statut</th><th>Vérifié</th><th>Note</th><th>Courses</th><th>Paie</th><th>Action</th></tr></thead><tbody id="driversBody"></tbody></table></div></div></section>
+
+      <section id="page-clients" class="page"><div class="panel"><div class="toolbar"><input id="clientSearch" placeholder="Rechercher un client..."></div><div class="table-wrap"><table><thead><tr><th>Client</th><th>Téléphone</th><th>Pays</th><th>Inscription</th><th>Courses</th><th>Dépenses</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
+
+      <section id="page-documents" class="page"><div class="panel"><div class="toolbar"><select id="docStatusFilter"><option value="pending">En attente</option><option value="">Tous</option><option value="approved">Validés</option><option value="rejected">Refusés</option></select></div><div class="table-wrap"><table><thead><tr><th>Chauffeur</th><th>Document</th><th>Fichier</th><th>Pays</th><th>Statut</th><th>Date</th><th>Contrôle</th></tr></thead><tbody id="documentsBody"></tbody></table></div></div></section>
+
+      <section id="page-payments" class="page"><div class="panel"><div class="toolbar"><select id="paymentStatusFilter"><option value="">Tous les statuts</option><option value="paid">Payé</option><option value="pending">En attente</option><option value="failed">Échec</option><option value="refunded">Remboursé</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Course</th><th>Méthode</th><th>Montant</th><th>Devise</th><th>Statut</th><th>Référence</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
+
+      <section id="page-payouts" class="page"><div class="panel"><div class="table-wrap"><table><thead><tr><th>Chauffeur</th><th>Pays</th><th>Mode</th><th>Titulaire</th><th>Coordonnées</th><th>Devise</th><th>Statut</th><th>Action</th></tr></thead><tbody id="payoutsBody"></tbody></table></div></div></section>
+
+      <section id="page-rides" class="page"><div class="panel"><div class="toolbar"><select id="rideStatusFilter"><option value="">Toutes les courses</option><option value="searching">Recherche</option><option value="accepted">Acceptée</option><option value="in_progress">En cours</option><option value="completed">Terminée</option><option value="cancelled">Annulée</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Pays</th><th>Client</th><th>Chauffeur</th><th>Départ</th><th>Destination</th><th>Prix</th><th>Paiement</th><th>Statut</th></tr></thead><tbody id="ridesBody"></tbody></table></div></div></section>
+
+      <section id="page-markets" class="page">
+        <div class="panel"><div class="panel-head"><h2>Pays activés</h2><button id="newMarketBtn" class="primary small">Ajouter un pays</button></div><div id="marketsGrid" class="market-grid"></div></div>
+        <div class="panel"><div class="panel-head"><h2>Tarification</h2><span>Modifiable par pays</span></div><div class="table-wrap"><table><thead><tr><th>Pays</th><th>Service</th><th>Base</th><th>/ km</th><th>/ min</th><th>Minimum</th><th>Réservation</th><th>Devise</th><th>Action</th></tr></thead><tbody id="pricingBody"></tbody></table></div></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">FAST</h2><button id="modalClose">×</button></div><div id="modalBody"></div></div></div>
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
