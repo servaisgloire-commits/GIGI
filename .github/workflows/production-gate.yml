@@ -73,12 +73,15 @@ jobs:
           node --check app/src/main/assets/update-manager.js
           node --check app/src/main/assets/global-market.js
           node --check app/src/main/assets/global-polish.js
+          node --check app/src/main/assets/touch-fix.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 605' app/build.gradle.kts
+          grep -q 'versionCode = 606' app/build.gradle.kts
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
-          grep -q '"build": 605' updates/latest.json
+          grep -q '"build": 606' updates/latest.json
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
           grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
+          grep -q 'touch-fix.js' app/src/main/assets/index.html
+          grep -q 'bindRobustAutocomplete' app/src/main/assets/touch-fix.js
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           if grep -q "\['searching','accepted','driver_arriving','in_progress'\]" app/src/main/assets/stability-fixes.js; then echo 'Stale searching ride is still auto-restored'; exit 1; fi
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -97,6 +100,6 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0-build605-debug-apk
+          name: FAST-production-gate-v6.0-build606-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
