@@ -30,13 +30,17 @@ jobs:
         run: python -m pytest -q backend/tests
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
-      - name: Validate global backend
+      - name: Validate global and flexible backend
         run: |
           test -f backend/app/global_main.py
+          test -f backend/app/flex_main.py
           grep -q 'fast_global_available_drivers' backend/app/global_main.py
           grep -q 'same_country_only' backend/app/global_main.py
           grep -q '/v1/market' backend/app/global_main.py
-          grep -q 'app/global_main.py' backend/vercel.json
+          grep -q 'proposed_price' backend/app/flex_main.py
+          grep -q 'pricing_mode' backend/app/flex_main.py
+          grep -q 'offered_price' backend/app/flex_main.py
+          grep -q 'app/flex_main.py' backend/vercel.json
       - name: Validate password recovery backend
         run: |
           grep -q 'recover-password' backend/app/auth_memory.py
@@ -74,15 +78,18 @@ jobs:
           node --check app/src/main/assets/global-market.js
           node --check app/src/main/assets/global-polish.js
           node --check app/src/main/assets/touch-fix.js
+          node --check app/src/main/assets/flex-price.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 608' app/build.gradle.kts
+          grep -q 'versionCode = 609' app/build.gradle.kts
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
-          grep -q '"build": 608' updates/latest.json
+          grep -q '"build": 609' updates/latest.json
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
           grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
           grep -q 'touch-fix.js' app/src/main/assets/index.html
+          grep -q 'flex-price.js' app/src/main/assets/index.html
           grep -q 'bindRobustAutocomplete' app/src/main/assets/touch-fix.js
           grep -q 'scheduleUi' app/src/main/assets/production-ui.js
+          grep -q 'Proposer mon prix' app/src/main/assets/flex-price.js
           if grep -Fq "querySelectorAll('*')" app/src/main/assets/production-ui.js; then echo 'Heavy full-DOM scan reintroduced'; exit 1; fi
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           if grep -q "\['searching','accepted','driver_arriving','in_progress'\]" app/src/main/assets/stability-fixes.js; then echo 'Stale searching ride is still auto-restored'; exit 1; fi
@@ -102,6 +109,6 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0-build608-debug-apk
+          name: FAST-production-gate-v6.0-build609-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
