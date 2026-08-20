@@ -97,6 +97,7 @@ function rebindPickupButtons(){
 }
 function bootTouchFix(){installTouchCss();bindRobustAutocomplete('pickupInput','pickupSuggestions','pickup');bindRobustAutocomplete('destinationInput','destinationSuggestions','destination');rebindPickupButtons()}
 
-bootTouchFix();setTimeout(bootTouchFix,250);setTimeout(bootTouchFix,900);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(bootTouchFix,80)});
+installTouchCss();
+window.addEventListener('load',()=>{setTimeout(bootTouchFix,1150);setTimeout(bootTouchFix,1900)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(bootTouchFix,120)});
 })();
