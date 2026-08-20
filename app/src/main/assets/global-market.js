@@ -23,6 +23,36 @@ function applyMarket(market,country){
   const nearest=gm$('nearestEta');if(nearest&&!/min/.test(nearest.textContent||''))nearest.textContent=`Recherche des chauffeurs en ${countryName}…`;
   const paymentCard=document.querySelector('.payment-card small');if(paymentCard)paymentCard.textContent=`Paiement • ${market.currency||'USD'}`;
 }
+
+const legacyApi=typeof api==='function'?api:null;
+function globalEdgePath(path){
+  if(path.startsWith('/v1/market'))return path.replace('/v1/market','/market');
+  if(path.startsWith('/v1/places/autocomplete'))return path.replace('/v1/places/autocomplete','/places/autocomplete');
+  if(path.startsWith('/v1/places/details'))return path.replace('/v1/places/details','/places/details');
+  if(path.startsWith('/v1/routes/estimate'))return path.replace('/v1/routes/estimate','/routes/estimate');
+  if(path.startsWith('/v1/nearby-drivers'))return path.replace('/v1/nearby-drivers','/nearby-drivers');
+  if(path==='/v1/rides')return '/rides';
+  if(/^\/v1\/rides\/[0-9a-f-]+\/dispatch(?:\?|$)/i.test(path))return path.replace('/v1','');
+  if(path.startsWith('/v1/driver/location'))return path.replace('/v1/driver/location','/driver/location');
+  return null;
+}
+async function edgeApi(path,opts={}){
+  let edge=globalEdgePath(path);if(!edge)return legacyApi(path,opts);
+  if(edge.startsWith('/places/autocomplete')&&typeof pickup!=='undefined'&&pickup){
+    const sep=edge.includes('?')?'&':'?';
+    if(!/[?&]lat=/.test(edge))edge+=`${sep}lat=${encodeURIComponent(pickup.lat)}&lng=${encodeURIComponent(pickup.lng)}`;
+  }
+  const headers={...(opts.headers||{}),'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
+  try{
+    const r=await fetch(SUPABASE_URL+'/functions/v1/fast-global'+edge,{...opts,headers,signal:opts.signal||controller.signal});
+    let d={};try{d=await r.json()}catch(e){}
+    if(!r.ok)throw new Error(d.detail||d.message||d.error||('HTTP '+r.status));
+    return d;
+  }finally{clearTimeout(timer)}
+}
+if(legacyApi)window.api=api=edgeApi;
+
 async function marketForPickup(force=false){
   if(typeof pickup==='undefined'||!pickup)return null;
   const key=`${Number(pickup.lat).toFixed(2)}:${Number(pickup.lng).toFixed(2)}`;
