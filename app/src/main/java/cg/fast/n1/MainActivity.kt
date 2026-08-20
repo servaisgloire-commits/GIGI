@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                     (function(){
                       document.documentElement.style.webkitFontSmoothing='antialiased';
                       function css(id,href){if(!document.getElementById(id)){var l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l);}}
-                      function js(id,src){if(!document.getElementById(id)){var s=document.createElement('script');s.id=id;s.src=src;document.body.appendChild(s);}}
+                      function js(id,src){if(!document.getElementById(id)){var s=document.createElement('script');s.id=id;s.async=false;s.src=src;document.body.appendChild(s);}}
                       css('fast-polish-css','app-polish.css');
                       css('fast-driver-profile-css','driver-profile.css');
                       css('fast-production-ui-css','production-ui.css');
@@ -135,6 +135,7 @@ class MainActivity : AppCompatActivity() {
                       js('fast-recovery-fix-js','recovery-fix.js');
                       js('fast-update-manager-js','update-manager.js');
                       js('fast-global-market-js','global-market.js');
+                      js('fast-global-polish-js','global-polish.js');
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(qualityLayer, null)
