@@ -134,6 +134,7 @@ class MainActivity : AppCompatActivity() {
                       js('fast-production-ui-js','production-ui.js');
                       js('fast-recovery-fix-js','recovery-fix.js');
                       js('fast-update-manager-js','update-manager.js');
+                      js('fast-global-market-js','global-market.js');
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(qualityLayer, null)
