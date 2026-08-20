@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const fp$=id=>document.getElementById(id);
-let flexMode='standard',flexValue='';
+let flexMode='standard',flexValue='',lastRedispatchAt=0;
 
 function currency(){
   try{return String(currentRoute?.currency||window.fastActiveMarket?.currency||'USD').toUpperCase()}catch(e){return String(window.fastActiveMarket?.currency||'USD').toUpperCase()}
@@ -70,6 +70,7 @@ if(typeof bookRide==='function'){
       const v=Number(flexValue||fp$('flexPriceInput')?.value||0);
       if(!Number.isFinite(v)||v<=0)return toast('Entrez le prix que vous souhaitez proposer au chauffeur.');
     }
+    lastRedispatchAt=Date.now();
     return baseBookRideFlex();
   };
 }
@@ -104,6 +105,25 @@ if(typeof loadOffer==='function'){
   };
 }
 
+async function watchSearchingRide(){
+  try{
+    if(!token||role!=='client'||!currentRideId)return;
+    const id=currentRideId,d=await api('/v1/rides/'+id),r=d?.ride;
+    if(!r||r.status!=='searching')return;
+    const now=Date.now(),driverCleared=!r.driver_id,offerLikelyExpired=now-lastRedispatchAt>=30000;
+    if(!driverCleared&&!offerLikelyExpired)return;
+    if(now-lastRedispatchAt<5000)return;
+    lastRedispatchAt=now;
+    const result=await api('/v1/rides/'+id+'/dispatch',{method:'POST'});
+    if(result?.matched){
+      if(fp$('bookingMessage'))fp$('bookingMessage').textContent='Proposition envoyée à un chauffeur…';
+      if(typeof pollRide==='function')pollRide();
+    }else if(result?.reason==='no_more_drivers_after_rejections'){
+      if(fp$('bookingMessage'))fp$('bookingMessage').textContent='Recherche d’un autre chauffeur…';
+    }
+  }catch(e){}
+}
+
 function style(){
   if(fp$('flexPriceStyle'))return;const s=document.createElement('style');s.id='flexPriceStyle';s.textContent=`
   .flex-price-card{margin:11px 0;padding:13px;border:1px solid #e1e8f1;border-radius:17px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.05)}
@@ -114,6 +134,6 @@ function style(){
   `;document.head.appendChild(s);
 }
 
-style();refreshCard();setInterval(refreshCard,700);
-window.addEventListener('fast:ride-cancelled',()=>setMode('standard'));
+style();refreshCard();setInterval(refreshCard,700);setInterval(watchSearchingRide,5000);
+window.addEventListener('fast:ride-cancelled',()=>{setMode('standard');lastRedispatchAt=0});
 })();
