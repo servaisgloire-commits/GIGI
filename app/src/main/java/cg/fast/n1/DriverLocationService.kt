@@ -84,12 +84,14 @@ class DriverLocationService : Service() {
 
     private fun postLocation(token: String, body: JSONObject) {
         try {
-            val conn = URL(BuildConfig.PYTHON_API_URL + "/v1/driver/location").openConnection() as HttpURLConnection
+            val endpoint = BuildConfig.SUPABASE_URL + "/functions/v1/fast-global/driver/location"
+            val conn = URL(endpoint).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
-            conn.connectTimeout = 6000
-            conn.readTimeout = 6000
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
             conn.doOutput = true
             conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
             conn.setRequestProperty("Content-Type", "application/json")
             conn.outputStream.use { it.write(body.toString().toByteArray()) }
             val code = conn.responseCode
