@@ -2,26 +2,34 @@
 'use strict';
 const gm$=id=>document.getElementById(id);
 const paymentLabels={wallet:'Portefeuille FAST',card:'Carte bancaire',cash:'Espèces',mtn_momo:'MTN Mobile Money',airtel_money:'Airtel Money',orange_money:'Orange Money'};
-let activeMarket=null,lastMarketKey='',lastMarketAt=0;
+let activeMarket=null,lastMarketKey='',lastMarketAt=0,applyingMarket=false,observerTimer=null;
 
 function formatMoney(value,currency='USD',locale='fr-FR'){
   try{return new Intl.NumberFormat(locale||'fr-FR',{style:'currency',currency,maximumFractionDigits:['XAF','XOF','JPY'].includes(currency)?0:2}).format(Number(value||0))}
   catch(e){return `${Number(value||0).toLocaleString('fr-FR')} ${currency}`}
 }
+function setText(el,text){if(el&&el.textContent!==text)el.textContent=text}
+function currentPaymentValues(select){return [...select.options].map(o=>o.value).join('|')}
 function applyMarket(market,country){
-  if(!market)return;
-  activeMarket={...market,country};window.fastActiveMarket=activeMarket;
-  const select=gm$('paymentMethod'),allowed=market.payment_methods||['card','cash','wallet'];
-  if(select){
-    const previous=select.value;
-    select.innerHTML=allowed.map(v=>`<option value="${String(v).replace(/"/g,'')}">${paymentLabels[v]||v}</option>`).join('');
-    if(allowed.includes(previous))select.value=previous;
-  }
-  const countryName=country?.country_name||market.country_name||'votre zone';
-  const service=document.querySelector('.single-service-card .single-car b');if(service)service.textContent=`FAST • ${countryName}`;
-  const fleet=document.querySelector('.local-fleet-card');if(fleet){const b=fleet.querySelector('b');if(b)b.textContent=`Chauffeurs disponibles en ${countryName}`;const flag=fleet.querySelector('span');if(flag)flag.textContent='📍'}
-  const nearest=gm$('nearestEta');if(nearest&&!/min/.test(nearest.textContent||''))nearest.textContent=`Recherche des chauffeurs en ${countryName}…`;
-  const paymentCard=document.querySelector('.payment-card small');if(paymentCard)paymentCard.textContent=`Paiement • ${market.currency||'USD'}`;
+  if(!market||applyingMarket)return;
+  applyingMarket=true;
+  try{
+    activeMarket={...market,country};window.fastActiveMarket=activeMarket;
+    const select=gm$('paymentMethod'),allowed=(market.payment_methods||['card','cash','wallet']).map(String);
+    if(select){
+      const previous=select.value;
+      if(currentPaymentValues(select)!==allowed.join('|')){
+        select.innerHTML=allowed.map(v=>`<option value="${v.replace(/"/g,'')}">${paymentLabels[v]||v}</option>`).join('');
+      }
+      if(allowed.includes(previous)&&select.value!==previous)select.value=previous;
+    }
+    const countryName=country?.country_name||market.country_name||'votre zone';
+    setText(document.querySelector('.single-service-card .single-car b'),`FAST • ${countryName}`);
+    const fleet=document.querySelector('.local-fleet-card');
+    if(fleet){setText(fleet.querySelector('b'),`Chauffeurs disponibles en ${countryName}`);setText(fleet.querySelector('span'),'📍')}
+    const nearest=gm$('nearestEta');if(nearest&&!/min/.test(nearest.textContent||''))setText(nearest,`Recherche des chauffeurs en ${countryName}…`);
+    setText(document.querySelector('.payment-card small'),`Paiement • ${market.currency||'USD'}`);
+  }finally{applyingMarket=false}
 }
 
 const legacyApi=typeof api==='function'?api:null;
@@ -69,8 +77,8 @@ if(typeof refreshRoute==='function'){
     try{
       const d=await api('/v1/routes/estimate',{method:'POST',body:JSON.stringify(routeBody())});
       currentRoute=d;drawRoute(d);renderRouteInsights(d);applyMarket(d.market,d.country);
-      gm$('distanceText').textContent=d.distance_km+' km • '+d.duration_min+' min';
-      gm$('priceText').textContent=formatMoney(d.estimated_price,d.currency,d.market?.locale);
+      setText(gm$('distanceText'),d.distance_km+' km • '+d.duration_min+' min');
+      setText(gm$('priceText'),formatMoney(d.estimated_price,d.currency,d.market?.locale));
     }catch(e){drawRoute(null);toast(e.message)}
   };
 }
@@ -82,5 +90,10 @@ if(typeof loadNearbyDrivers==='function'){
 
 window.addEventListener('load',()=>{setTimeout(()=>marketForPickup(true),900)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')marketForPickup()});
-const observer=new MutationObserver(()=>{if(activeMarket)applyMarket(activeMarket,activeMarket.country)});observer.observe(document.documentElement,{childList:true,subtree:true});
+const observer=new MutationObserver(()=>{
+  if(!activeMarket||applyingMarket)return;
+  clearTimeout(observerTimer);
+  observerTimer=setTimeout(()=>applyMarket(activeMarket,activeMarket.country),80);
+});
+observer.observe(document.documentElement,{childList:true,subtree:true});
 })();
