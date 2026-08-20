@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const fp$=id=>document.getElementById(id);
-let flexMode='standard',flexValue='',lastRedispatchAt=0;
+let flexMode='standard',flexValue='',flexTouched=false,lastRedispatchAt=0;
 
 function currency(){
   try{return String(currentRoute?.currency||window.fastActiveMarket?.currency||'USD').toUpperCase()}catch(e){return String(window.fastActiveMarket?.currency||'USD').toUpperCase()}
@@ -11,6 +11,32 @@ function standardPrice(){
 }
 function money(v,c=currency()){
   const n=Number(v||0);try{return new Intl.NumberFormat('fr-FR',{style:'currency',currency:c,maximumFractionDigits:['XAF','XOF','JPY'].includes(c)?0:2}).format(n)}catch(e){return `${n.toLocaleString('fr-FR')} ${c}`}
+}
+function parseFlexibleValue(raw){
+  const cleaned=String(raw??'').trim().replace(/\s/g,'').replace(',','.');
+  if(!cleaned)return 0;
+  const n=Number(cleaned);return Number.isFinite(n)?n:0;
+}
+function customPrice(){
+  const input=fp$('flexPriceInput');
+  const raw=input?input.value:flexValue;
+  const v=parseFlexibleValue(raw);
+  if(input)flexValue=input.value;else flexValue=String(raw||'');
+  return v;
+}
+function updateProposalPreview(){
+  const preview=fp$('flexProposalPreview'),button=fp$('bookBtn');
+  if(flexMode!=='flexible'){
+    if(preview)preview.textContent='';
+    if(button&&button.dataset.flexOriginalLabel){button.textContent=button.dataset.flexOriginalLabel;delete button.dataset.flexOriginalLabel}
+    return;
+  }
+  const v=customPrice(),c=currency();
+  if(preview)preview.textContent=v>0?`Votre proposition : ${money(v,c)}`:'Saisissez librement le montant que vous proposez.';
+  if(button){
+    if(!button.dataset.flexOriginalLabel)button.dataset.flexOriginalLabel=button.textContent||'Commander FAST';
+    button.textContent=v>0?`Proposer ${money(v,c)}`:'Proposer mon prix';
+  }
 }
 function ensureCard(){
   if(fp$('flexPriceCard'))return fp$('flexPriceCard');
@@ -24,13 +50,17 @@ function ensureCard(){
     </div>
     <div id="flexCustomBox" class="flex-custom-box hidden">
       <label for="flexPriceInput">Votre proposition</label>
-      <div class="flex-input-row"><input id="flexPriceInput" inputmode="decimal" type="number" min="0" step="0.01" placeholder="Montant"><b id="flexCurrency">USD</b></div>
+      <div class="flex-input-row"><input id="flexPriceInput" inputmode="decimal" type="text" autocomplete="off" placeholder="Montant"><b id="flexCurrency">USD</b></div>
+      <small id="flexProposalPreview">Saisissez librement le montant que vous proposez.</small>
       <small>Le chauffeur voit votre prix avant d’accepter. Il peut accepter ou refuser la proposition.</small>
     </div>`;
   payment.insertAdjacentElement('beforebegin',card);
   fp$('flexStandardBtn').onclick=()=>setMode('standard');
   fp$('flexCustomBtn').onclick=()=>setMode('flexible');
-  fp$('flexPriceInput').addEventListener('input',e=>{flexValue=e.target.value});
+  const input=fp$('flexPriceInput');
+  input.addEventListener('focus',()=>{flexTouched=true});
+  input.addEventListener('input',e=>{flexTouched=true;flexValue=e.target.value;updateProposalPreview()});
+  input.addEventListener('change',e=>{flexTouched=true;flexValue=e.target.value;updateProposalPreview()});
   return card;
 }
 function setMode(mode){
@@ -39,16 +69,25 @@ function setMode(mode){
   fp$('flexStandardBtn')?.classList.toggle('active',flexMode==='standard');
   fp$('flexCustomBtn')?.classList.toggle('active',flexMode==='flexible');
   fp$('flexCustomBox')?.classList.toggle('hidden',flexMode!=='flexible');
-  if(flexMode==='flexible'&&!flexValue){const s=standardPrice();if(s>0){flexValue=String(s);fp$('flexPriceInput').value=flexValue}}
+  if(flexMode==='standard'){
+    flexValue='';flexTouched=false;
+    if(fp$('flexPriceInput'))fp$('flexPriceInput').value='';
+  }else{
+    const input=fp$('flexPriceInput');
+    if(input&&!flexTouched&&!flexValue)input.value='';
+    setTimeout(()=>{try{input?.focus()}catch(e){}},80);
+  }
+  updateProposalPreview();
 }
 function refreshCard(){
   const card=ensureCard();if(!card)return;
   const s=standardPrice(),c=currency();
   if(fp$('flexStandardText'))fp$('flexStandardText').textContent=s>0?`Prix FAST ${money(s,c)}`:'Prix FAST en calcul…';
   if(fp$('flexCurrency'))fp$('flexCurrency').textContent=c;
-  const ready=s>0;
-  card.classList.toggle('hidden',!ready);
-  if(ready&&flexMode==='flexible'&&!flexValue){flexValue=String(s);if(fp$('flexPriceInput'))fp$('flexPriceInput').value=flexValue}
+  const input=fp$('flexPriceInput');
+  if(input&&s>0&&!input.value&&!flexTouched)input.placeholder=`Ex. ${String(s).replace('.',',')}`;
+  card.classList.toggle('hidden',!(s>0));
+  updateProposalPreview();
 }
 
 if(typeof routeBody==='function'){
@@ -56,8 +95,8 @@ if(typeof routeBody==='function'){
   routeBody=function(){
     const body=baseRouteBody();
     if(flexMode==='flexible'){
-      const v=Number(flexValue||fp$('flexPriceInput')?.value||0);
-      if(Number.isFinite(v)&&v>0)body.proposed_price=v;
+      const v=customPrice();
+      if(v>0)body.proposed_price=v;
     }
     return body;
   };
@@ -67,8 +106,8 @@ if(typeof bookRide==='function'){
   const baseBookRideFlex=bookRide;
   bookRide=async function(){
     if(flexMode==='flexible'){
-      const v=Number(flexValue||fp$('flexPriceInput')?.value||0);
-      if(!Number.isFinite(v)||v<=0)return toast('Entrez le prix que vous souhaitez proposer au chauffeur.');
+      const v=customPrice();
+      if(v<=0)return toast('Entrez le prix que vous souhaitez proposer au chauffeur.');
     }
     lastRedispatchAt=Date.now();
     return baseBookRideFlex();
@@ -134,6 +173,6 @@ function style(){
   `;document.head.appendChild(s);
 }
 
-style();refreshCard();setInterval(refreshCard,700);setInterval(watchSearchingRide,5000);
+style();refreshCard();setInterval(refreshCard,1000);setInterval(watchSearchingRide,5000);
 window.addEventListener('fast:ride-cancelled',()=>{setMode('standard');lastRedispatchAt=0});
 })();
