@@ -1,20 +1,17 @@
 (()=>{
 'use strict';
 const q=id=>document.getElementById(id);
-let lastSearching=null,lastRouteReady=null,lastDriverProfilePrepared=false;
-let resendCooldownTimer=null;
+let lastSearching=null,lastRouteReady=null,lastDriverProfilePrepared=false,resendCooldownTimer=null,uiTimer=null;
 
 function removePrototypeSignals(){
   document.querySelectorAll('.map-status,.safety-row,.fast-trust-strip,.local-fleet-card,.fast-driver-advantages').forEach(el=>el.remove());
-  const engine=document.querySelector('.map-engine');if(engine)engine.style.display='none';
-  const dispatch=q('dispatchDetails');if(dispatch)dispatch.style.display='none';
-  document.querySelectorAll('*').forEach(el=>{
-    if(el.children.length)return;
-    const t=(el.textContent||'').trim();
-    if(/Dispatch Python|GPS précis|Trajet suivi/i.test(t))el.style.display='none';
-    if(/Aucun chauffeur adapté dans la première vague/i.test(t))el.textContent='Nous élargissons la recherche autour de vous…';
-    if(/Nouvelle recherche chauffeur/i.test(t))el.textContent='Recherche en cours…';
-  });
+  const engine=document.querySelector('.map-engine');if(engine&&engine.style.display!=='none')engine.style.display='none';
+  const dispatch=q('dispatchDetails');if(dispatch&&dispatch.style.display!=='none')dispatch.style.display='none';
+  const booking=q('bookingMessage');if(booking){
+    const t=(booking.textContent||'').trim();
+    if(/Aucun chauffeur adapté dans la première vague/i.test(t))booking.textContent='Nous élargissons la recherche autour de vous…';
+    else if(/Nouvelle recherche chauffeur/i.test(t))booking.textContent='Recherche en cours…';
+  }
 }
 
 function ensureClientPrompt(){
@@ -23,20 +20,14 @@ function ensureClientPrompt(){
 }
 
 function setPickupMode(mode){
-  const input=q('pickupInput');
-  const chooser=q('fastPickupChoice');
-  if(!input||!chooser)return;
+  const input=q('pickupInput'),chooser=q('fastPickupChoice');if(!input||!chooser)return;
   const addressMode=mode==='address';
   document.body.classList.toggle('fast-pickup-address-mode',addressMode);
   chooser.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.pickupMode===mode));
-  if(addressMode){
-    if(input.value==='Ma position')input.value='';
-    setTimeout(()=>input.focus(),80);
-  }else{
-    input.value='Ma position';
-    try{if(typeof getLocation==='function')getLocation()}catch(e){}
-  }
+  if(addressMode){if(input.value==='Ma position')input.value='';setTimeout(()=>{try{input.focus({preventScroll:true})}catch(e){input.focus()}},40)}
+  else{input.value='Ma position';try{if(typeof getLocation==='function')getLocation()}catch(e){}}
 }
+window.setPickupMode=setPickupMode;
 
 function ensurePickupChoice(){
   const fields=document.querySelector('#passengerArea .route-fields');if(!fields||q('fastPickupChoice'))return;
@@ -49,41 +40,44 @@ function ensurePickupChoice(){
 function openSavedPlace(kind,label){
   document.querySelector('.fast-saved-place-sheet')?.remove();
   const sheet=document.createElement('div');sheet.className='fast-saved-place-sheet';
-  sheet.innerHTML=`<div class="fast-saved-place-card"><h3>Ajouter ${label}</h3><p>Enregistrez cette adresse pour vos prochains trajets.</p><input id="fastSavedPlaceInput" placeholder="Saisissez une adresse"><div class="fast-saved-place-actions"><button id="fastSavedCancel">Annuler</button><button id="fastSavedSave" class="save">Enregistrer</button></div></div>`;
+  sheet.innerHTML=`<div class="fast-saved-place-card"><h3>Ajouter ${label}</h3><p>Enregistrez cette adresse pour vos prochains trajets.</p><input id="fastSavedPlaceInput" placeholder="Saisissez une adresse"><div class="fast-saved-place-actions"><button id="fastSavedCancel" type="button">Annuler</button><button id="fastSavedSave" type="button" class="save">Enregistrer</button></div></div>`;
   document.body.appendChild(sheet);
-  const input=q('fastSavedPlaceInput');input?.focus();
+  const input=q('fastSavedPlaceInput');setTimeout(()=>input?.focus(),30);
   q('fastSavedCancel').onclick=()=>sheet.remove();
   q('fastSavedSave').onclick=()=>{const value=(input?.value||'').trim();if(!value)return;localStorage.setItem('fast_saved_'+kind,value);sheet.remove();applyQuickDestination(value)};
   sheet.onclick=e=>{if(e.target===sheet)sheet.remove()};
 }
 
 function applyQuickDestination(value){
-  const input=q('destinationInput');if(!input)return;input.focus();input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));
+  const input=q('destinationInput');if(!input)return;
+  try{input.focus({preventScroll:true})}catch(e){input.focus()}
+  input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));
 }
+window.applyQuickDestination=applyQuickDestination;
 
 function ensureQuickDestinations(){
   const fields=document.querySelector('#passengerArea .route-fields');if(!fields||q('fastQuickDestinations'))return;
   const row=document.createElement('div');row.id='fastQuickDestinations';row.className='fast-quick-destinations';
-  row.innerHTML='<button data-fast-place="home"><span>⌂</span>Maison</button><button data-fast-place="work"><span>▣</span>Travail</button><button data-fast-place="airport"><span>✈</span>Aéroport</button>';
+  row.innerHTML='<button type="button" data-fast-place="home"><span>⌂</span>Maison</button><button type="button" data-fast-place="work"><span>▣</span>Travail</button><button type="button" data-fast-place="airport"><span>✈</span>Aéroport</button>';
   fields.insertAdjacentElement('afterend',row);
   row.querySelectorAll('button').forEach(btn=>btn.onclick=()=>{
     const kind=btn.dataset.fastPlace;
-    if(kind==='airport')return applyQuickDestination('Aéroport international Maya-Maya');
+    if(kind==='airport')return applyQuickDestination('Aéroport');
     const label=kind==='home'?'Maison':'Travail',saved=localStorage.getItem('fast_saved_'+kind);
     if(saved)applyQuickDestination(saved);else openSavedPlace(kind,label);
   });
 }
 
 function routeIsReady(){
-  const d=(q('routeDistance')?.textContent||'').trim();const p=(q('priceText')?.textContent||'').trim();
-  return (!!d&&!/^—$/.test(d)&&/\d/.test(d))||(/^\s*[\d\s.,]+\s*FCFA/i.test(p));
+  const d=(q('routeDistance')?.textContent||'').trim(),p=(q('priceText')?.textContent||'').trim();
+  return (!!d&&!/^—$/.test(d)&&/\d/.test(d))||(/\d/.test(p)&&!/^—$/.test(p));
 }
 function searchIsActive(){return !!q('bookingState')&&!q('bookingState').classList.contains('hidden')}
 function rideIsActive(){return !!q('ridePanel')&&!q('ridePanel').classList.contains('hidden')}
 
 function polishSearchingCard(){
   const box=q('bookingState');if(!box)return;
-  let msg=q('bookingMessage');if(msg){const t=(msg.textContent||'').trim();if(/Recherche|chauffeur|nouvelle/i.test(t))msg.textContent='Nous cherchons le meilleur chauffeur pour vous';}
+  const msg=q('bookingMessage');if(msg&&/Recherche|chauffeur|nouvelle/i.test((msg.textContent||'').trim()))msg.textContent='Nous cherchons le meilleur chauffeur pour vous';
   if(!box.querySelector('.fast-search-subtitle')){
     const sub=document.createElement('span');sub.className='fast-search-subtitle';sub.textContent='Merci de patienter…';(msg||box).insertAdjacentElement('afterend',sub);
     const eta=document.createElement('div');eta.className='fast-search-eta';eta.innerHTML='Temps d’attente estimé<strong>2 – 4 min</strong>';box.appendChild(eta);
@@ -106,85 +100,38 @@ function prepareDriverProfile(){
     const stats=document.createElement('div');stats.id='fastDriverStats';stats.className='fast-driver-stats';stats.innerHTML='<div><b>—</b><small>Courses</small></div><div><b>—</b><small>Note</small></div><div><b>—</b><small>Acceptation</small></div>';
     page.querySelector('.driver-profile-head')?.insertAdjacentElement('afterend',stats);
   }
-  const cards=[...page.querySelectorAll('.driver-profile-card')];
-  const docs=cards.find(c=>/Mes documents/i.test(c.textContent||'')),pay=cards.find(c=>/Informations de paiement/i.test(c.textContent||'')),account=cards.find(c=>/Mon compte/i.test(c.textContent||''));
-  if(docs&&!docs.id)docs.id='fastDriverDocsCard';if(pay&&!pay.id)pay.id='fastDriverPayoutCard';
-  docs?.classList.add('fast-panel-collapsed');pay?.classList.add('fast-panel-collapsed');
+  const cards=[...page.querySelectorAll('.driver-profile-card')],docs=cards.find(c=>/Mes documents/i.test(c.textContent||'')),pay=cards.find(c=>/Informations de paiement/i.test(c.textContent||'')),account=cards.find(c=>/Mon compte/i.test(c.textContent||''));
+  if(docs&&!docs.id)docs.id='fastDriverDocsCard';if(pay&&!pay.id)pay.id='fastDriverPayoutCard';docs?.classList.add('fast-panel-collapsed');pay?.classList.add('fast-panel-collapsed');
   if(!q('fastDriverMenu')){
     const menu=document.createElement('div');menu.id='fastDriverMenu';menu.className='fast-driver-menu';
-    menu.innerHTML='<button data-open-panel="fastDriverPayoutCard"><span class="ico">▣</span><span><b>Mes revenus</b><small>Informations de paiement</small></span><span class="arrow">›</span></button><button data-open-panel="fastDriverDocsCard"><span class="ico">▤</span><span><b>Documents</b><small>Suivi de validation</small></span><span class="arrow">›</span></button><button data-driver-help="1"><span class="ico">?</span><span><b>Aide & support</b><small>Contacter FAST</small></span><span class="arrow">›</span></button>';
+    menu.innerHTML='<button type="button" data-open-panel="fastDriverPayoutCard"><span class="ico">▣</span><span><b>Mes revenus</b><small>Informations de paiement</small></span><span class="arrow">›</span></button><button type="button" data-open-panel="fastDriverDocsCard"><span class="ico">▤</span><span><b>Documents</b><small>Suivi de validation</small></span><span class="arrow">›</span></button><button type="button" data-driver-help="1"><span class="ico">?</span><span><b>Aide & support</b><small>Contacter FAST</small></span><span class="arrow">›</span></button>';
     (q('fastDriverStats')||page.querySelector('.driver-profile-head'))?.insertAdjacentElement('afterend',menu);
-    menu.querySelectorAll('[data-open-panel]').forEach(b=>b.onclick=()=>{
-      const target=q(b.dataset.openPanel);if(!target)return;const open=target.classList.contains('fast-panel-open');
-      [docs,pay].forEach(c=>c?.classList.remove('fast-panel-open'));
-      if(!open){target.classList.add('fast-panel-open');target.scrollIntoView({behavior:'smooth',block:'start'})}
-    });
+    menu.querySelectorAll('[data-open-panel]').forEach(b=>b.onclick=()=>{const target=q(b.dataset.openPanel);if(!target)return;const open=target.classList.contains('fast-panel-open');[docs,pay].forEach(c=>c?.classList.remove('fast-panel-open'));if(!open){target.classList.add('fast-panel-open');target.scrollIntoView({behavior:'smooth',block:'start'})}});
     menu.querySelector('[data-driver-help]').onclick=()=>{const email=q('supportEmail')?.textContent?.trim()||'contact@gloire-group.com';try{FASTNative.emailSupport(email)}catch(e){location.href='mailto:'+email}};
   }
-  if(account){account.style.marginTop='10px';const logout=account.querySelector('#driverLogoutBtn');if(logout)logout.textContent='Se déconnecter';}
+  if(account){account.style.marginTop='10px';const logout=account.querySelector('#driverLogoutBtn');if(logout)logout.textContent='Se déconnecter'}
   lastDriverProfilePrepared=true;
 }
+function updateDriverState(){if(!document.body.classList.contains('driver-mode'))return;removePrototypeSignals();prepareDriverProfile()}
 
-function updateDriverState(){
-  if(!document.body.classList.contains('driver-mode'))return;
-  removePrototypeSignals();prepareDriverProfile();
-}
-
-function startResendCooldown(button,seconds){
-  clearInterval(resendCooldownTimer);
-  let remaining=Math.max(1,Math.ceil(Number(seconds)||120));
-  button.disabled=true;
-  const render=()=>{button.textContent=`Nouvel envoi dans ${remaining} s`;remaining-=1;if(remaining<0){clearInterval(resendCooldownTimer);button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};
-  render();
-  resendCooldownTimer=setInterval(render,1000);
-}
-
+function startResendCooldown(button,seconds){clearInterval(resendCooldownTimer);let remaining=Math.max(1,Math.ceil(Number(seconds)||120));button.disabled=true;const render=()=>{button.textContent=`Nouvel envoi dans ${remaining} s`;remaining-=1;if(remaining<0){clearInterval(resendCooldownTimer);button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};render();resendCooldownTimer=setInterval(render,1000)}
 async function readJson(response){let data={};try{data=await response.json()}catch(e){}return data}
-
 async function requestResendWithMemory(email){
-  let pythonUnavailable=false;
-  try{
-    const response=await fetch(API+'/v1/auth/resend-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-    const data=await readJson(response);
-    if(response.ok)return data;
-    if(response.status!==404&&response.status<500)throw new Error(data.detail||data.message||'Demande refusée');
-    pythonUnavailable=true;
-  }catch(e){pythonUnavailable=true}
-  if(pythonUnavailable){
-    const response=await fetch(SUPABASE_URL+'/functions/v1/auth-email-memory',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify({email})});
-    const data=await readJson(response);
-    if(!response.ok)throw new Error(data.message||data.detail||'L’envoi est momentanément indisponible.');
-    return data;
-  }
-  throw new Error('L’envoi est momentanément indisponible.');
+  try{const response=await fetch(API+'/v1/auth/resend-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})}),data=await readJson(response);if(response.ok)return data;if(response.status!==404&&response.status<500)throw new Error(data.detail||data.message||'Demande refusée')}catch(e){}
+  const response=await fetch(SUPABASE_URL+'/functions/v1/auth-email-memory',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify({email})}),data=await readJson(response);if(!response.ok)throw new Error(data.message||data.detail||'L’envoi est momentanément indisponible.');return data;
 }
-
 function patchAuthResend(){
-  const info=q('fastAuthInfo');
-  if(info)info.innerHTML='<b>E-mails de sécurité FAST</b><br>FAST protège les demandes de confirmation et évite les envois répétés. Vérifiez aussi le dossier spam.';
-  const button=q('resendConfirmation');
-  if(!button||button.dataset.fastPythonMemory==='1')return;
-  button.dataset.fastPythonMemory='1';
-  button.onclick=async()=>{
-    const email=(q('signupEmail')?.value||q('loginEmail')?.value||'').trim();
-    if(!email)return toast('Entrez votre adresse e-mail');
-    button.disabled=true;button.textContent='Envoi en cours…';
-    try{
-      const data=await requestResendWithMemory(email);
-      toast(data.message||'Demande prise en compte');
-      startResendCooldown(button,data.retry_after_seconds||120);
-    }catch(e){
-      const message=/rate limit/i.test(String(e?.message||''))?'Un e-mail a déjà été demandé. Patientez quelques minutes puis vérifiez vos spams.':String(e?.message||'L’envoi est momentanément indisponible.');
-      toast(message);button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation';
-    }
-  };
+  const info=q('fastAuthInfo');if(info)info.innerHTML='<b>E-mails de sécurité FAST</b><br>FAST protège les demandes de confirmation et évite les envois répétés. Vérifiez aussi le dossier spam.';
+  const button=q('resendConfirmation');if(!button||button.dataset.fastPythonMemory==='1')return;button.dataset.fastPythonMemory='1';
+  button.onclick=async()=>{const email=(q('signupEmail')?.value||q('loginEmail')?.value||'').trim();if(!email)return toast('Entrez votre adresse e-mail');button.disabled=true;button.textContent='Envoi en cours…';try{const data=await requestResendWithMemory(email);toast(data.message||'Demande prise en compte');startResendCooldown(button,data.retry_after_seconds||120)}catch(e){toast(String(e?.message||'L’envoi est momentanément indisponible.'));button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};
 }
 
 function boot(){removePrototypeSignals();updateClientState();updateDriverState();patchAuthResend()}
+function scheduleUi(){clearTimeout(uiTimer);uiTimer=setTimeout(boot,90)}
 window.addEventListener('load',()=>{boot();setTimeout(boot,350);setTimeout(boot,1000)});
-document.addEventListener('click',()=>setTimeout(()=>{updateClientState();updateDriverState();patchAuthResend()},90),true);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(boot,120)});
-const observer=new MutationObserver(()=>{updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()});
-window.addEventListener('load',()=>observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']}));
-setInterval(()=>{updateClientState();updateDriverState();patchAuthResend()},1200);
+document.addEventListener('click',scheduleUi,true);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleUi()});
+window.addEventListener('fast:ride-restored',scheduleUi);window.addEventListener('fast:ride-cancelled',scheduleUi);
+window.addEventListener('online',scheduleUi);
+setInterval(()=>{updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()},3500);
 })();
