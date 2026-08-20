@@ -4,25 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b57d0">
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Cache-Control" content="no-store,no-cache,must-revalidate,max-age=0">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>FAST N°1 • Administration</title>
   <style>
-    html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f7fb;color:#172033}
-    *{box-sizing:border-box}
-    .hidden{display:none!important}
-    #loginView{position:fixed;inset:0;z-index:10000;pointer-events:auto;overflow:auto}
-    #loginView *{pointer-events:auto}
-    .login-shell{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at top left,#dbeafe 0,transparent 35%),linear-gradient(145deg,#071b3f,#0b57d0)}
-    .login-card{position:relative;z-index:10001;width:min(440px,100%);background:#fff;border-radius:28px;padding:30px;box-sizing:border-box;box-shadow:0 30px 90px rgba(3,20,55,.32)}
-    .login-card label{display:grid;gap:7px;font-weight:700;font-size:13px;margin:14px 0}
-    .login-card input{display:block;width:100%;min-height:48px;border:1px solid #d8e0ec;border-radius:12px;padding:12px 14px;background:#fff;color:#172033;outline:none;font-size:16px;pointer-events:auto!important;touch-action:manipulation;-webkit-user-select:text;user-select:text}
-    .login-card input:focus{border-color:#0b57d0;box-shadow:0 0 0 3px #dbeafe}
-    .login-card button{min-height:48px;pointer-events:auto!important;touch-action:manipulation}
-    #adminView.hidden,#modal.hidden{display:none!important;pointer-events:none!important}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f7fb;color:#172033}button,input,select{font:inherit}.hidden{display:none!important}
+    #loginView{position:fixed;inset:0;z-index:10000;pointer-events:auto;overflow:auto}.login-shell{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at top left,#dbeafe 0,transparent 35%),linear-gradient(145deg,#071b3f,#0b57d0)}.login-card{position:relative;z-index:10001;width:min(440px,100%);background:#fff;border-radius:28px;padding:30px;box-shadow:0 30px 90px rgba(3,20,55,.32)}.login-card label{display:grid;gap:7px;font-weight:700;font-size:13px;margin:14px 0}.login-card input{display:block;width:100%;min-height:50px;border:1px solid #d8e0ec;border-radius:12px;padding:12px 14px;background:#fff;color:#172033;outline:none;font-size:16px;pointer-events:auto!important;touch-action:manipulation}.login-card .primary{width:100%;min-height:50px}.brand{display:flex;align-items:center;gap:12px}.brand .mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#0b57d0;color:#fff;font-weight:900;font-size:24px}.brand div{display:flex;flex-direction:column}.login-card h1{margin:34px 0 6px;font-size:28px}.primary{border:0;background:#0b57d0;color:white;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}.error{color:#b42318;font-size:13px;margin-top:12px;min-height:20px}#adminView.hidden,#modal.hidden{display:none!important;pointer-events:none!important}
   </style>
-  <link rel="stylesheet" href="styles.css?v=20260820-6">
+  <link rel="stylesheet" href="styles.css?v=20260820-7">
 </head>
 <body>
   <div id="loginView" class="login-shell">
@@ -30,8 +20,8 @@
       <div class="brand"><span class="mark">F</span><div><b>FAST N°1</b><small>Administration interne</small></div></div>
       <h1>Connexion administrateur</h1>
       <p>Accès réservé aux comptes FAST autorisés.</p>
-      <label>Identifiant<input id="loginEmail" type="text" autocomplete="username" autocapitalize="none" inputmode="text" placeholder="Admin"></label>
-      <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" inputmode="text" placeholder="••••••••"></label>
+      <label>Identifiant<input id="loginEmail" type="text" autocomplete="username" autocapitalize="none" placeholder="Admin"></label>
+      <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"></label>
       <button id="loginBtn" class="primary" type="button">Se connecter</button>
       <div id="loginError" class="error"></div>
     </div>
@@ -50,11 +40,11 @@
         <button data-page="rides">Courses</button>
         <button data-page="markets">Pays & tarifs</button>
       </nav>
-      <div class="side-bottom"><small id="adminIdentity">Administrateur FAST</small><button id="logoutBtn">Déconnexion</button></div>
+      <div class="side-bottom"><small id="adminIdentity">Administrateur FAST</small><button id="logoutBtn" type="button">Déconnexion</button></div>
     </aside>
 
     <main>
-      <header class="topbar"><div><small>FAST N°1</small><h1 id="pageTitle">Tableau de bord</h1></div><div class="top-actions"><button id="refreshBtn">Actualiser</button><button id="exportBtn" class="primary">Exporter Excel</button></div></header>
+      <header class="topbar"><div><small>FAST N°1</small><h1 id="pageTitle">Tableau de bord</h1></div><div class="top-actions"><button id="refreshBtn" type="button">Actualiser</button><button id="exportBtn" class="primary" type="button">Exporter Excel</button></div></header>
       <section id="page-dashboard" class="page active"><div id="stats" class="stats-grid"></div><div class="panel-grid"><section class="panel"><div class="panel-head"><h2>Activité récente</h2><span>Courses</span></div><div id="recentRides"></div></section><section class="panel"><div class="panel-head"><h2>Documents à contrôler</h2><span>Validation</span></div><div id="recentDocs"></div></section></div><section class="panel"><div class="panel-head"><h2>Recettes par devise</h2><span>Paiements payés</span></div><div id="revenueByCurrency" class="revenue-grid"></div></section></section>
       <section id="page-drivers" class="page"><div class="panel"><div class="toolbar"><input id="driverSearch" placeholder="Rechercher un chauffeur..."><select id="driverCountryFilter"><option value="">Tous les pays</option></select></div><div class="table-wrap"><table><thead><tr><th>Chauffeur</th><th>Pays</th><th>Statut</th><th>Vérifié</th><th>Note</th><th>Courses</th><th>Paie</th><th>Action</th></tr></thead><tbody id="driversBody"></tbody></table></div></div></section>
       <section id="page-clients" class="page"><div class="panel"><div class="toolbar"><input id="clientSearch" placeholder="Rechercher un client..."></div><div class="table-wrap"><table><thead><tr><th>Client</th><th>Téléphone</th><th>Pays</th><th>Inscription</th><th>Courses</th><th>Dépenses</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
@@ -62,13 +52,12 @@
       <section id="page-payments" class="page"><div class="panel"><div class="toolbar"><select id="paymentStatusFilter"><option value="">Tous les statuts</option><option value="paid">Payé</option><option value="pending">En attente</option><option value="failed">Échec</option><option value="refunded">Remboursé</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Course</th><th>Méthode</th><th>Montant</th><th>Devise</th><th>Statut</th><th>Référence</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
       <section id="page-payouts" class="page"><div class="panel"><div class="table-wrap"><table><thead><tr><th>Chauffeur</th><th>Pays</th><th>Mode</th><th>Titulaire</th><th>Coordonnées</th><th>Devise</th><th>Statut</th><th>Action</th></tr></thead><tbody id="payoutsBody"></tbody></table></div></div></section>
       <section id="page-rides" class="page"><div class="panel"><div class="toolbar"><select id="rideStatusFilter"><option value="">Toutes les courses</option><option value="searching">Recherche</option><option value="accepted">Acceptée</option><option value="driver_arriving">Chauffeur en approche</option><option value="in_progress">En cours</option><option value="completed">Terminée</option><option value="cancelled">Annulée</option></select></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Pays</th><th>Client</th><th>Chauffeur</th><th>Départ</th><th>Destination</th><th>Prix</th><th>Paiement</th><th>Statut</th></tr></thead><tbody id="ridesBody"></tbody></table></div></div></section>
-      <section id="page-markets" class="page"><div class="panel"><div class="panel-head"><h2>Pays activés</h2><button id="newMarketBtn" class="primary small">Ajouter un pays</button></div><div id="marketsGrid" class="market-grid"></div></div><div class="panel"><div class="panel-head"><h2>Tarification</h2><span>Modifiable par pays</span></div><div class="table-wrap"><table><thead><tr><th>Pays</th><th>Service</th><th>Base</th><th>/ km</th><th>/ min</th><th>Minimum</th><th>Réservation</th><th>Devise</th><th>Action</th></tr></thead><tbody id="pricingBody"></tbody></table></div></div></section>
+      <section id="page-markets" class="page"><div class="panel"><div class="panel-head"><h2>Pays activés</h2><button id="newMarketBtn" class="primary small" type="button">Ajouter un pays</button></div><div id="marketsGrid" class="market-grid"></div></div><div class="panel"><div class="panel-head"><h2>Tarification</h2><span>Modifiable par pays</span></div><div class="table-wrap"><table><thead><tr><th>Pays</th><th>Service</th><th>Base</th><th>/ km</th><th>/ min</th><th>Minimum</th><th>Réservation</th><th>Devise</th><th>Action</th></tr></thead><tbody id="pricingBody"></tbody></table></div></div></section>
     </main>
   </div>
-  <div id="modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">FAST</h2><button id="modalClose">×</button></div><div id="modalBody"></div></div></div><div id="toast" class="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=20260820-6"></script>
-  <script src="login-alias.js?v=20260820-6"></script>
+  <div id="modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">FAST</h2><button id="modalClose" type="button">×</button></div><div id="modalBody"></div></div></div>
+  <div id="toast" class="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="app.js?v=20260820-7" defer></script>
 </body>
 </html>
