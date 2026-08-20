@@ -30,6 +30,13 @@ jobs:
         run: python -m pytest -q backend/tests
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
+      - name: Validate global backend
+        run: |
+          test -f backend/app/global_main.py
+          grep -q 'fast_global_available_drivers' backend/app/global_main.py
+          grep -q 'same_country_only' backend/app/global_main.py
+          grep -q '/v1/market' backend/app/global_main.py
+          grep -q 'app/global_main.py' backend/vercel.json
       - name: Validate password recovery backend
         run: |
           grep -q 'recover-password' backend/app/auth_memory.py
@@ -64,16 +71,18 @@ jobs:
           node --check app/src/main/assets/recovery-fix.js
           node --check app/src/main/assets/driver-cancel.js
           node --check app/src/main/assets/update-manager.js
+          node --check app/src/main/assets/global-market.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 603' app/build.gradle.kts
+          grep -q 'versionCode = 604' app/build.gradle.kts
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
-          grep -q '"build": 603' updates/latest.json
+          grep -q '"build": 604' updates/latest.json
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           if grep -q "\['searching','accepted','driver_arriving','in_progress'\]" app/src/main/assets/stability-fixes.js; then echo 'Stale searching ride is still auto-restored'; exit 1; fi
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "update-manager.js" app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q "global-market.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "appBuildCode" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "openExternalUrl" app/src/main/java/cg/fast/n1/MainActivity.kt
       - name: Compile Android debug
@@ -83,6 +92,6 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0-debug-apk
+          name: FAST-production-gate-v6.0-build604-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
