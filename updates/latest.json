@@ -1,8 +1,8 @@
 {
   "version": "6.0",
-  "build": 607,
+  "build": 608,
   "minimumBuild": 602,
   "mandatory": false,
   "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
-  "notes": "FAST 6.0 build 607 : correction du gel de l interface et du tactile Android."
+  "notes": "FAST 6.0 build 608 : correction du blocage tactile Android et suppression du rafraichissement UI qui saturait l interface."
 }
