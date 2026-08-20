@@ -1,8 +1,8 @@
 {
   "version": "6.0",
-  "build": 606,
+  "build": 607,
   "minimumBuild": 602,
   "mandatory": false,
   "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
-  "notes": "FAST 6.0 build 606 : correction tactile Android, sélection d'adresse fiabilisée, GPS global, devise locale, documents chauffeur, dispatch par pays et administration interne."
+  "notes": "FAST 6.0 build 607 : correction du gel de l interface et du tactile Android."
 }
