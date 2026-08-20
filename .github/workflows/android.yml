@@ -54,7 +54,7 @@ jobs:
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 606' app/build.gradle.kts
+          grep -q 'versionCode = 607' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -70,11 +70,13 @@ jobs:
           grep -q "activateDriverHome(false)" app/src/main/assets/driver-profile.js
           grep -q "auth-email-memory" app/src/main/assets/recovery-fix.js
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
-          grep -q '"build": 606' updates/latest.json
+          grep -q '"build": 607' updates/latest.json
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
           grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
           grep -q 'touch-fix.js' app/src/main/assets/index.html
           grep -q 'bindRobustAutocomplete' app/src/main/assets/touch-fix.js
+          grep -q 'applyingMarket' app/src/main/assets/global-market.js
+          grep -q 'currentPaymentValues' app/src/main/assets/global-market.js
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
           test -f app/src/main/assets/production-ui.js
           test -f app/src/main/assets/production-ui.css
@@ -99,14 +101,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build606-debug
+          name: FAST-N1-v6.0-build607-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build606-production
+          name: FAST-N1-v6.0-build607-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
       - name: Publish signed production release
@@ -116,6 +118,6 @@ jobs:
         run: |
           TAG="fast-v6.0"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 606 : correction tactile Android, sélection d’adresse fiabilisée, GPS global, devise locale, dispatch par pays, documents chauffeur et administration interne."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 607 : correction du gel de l interface, tactile Android et selection d adresse fiabilises."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
           gh release upload "$TAG" FAST-N1-v6.0-production.apk --clobber
