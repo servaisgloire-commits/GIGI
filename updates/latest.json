@@ -1,8 +1,8 @@
 {
   "version": "6.0",
-  "build": 604,
+  "build": 605,
   "minimumBuild": 602,
   "mandatory": false,
   "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
-  "notes": "FAST devient multi-pays : chauffeurs du même pays, paiements et devises par marché, documents chauffeur renforcés et administration interne Supabase."
+  "notes": "FAST 6.0 build 605 : GPS global fiabilisé, devise locale corrigée, session native sécurisée, documents chauffeur, dispatch par pays et administration interne renforcée."
 }
