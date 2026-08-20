@@ -44,6 +44,9 @@ function globalEdgePath(path){
   if(path.startsWith('/v1/driver/location'))return path.replace('/v1/driver/location','/driver/location');
   return null;
 }
+function edgeFunctionFor(edge){
+  return edge==='/routes/estimate'||edge==='/rides'||/^\/rides\/[0-9a-f-]+\/dispatch(?:\?|$)/i.test(edge)?'fast-flex':'fast-global';
+}
 async function edgeApi(path,opts={}){
   let edge=globalEdgePath(path);if(!edge)return legacyApi(path,opts);
   if(edge.startsWith('/places/autocomplete')&&typeof pickup!=='undefined'&&pickup){
@@ -53,7 +56,8 @@ async function edgeApi(path,opts={}){
   const headers={...(opts.headers||{}),'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
   try{
-    const r=await fetch(SUPABASE_URL+'/functions/v1/fast-global'+edge,{...opts,headers,signal:opts.signal||controller.signal});
+    const fn=edgeFunctionFor(edge);
+    const r=await fetch(SUPABASE_URL+'/functions/v1/'+fn+edge,{...opts,headers,signal:opts.signal||controller.signal});
     let d={};try{d=await r.json()}catch(e){}
     if(!r.ok)throw new Error(d.detail||d.message||d.error||('HTTP '+r.status));
     return d;
