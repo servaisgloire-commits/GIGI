@@ -51,15 +51,38 @@ jobs:
           node --check app/src/main/assets/global-polish.js
           node --check app/src/main/assets/touch-fix.js
           node --check app/src/main/assets/flex-price.js
+          node --check app/src/main/assets/client-payment.js
+          node --check app/src/main/assets/car-marker.js
+          node --check app/src/main/assets/trip-controls.js
       - name: Check flexible pricing backend syntax
         run: python -m py_compile backend/app/flex_main.py
       - name: Verify production presentation
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 610' app/build.gradle.kts
+          grep -q 'versionCode = 611' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
+          grep -q '"build": 611' updates/latest.json
+          grep -q 'touch-fix.js' app/src/main/assets/index.html
+          grep -q 'flex-price.js' app/src/main/assets/index.html
+          grep -q 'client-payment.js' app/src/main/assets/index.html
+          grep -q 'car-marker.js' app/src/main/assets/index.html
+          grep -q 'trip-controls.js' app/src/main/assets/index.html
+          grep -q 'parseFlexibleValue' app/src/main/assets/flex-price.js
+          grep -q 'inputmode="decimal" type="text"' app/src/main/assets/flex-price.js
+          grep -q 'fast-ride-control' app/src/main/assets/trip-controls.js
+          grep -q 'Choisissez un motif' app/src/main/assets/trip-controls.js
+          grep -q 'Espèces reçues' app/src/main/assets/trip-controls.js
+          grep -q 'client_billing_profiles' app/src/main/assets/client-payment.js
+          grep -q 'FAST ne stocke jamais votre numéro complet' app/src/main/assets/client-payment.js
+          grep -q 'data:image/svg+xml' app/src/main/assets/car-marker.js
+          grep -q 'installUpdate' app/src/main/assets/update-manager.js
+          grep -q 'fun installUpdate' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'FileProvider' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml
+          test -f app/src/main/res/xml/file_paths.xml
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -73,31 +96,19 @@ jobs:
           grep -q "activateDriverHome(false)" app/src/main/assets/driver-profile.js
           grep -q "auth-email-memory" app/src/main/assets/recovery-fix.js
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
-          grep -q '"build": 610' updates/latest.json
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
           grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
-          grep -q 'touch-fix.js' app/src/main/assets/index.html
-          grep -q 'flex-price.js' app/src/main/assets/index.html
           grep -q 'bindRobustAutocomplete' app/src/main/assets/touch-fix.js
           grep -q 'scheduleUi' app/src/main/assets/production-ui.js
           grep -q 'proposed_price' backend/app/flex_main.py
           grep -q 'pricing_mode' backend/app/flex_main.py
           grep -q 'app/flex_main.py' backend/vercel.json
-          grep -q 'parseFlexibleValue' app/src/main/assets/flex-price.js
-          grep -q 'inputmode="decimal" type="text"' app/src/main/assets/flex-price.js
           if grep -q 'flexValue=String(s)' app/src/main/assets/flex-price.js; then echo 'Flexible price still resets to standard'; exit 1; fi
           if grep -Fq "querySelectorAll('*')" app/src/main/assets/production-ui.js; then echo 'Heavy full-DOM scan reintroduced'; exit 1; fi
           if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
-          test -f app/src/main/assets/production-ui.js
-          test -f app/src/main/assets/production-ui.css
-          test -f app/src/main/assets/driver-profile.js
-          test -f app/src/main/assets/recovery-fix.js
-          test -f app/src/main/assets/driver-cancel.js
-          test -f app/src/main/assets/update-manager.js
-          test -f app/src/main/assets/global-market.js
-          test -f app/src/main/assets/global-polish.js
-          test -f app/src/main/assets/touch-fix.js
-          test -f app/src/main/assets/flex-price.js
+          test -f app/src/main/assets/client-payment.js
+          test -f app/src/main/assets/car-marker.js
+          test -f app/src/main/assets/trip-controls.js
           test -f backend/app/flex_main.py
           test -f updates/latest.json
       - name: Build verification APK
@@ -113,14 +124,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build610-debug
+          name: FAST-N1-v6.0-build611-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build610-production
+          name: FAST-N1-v6.0-build611-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
       - name: Publish signed production release
@@ -130,6 +141,6 @@ jobs:
         run: |
           TAG="fast-v6.0"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 610 : correction du prix flexible, la proposition client reste saisie et est envoyée au chauffeur sans retour automatique au prix standard."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 611 : mise à jour Android intégrée, paiement sécurisé préparé, espèces à l’arrivée, annulation avec motif et suivi chauffeur avec icône voiture."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
           gh release upload "$TAG" FAST-N1-v6.0-production.apk --clobber
