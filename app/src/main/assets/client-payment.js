@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const cp$=id=>document.getElementById(id);
-let paymentConfig=null,paymentUiReady=false,paymentSelectObserver=null;
+let paymentConfig=null,paymentUiReady=false,paymentSelectObserver=null,enforcingPaymentOptions=false;
 function restHeaders(extra={}){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra}}
 async function rest(path,opts={}){const r=await fetch(SUPABASE_URL+'/rest/v1/'+path,{...opts,headers:{...restHeaders(),...(opts.headers||{})}});let d=null;try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d?.message||d?.hint||('HTTP '+r.status));return d}
 async function control(path,opts={}){const r=await fetch(SUPABASE_URL+'/functions/v1/fast-ride-control'+path,{...opts,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...(opts.headers||{})}});let d={};try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d.detail||d.message||('HTTP '+r.status));return d}
@@ -31,10 +31,13 @@ async function saveBilling(){
   try{await rest('client_billing_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});toast('Informations de paiement enregistrées dans votre profil');const sel=cp$('paymentMethod');if(sel&&[...sel.options].some(o=>o.value===payload.preferred_method&&!o.disabled))sel.value=payload.preferred_method}catch(e){toast(e.message)}finally{if(btn){btn.disabled=false;btn.textContent='Enregistrer dans mon profil'}}
 }
 function enforcePaymentOptions(){
-  const sel=cp$('paymentMethod');if(!sel||!paymentConfig)return;
-  [...sel.options].forEach(o=>{const base=(o.textContent||o.value).replace(/\s*•\s*bientôt$/i,'');if(o.value==='cash'){o.disabled=false;o.textContent=base;return}o.disabled=!paymentConfig.online_payment_configured;o.textContent=o.disabled?base+' • bientôt':base});
-  if(sel.selectedOptions[0]?.disabled){const cash=[...sel.options].find(o=>o.value==='cash'&&!o.disabled);if(cash)sel.value='cash'}
-  if(!paymentSelectObserver){paymentSelectObserver=new MutationObserver(()=>setTimeout(enforcePaymentOptions,0));paymentSelectObserver.observe(sel,{childList:true,subtree:true})}
+  const sel=cp$('paymentMethod');if(!sel||!paymentConfig||enforcingPaymentOptions)return;
+  enforcingPaymentOptions=true;
+  try{
+    [...sel.options].forEach(o=>{const current=o.textContent||o.value,base=current.replace(/\s*•\s*bientôt$/i,''),disabled=o.value!=='cash'&&!paymentConfig.online_payment_configured,target=disabled?base+' • bientôt':base;if(o.disabled!==disabled)o.disabled=disabled;if(current!==target)o.textContent=target});
+    if(sel.selectedOptions[0]?.disabled){const cash=[...sel.options].find(o=>o.value==='cash'&&!o.disabled);if(cash)sel.value='cash'}
+    if(!paymentSelectObserver){paymentSelectObserver=new MutationObserver(()=>{if(!enforcingPaymentOptions)setTimeout(enforcePaymentOptions,0)});paymentSelectObserver.observe(sel,{childList:true,subtree:true})}
+  }finally{enforcingPaymentOptions=false}
 }
 async function applyPaymentAvailability(){
   if(!token||role!=='client')return;
