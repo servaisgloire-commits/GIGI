@@ -1,8 +1,8 @@
 {
   "version": "6.0",
-  "build": 612,
+  "build": 613,
   "minimumBuild": 602,
   "mandatory": false,
   "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
-  "notes": "FAST 6.0 build 612 : virement bancaire après acceptation du chauffeur avec validation FAST avant départ, espèces à l’arrivée, annulation avec motif, petite voiture de suivi et mise à jour Android intégrée."
+  "notes": "FAST 6.0 build 613 : formulaire carte sécurisé avec titulaire, numéro, expiration et CVC via prestataire tokenisé ; paiement carte obligatoire avant la recherche du chauffeur."
 }
