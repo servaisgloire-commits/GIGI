@@ -83,8 +83,8 @@ jobs:
           node --check app/src/main/assets/car-marker.js
           node --check app/src/main/assets/trip-controls.js
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 611' app/build.gradle.kts
-          grep -q '"build": 611' updates/latest.json
+          grep -q 'versionCode = 612' app/build.gradle.kts
+          grep -q '"build": 612' updates/latest.json
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
           grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
@@ -99,9 +99,13 @@ jobs:
           grep -q 'parseFlexibleValue' app/src/main/assets/flex-price.js
           grep -q 'inputmode="decimal" type="text"' app/src/main/assets/flex-price.js
           grep -q 'client_billing_profiles' app/src/main/assets/client-payment.js
+          grep -q 'bank_transfer' app/src/main/assets/client-payment.js
+          grep -q 'Virement bancaire' app/src/main/assets/global-market.js
           grep -q 'fast-ride-control' app/src/main/assets/trip-controls.js
           grep -q 'Choisissez un motif' app/src/main/assets/trip-controls.js
           grep -q 'Espèces reçues' app/src/main/assets/trip-controls.js
+          grep -q 'bank-transfer-submitted' app/src/main/assets/trip-controls.js
+          grep -q 'J’ai effectué le virement' app/src/main/assets/trip-controls.js
           grep -q 'data:image/svg+xml' app/src/main/assets/car-marker.js
           grep -q 'fun installUpdate' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -127,6 +131,6 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0-build611-debug-apk
+          name: FAST-production-gate-v6.0-build612-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
