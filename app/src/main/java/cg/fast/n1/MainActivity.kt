@@ -2,14 +2,20 @@ package cg.fast.n1
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.ValueCallback
@@ -23,10 +29,16 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import org.json.JSONObject
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingUpdateUrl: String? = null
+    private var updateDownloadId: Long = -1L
+    private var updateFile: File? = null
 
     private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val callback = pendingFileCallback ?: return@registerForActivityResult
@@ -43,6 +55,29 @@ class MainActivity : AppCompatActivity() {
         } else null
         callback.onReceiveValue(uris)
         pendingFileCallback = null
+    }
+
+    private val updateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            if (id != updateDownloadId) return
+            val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+            val cursor = manager.query(DownloadManager.Query().setFilterById(id))
+            cursor.use {
+                if (!it.moveToFirst()) {
+                    notifyUpdateStatus("error", "Téléchargement introuvable")
+                    return
+                }
+                val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    notifyUpdateStatus("downloaded", "Téléchargement terminé. Ouverture de l’installateur…")
+                    installDownloadedUpdate()
+                } else {
+                    notifyUpdateStatus("error", "Le téléchargement de la mise à jour a échoué")
+                }
+            }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -144,9 +179,32 @@ class MainActivity : AppCompatActivity() {
         web.addJavascriptInterface(FastBridge(), "FASTNative")
         web.loadUrl("file:///android_asset/index.html")
         setContentView(web)
+
+        ContextCompat.registerReceiver(
+            this,
+            updateReceiver,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms.add(Manifest.permission.POST_NOTIFICATIONS)
         ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1001)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.canRequestPackageInstalls()) {
+            pendingUpdateUrl?.let { url ->
+                pendingUpdateUrl = null
+                startUpdateDownload(url)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(updateReceiver) }
+        super.onDestroy()
     }
 
     private fun createDriverOfferChannel() {
@@ -159,6 +217,67 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun notifyUpdateStatus(state: String, message: String) {
+        runOnUiThread {
+            if (!::web.isInitialized) return@runOnUiThread
+            val s = JSONObject.quote(state)
+            val m = JSONObject.quote(message)
+            web.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('fast:update-status',{detail:{state:$s,message:$m}}));",
+                null
+            )
+        }
+    }
+
+    private fun isAllowedUpdateUrl(url: String): Boolean {
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        if (uri.scheme != "https") return false
+        val host = (uri.host ?: "").lowercase()
+        return host == "github.com" || host.endsWith(".githubusercontent.com") || host.endsWith(".github.com")
+    }
+
+    private fun startUpdateDownload(url: String) {
+        if (!isAllowedUpdateUrl(url)) {
+            notifyUpdateStatus("error", "Adresse de mise à jour non autorisée")
+            return
+        }
+        val downloads = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+        val file = File(downloads, "FAST-N1-update.apk")
+        runCatching { if (file.exists()) file.delete() }
+        updateFile = file
+        val request = DownloadManager.Request(Uri.parse(url)).apply {
+            setTitle("FAST N°1")
+            setDescription("Téléchargement de la mise à jour")
+            setMimeType("application/vnd.android.package-archive")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setAllowedOverMetered(true)
+            setAllowedOverRoaming(false)
+            setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, file.name)
+        }
+        val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        updateDownloadId = manager.enqueue(request)
+        notifyUpdateStatus("downloading", "Téléchargement de la mise à jour…")
+    }
+
+    private fun installDownloadedUpdate() {
+        val file = updateFile ?: return notifyUpdateStatus("error", "Fichier de mise à jour manquant")
+        if (!file.exists() || file.length() <= 0L) return notifyUpdateStatus("error", "APK téléchargé invalide")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            notifyUpdateStatus("permission", "Autorisez FAST à installer les mises à jour")
+            val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))
+            startActivity(settingsIntent)
+            return
+        }
+        val apkUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { startActivity(intent) }
+            .onFailure { notifyUpdateStatus("error", "Impossible d’ouvrir l’installateur Android") }
+    }
+
     inner class FastBridge {
         @android.webkit.JavascriptInterface fun supabaseUrl(): String = BuildConfig.SUPABASE_URL
         @android.webkit.JavascriptInterface fun supabasePublishableKey(): String = BuildConfig.SUPABASE_PUBLISHABLE_KEY
@@ -166,6 +285,7 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface fun googleMapsApiKey(): String = BuildConfig.GOOGLE_MAPS_API_KEY
         @android.webkit.JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
         @android.webkit.JavascriptInterface fun appBuildCode(): Int = BuildConfig.VERSION_CODE
+        @android.webkit.JavascriptInterface fun isDebugBuild(): Boolean = BuildConfig.DEBUG
 
         @android.webkit.JavascriptInterface
         fun openExternalUrl(url: String) {
@@ -174,6 +294,23 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
             }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun installUpdate(url: String): Boolean {
+            if (!isAllowedUpdateUrl(url)) return false
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                    pendingUpdateUrl = url
+                    notifyUpdateStatus("permission", "Autorisez FAST à installer les mises à jour")
+                    runCatching {
+                        startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                    }
+                } else {
+                    startUpdateDownload(url)
+                }
+            }
+            return true
         }
 
         @android.webkit.JavascriptInterface
