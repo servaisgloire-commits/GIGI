@@ -1,67 +1,66 @@
 (()=>{
 'use strict';
 const cp$=id=>document.getElementById(id);
-let paymentConfig=null,paymentUiReady=false,paymentSelectObserver=null,enforcingPaymentOptions=false;
+let paymentConfig=null,cardConfig=null,paymentUiReady=false,paymentSelectObserver=null,enforcingPaymentOptions=false;
+let stripeSdkPromise=null,stripe=null,stripeElements=null,cardNumberElement=null,cardExpiryElement=null,cardCvcElement=null,cardMounted=false;
+let pendingCardIntent=null,apiAttachWrapped=false,bookPaymentWrapped=false;
 function restHeaders(extra={}){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra}}
 async function rest(path,opts={}){const r=await fetch(SUPABASE_URL+'/rest/v1/'+path,{...opts,headers:{...restHeaders(),...(opts.headers||{})}});let d=null;try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d?.message||d?.hint||('HTTP '+r.status));return d}
 async function control(path,opts={}){const r=await fetch(SUPABASE_URL+'/functions/v1/fast-ride-control'+path,{...opts,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...(opts.headers||{})}});let d={};try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d.detail||d.message||('HTTP '+r.status));return d}
-function ensureCard(){
-  if(paymentUiReady||!cp$('profilePage'))return;paymentUiReady=true;
+async function cardApi(path,opts={}){const r=await fetch(SUPABASE_URL+'/functions/v1/fast-card-payment'+path,{...opts,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...(opts.headers||{})}});let d={};try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d.detail||d.message||('HTTP '+r.status));return d}
+function injectStyle(){if(cp$('fastCardPaymentStyle'))return;const s=document.createElement('style');s.id='fastCardPaymentStyle';s.textContent=`
+#fastCardCheckout{margin:10px 0 12px;padding:14px;border:1px solid #dce6f3;border-radius:18px;background:#fff;box-shadow:0 9px 24px rgba(15,23,42,.06)}
+#fastCardCheckout.hidden{display:none!important}.fast-card-title{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.fast-card-title b{font-size:14px;color:#111827}.fast-card-title span{font-size:9px;font-weight:900;color:#067647;background:#ecfdf3;border:1px solid #abefc6;border-radius:999px;padding:5px 7px}.fast-card-note{margin:4px 0 11px;color:#667085;font-size:10px;line-height:1.4}.fast-card-label{display:block;margin-top:8px;font-size:9px;font-weight:850;color:#526174}.fast-card-holder{width:100%;margin-top:5px;border:1px solid #ccd8e8;border-radius:12px;background:#fff;padding:12px;font-size:16px;outline:0}.fast-card-holder:focus,.fast-secure-field.focus{border-color:#0b57d0;box-shadow:0 0 0 3px rgba(11,87,208,.10)}.fast-secure-field{margin-top:5px;min-height:46px;border:1px solid #ccd8e8;border-radius:12px;background:#fff;padding:13px 12px;transition:.15s}.fast-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fast-card-status{display:block;margin-top:9px;padding:8px 9px;border-radius:11px;background:#f6f8fb;color:#667085;font-size:9px;line-height:1.35}.fast-card-status.good{background:#ecfdf3;color:#067647}.fast-card-status.warn{background:#fff8e8;color:#8a5200}.fast-card-summary{margin-top:10px;padding:10px;border-radius:12px;background:#f6f8fb;color:#475467;font-size:11px}.fast-card-summary b{display:block;color:#111827;margin-bottom:2px}
+`;(document.head||document.documentElement).appendChild(s)}
+function ensureProfileCard(){
+  if(paymentUiReady||!cp$('profilePage'))return;paymentUiReady=true;injectStyle();
   const card=document.createElement('div');card.id='clientBillingCard';card.className='card-lite';
-  card.innerHTML=`<b>Paiement FAST</b><p>Enregistrez vos préférences de paiement. Pour votre sécurité, FAST ne stocke pas de numéro complet de carte, CVV ou identifiants bancaires confidentiels du client.</p>
-  <label style="display:block;margin-top:10px">Nom du titulaire<input id="clientBillingHolder" class="input" placeholder="Nom complet"></label>
-  <label style="display:block;margin-top:8px">Banque<input id="clientBillingBank" class="input" placeholder="Nom de la banque"></label>
-  <label style="display:block;margin-top:8px">4 derniers chiffres<input id="clientBillingLast4" class="input" inputmode="numeric" maxlength="4" placeholder="1234"></label>
+  card.innerHTML=`<b>Paiement FAST</b><p>Choisissez votre moyen de paiement. Les numéros complets de carte et le CVC ne sont jamais stockés par FAST.</p>
+  <label style="display:block;margin-top:10px">Titulaire<input id="clientBillingHolder" class="input" autocomplete="cc-name" placeholder="Nom complet"></label>
   <label style="display:block;margin-top:8px">Mode préféré<select id="clientBillingPreferred" class="input"><option value="cash">Espèces</option><option value="bank_transfer">Virement bancaire</option><option value="card">Carte bancaire</option><option value="wallet">Portefeuille FAST</option></select></label>
-  <button id="saveClientBilling" type="button" class="btn outline" style="margin-top:10px">Enregistrer dans mon profil</button>
+  <div id="clientSavedCard" class="fast-card-summary"><b>Aucune carte enregistrée</b><span>La carte sera enregistrée sous forme de jeton sécurisé après un paiement réussi.</span></div>
+  <button id="saveClientBilling" type="button" class="btn outline" style="margin-top:10px">Enregistrer mes préférences</button>
   <p id="clientBillingStatus" class="help">Les modes disponibles dépendent du pays et de la configuration FAST.</p>`;
   const support=cp$('profilePage').querySelector('.card-lite');if(support)cp$('profilePage').insertBefore(card,support);else cp$('profilePage').prepend(card);
   cp$('saveClientBilling').onclick=saveBilling;
 }
+function ensureCheckoutPanel(){
+  injectStyle();if(cp$('fastCardCheckout'))return cp$('fastCardCheckout');const payment=document.querySelector('#passengerArea .payment-card');if(!payment)return null;
+  const box=document.createElement('div');box.id='fastCardCheckout';box.className='hidden';box.innerHTML=`
+  <div class="fast-card-title"><div><b>Carte bancaire</b><p class="fast-card-note">Paiement sécurisé avant la recherche du chauffeur.</p></div><span>3D Secure</span></div>
+  <label class="fast-card-label">Titulaire de la carte<input id="fastCardHolder" class="fast-card-holder" autocomplete="cc-name" placeholder="Nom et prénom"></label>
+  <label class="fast-card-label">Numéro de carte<div id="fastCardNumber" class="fast-secure-field"></div></label>
+  <div class="fast-card-grid"><label class="fast-card-label">Date d’expiration<div id="fastCardExpiry" class="fast-secure-field"></div></label><label class="fast-card-label">CVC / clé<div id="fastCardCvc" class="fast-secure-field"></div></label></div>
+  <small id="fastCardCheckoutStatus" class="fast-card-status">Connexion au module de paiement sécurisé…</small>`;
+  payment.insertAdjacentElement('afterend',box);return box;
+}
+function renderSavedCard(p){const box=cp$('clientSavedCard');if(!box)return;const last4=p?.account_last4,brand=p?.card_brand,month=p?.card_exp_month,year=p?.card_exp_year;if(last4){box.innerHTML=`<b>${String(brand||'Carte').toUpperCase()} •••• ${String(last4)}</b><span>${month&&year?`Expiration ${String(month).padStart(2,'0')}/${String(year).slice(-2)} • `:''}Données sensibles conservées par le prestataire sécurisé.</span>`}else box.innerHTML='<b>Aucune carte enregistrée</b><span>La carte sera enregistrée sous forme de jeton sécurisé après un paiement réussi.</span>'}
 async function loadBilling(){
-  if(!token||role!=='client'||!profile?.id)return;
-  ensureCard();
-  try{const rows=await rest(`client_billing_profiles?user_id=eq.${encodeURIComponent(profile.id)}&select=*&limit=1`),p=rows?.[0];if(!p)return;if(cp$('clientBillingHolder'))cp$('clientBillingHolder').value=p.account_holder_name||'';if(cp$('clientBillingBank'))cp$('clientBillingBank').value=p.bank_name||'';if(cp$('clientBillingLast4'))cp$('clientBillingLast4').value=p.account_last4||'';if(cp$('clientBillingPreferred'))cp$('clientBillingPreferred').value=p.preferred_method||'cash'}catch(e){}
+  if(!token||role!=='client'||!profile?.id)return;ensureProfileCard();
+  try{const rows=await rest(`client_billing_profiles?user_id=eq.${encodeURIComponent(profile.id)}&select=*&limit=1`),p=rows?.[0];if(!p)return;if(cp$('clientBillingHolder'))cp$('clientBillingHolder').value=p.account_holder_name||'';if(cp$('fastCardHolder')&&!cp$('fastCardHolder').value)cp$('fastCardHolder').value=p.account_holder_name||'';if(cp$('clientBillingPreferred'))cp$('clientBillingPreferred').value=p.preferred_method||'cash';renderSavedCard(p)}catch(e){}
 }
 async function saveBilling(){
-  if(!profile?.id)return toast('Connectez-vous d’abord');
-  const last4=(cp$('clientBillingLast4')?.value||'').replace(/\D/g,'');if(last4&&last4.length!==4)return toast('Entrez uniquement les 4 derniers chiffres');
-  const payload={user_id:profile.id,account_holder_name:(cp$('clientBillingHolder')?.value||'').trim()||null,bank_name:(cp$('clientBillingBank')?.value||'').trim()||null,account_last4:last4||null,country_code:window.fastActiveMarket?.country_code||profile.country_code||null,preferred_method:cp$('clientBillingPreferred')?.value||'cash',updated_at:new Date().toISOString()};
-  const btn=cp$('saveClientBilling');if(btn){btn.disabled=true;btn.textContent='Enregistrement…'}
-  try{await rest('client_billing_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});toast('Préférences de paiement enregistrées dans votre profil');const sel=cp$('paymentMethod');if(sel&&[...sel.options].some(o=>o.value===payload.preferred_method&&!o.disabled))sel.value=payload.preferred_method}catch(e){toast(e.message)}finally{if(btn){btn.disabled=false;btn.textContent='Enregistrer dans mon profil'}}
+  if(!profile?.id)return toast('Connectez-vous d’abord');const payload={user_id:profile.id,account_holder_name:(cp$('clientBillingHolder')?.value||'').trim()||null,country_code:window.fastActiveMarket?.country_code||profile.country_code||null,preferred_method:cp$('clientBillingPreferred')?.value||'cash',updated_at:new Date().toISOString()};const btn=cp$('saveClientBilling');if(btn){btn.disabled=true;btn.textContent='Enregistrement…'}
+  try{await rest('client_billing_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});toast('Préférences de paiement enregistrées');const sel=cp$('paymentMethod');if(sel&&[...sel.options].some(o=>o.value===payload.preferred_method&&!o.disabled))sel.value=payload.preferred_method;renderCheckoutVisibility()}catch(e){toast(e.message)}finally{if(btn){btn.disabled=false;btn.textContent='Enregistrer mes préférences'}}
 }
-function methodEnabled(value){
-  if(value==='cash')return paymentConfig?.cash_available!==false;
-  if(value==='bank_transfer')return Boolean(paymentConfig?.bank_transfer_available);
-  return Boolean(paymentConfig?.online_payment_configured);
+function loadStripeSdk(){if(window.Stripe)return Promise.resolve(window.Stripe);if(stripeSdkPromise)return stripeSdkPromise;stripeSdkPromise=new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-fast-stripe-sdk]');if(existing){existing.addEventListener('load',()=>resolve(window.Stripe),{once:true});existing.addEventListener('error',()=>reject(new Error('Module de paiement indisponible')),{once:true});return}const s=document.createElement('script');s.src='https://js.stripe.com/v3/';s.async=true;s.dataset.fastStripeSdk='1';s.onload=()=>window.Stripe?resolve(window.Stripe):reject(new Error('Module Stripe indisponible'));s.onerror=()=>reject(new Error('Impossible de charger le paiement sécurisé'));document.head.appendChild(s)});return stripeSdkPromise}
+async function mountCardElements(){
+  ensureCheckoutPanel();const status=cp$('fastCardCheckoutStatus');if(cardMounted)return true;if(!cardConfig?.configured||!cardConfig?.publishable_key){if(status){status.className='fast-card-status warn';status.textContent='Le paiement carte sécurisé doit être connecté à FAST avant utilisation.'}return false}
+  try{const StripeCtor=await loadStripeSdk();stripe=StripeCtor(cardConfig.publishable_key);stripeElements=stripe.elements({locale:'fr'});const style={base:{fontSize:'16px',color:'#111827',fontFamily:'Arial, sans-serif','::placeholder':{color:'#98a2b3'}},invalid:{color:'#b42318'}};cardNumberElement=stripeElements.create('cardNumber',{style,showIcon:true,placeholder:'1234 1234 1234 1234'});cardExpiryElement=stripeElements.create('cardExpiry',{style});cardCvcElement=stripeElements.create('cardCvc',{style,placeholder:'123'});cardNumberElement.mount('#fastCardNumber');cardExpiryElement.mount('#fastCardExpiry');cardCvcElement.mount('#fastCardCvc');[cardNumberElement,cardExpiryElement,cardCvcElement].forEach((el,i)=>{const ids=['fastCardNumber','fastCardExpiry','fastCardCvc'];el.on('focus',()=>cp$(ids[i])?.classList.add('focus'));el.on('blur',()=>cp$(ids[i])?.classList.remove('focus'));el.on('change',ev=>{if(ev.error&&status){status.className='fast-card-status warn';status.textContent=ev.error.message}})});cardMounted=true;if(status){status.className='fast-card-status good';status.textContent='Saisie sécurisée prête. Numéro de carte et CVC ne transitent pas par la base FAST.'}return true}catch(e){if(status){status.className='fast-card-status warn';status.textContent=e.message||'Paiement carte indisponible'}return false}
 }
+function methodEnabled(value){if(value==='cash')return paymentConfig?.cash_available!==false;if(value==='bank_transfer')return Boolean(paymentConfig?.bank_transfer_available);if(value==='card')return Boolean(cardConfig?.configured);return Boolean(paymentConfig?.online_payment_configured)}
 function enforcePaymentOptions(){
-  const sel=cp$('paymentMethod');if(!sel||!paymentConfig||enforcingPaymentOptions)return;
-  enforcingPaymentOptions=true;
-  try{
-    [...sel.options].forEach(o=>{
-      const current=o.textContent||o.value,base=current.replace(/\s*•\s*bientôt$/i,''),enabled=methodEnabled(o.value),target=enabled?base:base+' • bientôt';
-      if(o.disabled===enabled)o.disabled=!enabled;
-      if(current!==target)o.textContent=target;
-    });
-    if(sel.selectedOptions[0]?.disabled){const fallback=[...sel.options].find(o=>!o.disabled);if(fallback)sel.value=fallback.value}
-    if(!paymentSelectObserver){paymentSelectObserver=new MutationObserver(()=>{if(!enforcingPaymentOptions)setTimeout(enforcePaymentOptions,0)});paymentSelectObserver.observe(sel,{childList:true,subtree:true})}
-  }finally{enforcingPaymentOptions=false}
+  const sel=cp$('paymentMethod');if(!sel||!paymentConfig||enforcingPaymentOptions)return;enforcingPaymentOptions=true;try{[...sel.options].forEach(o=>{const current=o.textContent||o.value,base=current.replace(/\s*•\s*bientôt$/i,''),enabled=methodEnabled(o.value),target=enabled?base:base+' • bientôt';o.disabled=!enabled;if(current!==target)o.textContent=target});if(sel.selectedOptions[0]?.disabled){const fallback=[...sel.options].find(o=>!o.disabled);if(fallback)sel.value=fallback.value}if(!paymentSelectObserver){paymentSelectObserver=new MutationObserver(()=>{if(!enforcingPaymentOptions)setTimeout(enforcePaymentOptions,0)});paymentSelectObserver.observe(sel,{childList:true,subtree:true});sel.addEventListener('change',()=>{pendingCardIntent=null;renderCheckoutVisibility()})}}finally{enforcingPaymentOptions=false}renderCheckoutVisibility()
 }
+function renderCheckoutVisibility(){const box=ensureCheckoutPanel(),sel=cp$('paymentMethod');if(!box||!sel)return;const card=sel.value==='card';box.classList.toggle('hidden',!card);if(card)mountCardElements()}
 async function applyPaymentAvailability(){
-  if(!token||role!=='client')return;
-  try{
-    paymentConfig=await control('/payment-config');enforcePaymentOptions();
-    const st=cp$('clientBillingStatus');
-    if(st){
-      if(paymentConfig.bank_transfer_available&&!paymentConfig.online_payment_configured)st.textContent='Virement bancaire FAST disponible. Les espèces restent payables à l’arrivée. La carte sera activée après connexion d’un prestataire de paiement sécurisé.';
-      else if(!paymentConfig.online_payment_configured)st.textContent='Les espèces restent payables à l’arrivée. Les autres paiements seront activés progressivement.';
-      else st.textContent='Vos moyens de paiement FAST sont disponibles selon votre pays.';
-    }
-  }catch(e){}
+  if(!token||role!=='client')return;try{const [cfg,cc]=await Promise.all([control('/payment-config').catch(()=>({cash_available:true,bank_transfer_available:false,online_payment_configured:false})),cardApi('/config').catch(()=>({provider:'stripe',configured:false,secure_fields:true,payment_before_search:true}))]);paymentConfig=cfg;cardConfig=cc;paymentConfig.online_payment_configured=Boolean(cc.configured)||Boolean(cfg.online_payment_configured);enforcePaymentOptions();const st=cp$('clientBillingStatus');if(st){if(cc.configured)st.textContent='Carte bancaire sécurisée activée : le paiement est confirmé avant la recherche du chauffeur.';else if(cfg.bank_transfer_available)st.textContent='Virement bancaire disponible. La carte sera activée dès la connexion du prestataire sécurisé.';else st.textContent='Les espèces restent disponibles. Le paiement carte sécurisé doit encore être connecté.'}if(cc.configured)mountCardElements()}catch(e){}
 }
-function boot(){ensureCard();if(role==='client'){loadBilling();applyPaymentAvailability()}}
-window.addEventListener('load',()=>{setTimeout(boot,500);setTimeout(boot,1300)});
-document.addEventListener('click',e=>{const b=e.target?.closest?.('[data-page="profilePage"]');if(b)setTimeout(()=>{loadBilling();applyPaymentAvailability()},120)},true);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(applyPaymentAvailability,120)});
+async function payCardBeforeSearch(){
+  if(!destination)return toast('Choisissez une destination');if(!currentRoute)return toast('Attendez le calcul du prix');if(!cardConfig?.configured)return toast('Le paiement carte sécurisé n’est pas encore connecté à FAST.');const mounted=await mountCardElements();if(!mounted||!stripe||!cardNumberElement)return toast('Module de paiement carte indisponible');const holder=(cp$('fastCardHolder')?.value||cp$('clientBillingHolder')?.value||'').trim();if(holder.length<2)return toast('Entrez le nom du titulaire de la carte');const btn=cp$('bookBtn'),old=btn?.textContent||'Commander FAST';if(btn){btn.disabled=true;btn.textContent='Paiement sécurisé…'}const status=cp$('fastCardCheckoutStatus');try{const idem=(globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random().toString(16).slice(2));const prep=await cardApi('/prepare',{method:'POST',body:JSON.stringify({route:routeBody(),idempotency_key:idem})});if(status){status.className='fast-card-status';status.textContent=`Validation du paiement ${Number(prep.amount).toLocaleString('fr-FR')} ${prep.currency}…`}const result=await stripe.confirmCardPayment(prep.client_secret,{payment_method:{card:cardNumberElement,billing_details:{name:holder}}});if(result.error)throw new Error(result.error.message||'Paiement refusé');if(result.paymentIntent?.status!=='succeeded')throw new Error('Le paiement n’a pas été confirmé');pendingCardIntent=result.paymentIntent.id;if(status){status.className='fast-card-status good';status.textContent='Paiement confirmé. Recherche du chauffeur en cours…'}toast('Paiement confirmé • recherche du chauffeur');return true}catch(e){pendingCardIntent=null;if(status){status.className='fast-card-status warn';status.textContent=e.message||'Paiement non confirmé'}toast(e.message||'Paiement non confirmé');return false}finally{if(btn){btn.disabled=false;btn.textContent=old}}
+}
+function wrapApiAttach(){if(apiAttachWrapped||typeof api!=='function')return;apiAttachWrapped=true;const baseApi=api;window.api=api=async function(path,opts={}){const out=await baseApi(path,opts);const method=String(opts.method||'GET').toUpperCase();if(path==='/v1/rides'&&method==='POST'&&pendingCardIntent&&out?.ride?.id){let body={};try{body=JSON.parse(opts.body||'{}')}catch(e){}if(body.payment_method==='card'){const rideId=out.ride.id,intent=pendingCardIntent;try{const attached=await cardApi('/attach',{method:'POST',body:JSON.stringify({ride_id:rideId,intent_id:intent,holder_name:(cp$('fastCardHolder')?.value||'').trim()})});pendingCardIntent=null;if(attached?.ride)out.ride=attached.ride;setTimeout(loadBilling,250);return out}catch(e){pendingCardIntent=null;try{await control('/rides/'+rideId+'/cancel',{method:'POST',body:JSON.stringify({reason:'Paiement carte non confirmé',note:'Recherche chauffeur non lancée'})})}catch(_e){}throw e}}}return out}}
+function wrapBookPayment(){if(bookPaymentWrapped||typeof bookRide!=='function')return;bookPaymentWrapped=true;const baseBook=bookRide;window.bookRide=bookRide=async function(){const method=cp$('paymentMethod')?.value||'cash';if(method==='card'){const ok=await payCardBeforeSearch();if(!ok)return}return baseBook()}}
+function boot(){ensureProfileCard();ensureCheckoutPanel();wrapApiAttach();wrapBookPayment();if(role==='client'){loadBilling();applyPaymentAvailability()}renderCheckoutVisibility()}
+window.addEventListener('load',()=>{setTimeout(boot,500);setTimeout(boot,1300)});document.addEventListener('click',e=>{const b=e.target?.closest?.('[data-page="profilePage"]');if(b)setTimeout(()=>{loadBilling();applyPaymentAvailability()},120)},true);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>{applyPaymentAvailability();renderCheckoutVisibility()},120)});
 })();
