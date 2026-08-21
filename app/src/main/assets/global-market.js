@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const gm$=id=>document.getElementById(id);
-const paymentLabels={wallet:'Portefeuille FAST',card:'Carte bancaire',cash:'Espèces',mtn_momo:'MTN Mobile Money',airtel_money:'Airtel Money',orange_money:'Orange Money'};
+const paymentLabels={wallet:'Portefeuille FAST',card:'Carte bancaire',cash:'Espèces',bank_transfer:'Virement bancaire',mtn_momo:'MTN Mobile Money',airtel_money:'Airtel Money',orange_money:'Orange Money'};
 let activeMarket=null,lastMarketKey='',lastMarketAt=0,applyingMarket=false,observerTimer=null;
 
 function formatMoney(value,currency='USD',locale='fr-FR'){
