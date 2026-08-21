@@ -60,10 +60,10 @@ jobs:
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 611' app/build.gradle.kts
+          grep -q 'versionCode = 612' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
-          grep -q '"build": 611' updates/latest.json
+          grep -q '"build": 612' updates/latest.json
           grep -q 'touch-fix.js' app/src/main/assets/index.html
           grep -q 'flex-price.js' app/src/main/assets/index.html
           grep -q 'client-payment.js' app/src/main/assets/index.html
@@ -74,8 +74,11 @@ jobs:
           grep -q 'fast-ride-control' app/src/main/assets/trip-controls.js
           grep -q 'Choisissez un motif' app/src/main/assets/trip-controls.js
           grep -q 'Espèces reçues' app/src/main/assets/trip-controls.js
+          grep -q 'bank-transfer-submitted' app/src/main/assets/trip-controls.js
+          grep -q 'J’ai effectué le virement' app/src/main/assets/trip-controls.js
           grep -q 'client_billing_profiles' app/src/main/assets/client-payment.js
-          grep -q 'FAST ne stocke jamais votre numéro complet' app/src/main/assets/client-payment.js
+          grep -q 'bank_transfer' app/src/main/assets/client-payment.js
+          grep -q 'Virement bancaire' app/src/main/assets/global-market.js
           grep -q 'data:image/svg+xml' app/src/main/assets/car-marker.js
           grep -q 'installUpdate' app/src/main/assets/update-manager.js
           grep -q 'fun installUpdate' app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -124,14 +127,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build611-debug
+          name: FAST-N1-v6.0-build612-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build611-production
+          name: FAST-N1-v6.0-build612-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
       - name: Publish signed production release
@@ -141,6 +144,6 @@ jobs:
         run: |
           TAG="fast-v6.0"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 611 : mise à jour Android intégrée, paiement sécurisé préparé, espèces à l’arrivée, annulation avec motif et suivi chauffeur avec icône voiture."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 612 : virement bancaire après acceptation avec validation avant départ, espèces à l’arrivée, annulation motivée, petite voiture GPS et mise à jour intégrée."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
           gh release upload "$TAG" FAST-N1-v6.0-production.apk --clobber
