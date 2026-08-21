@@ -1,8 +1,8 @@
 {
   "version": "6.0",
-  "build": 610,
+  "build": 611,
   "minimumBuild": 602,
   "mandatory": false,
   "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
-  "notes": "FAST 6.0 build 610 : le prix proposé par le client ne se réinitialise plus au prix standard et la saisie accepte aussi la virgule décimale."
+  "notes": "FAST 6.0 build 611 : mise à jour Android intégrée, profil de paiement sécurisé, espèces à l’arrivée, annulation avec motif et petite voiture pour le suivi chauffeur."
 }
