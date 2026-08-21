@@ -8,13 +8,13 @@ async function control(path,opts={}){const r=await fetch(SUPABASE_URL+'/function
 function ensureCard(){
   if(paymentUiReady||!cp$('profilePage'))return;paymentUiReady=true;
   const card=document.createElement('div');card.id='clientBillingCard';card.className='card-lite';
-  card.innerHTML=`<b>Paiement FAST</b><p>Enregistrez les informations non sensibles de votre moyen de paiement. FAST ne stocke jamais votre numéro complet de carte, votre CVV ou vos identifiants bancaires complets.</p>
+  card.innerHTML=`<b>Paiement FAST</b><p>Enregistrez vos préférences de paiement. Pour votre sécurité, FAST ne stocke pas de numéro complet de carte, CVV ou identifiants bancaires confidentiels du client.</p>
   <label style="display:block;margin-top:10px">Nom du titulaire<input id="clientBillingHolder" class="input" placeholder="Nom complet"></label>
   <label style="display:block;margin-top:8px">Banque<input id="clientBillingBank" class="input" placeholder="Nom de la banque"></label>
   <label style="display:block;margin-top:8px">4 derniers chiffres<input id="clientBillingLast4" class="input" inputmode="numeric" maxlength="4" placeholder="1234"></label>
-  <label style="display:block;margin-top:8px">Mode préféré<select id="clientBillingPreferred" class="input"><option value="cash">Espèces</option><option value="card">Carte bancaire</option><option value="wallet">Portefeuille FAST</option></select></label>
+  <label style="display:block;margin-top:8px">Mode préféré<select id="clientBillingPreferred" class="input"><option value="cash">Espèces</option><option value="bank_transfer">Virement bancaire</option><option value="card">Carte bancaire</option><option value="wallet">Portefeuille FAST</option></select></label>
   <button id="saveClientBilling" type="button" class="btn outline" style="margin-top:10px">Enregistrer dans mon profil</button>
-  <p id="clientBillingStatus" class="help">Les données bancaires complètes devront être tokenisées par un prestataire de paiement sécurisé avant activation du débit en ligne.</p>`;
+  <p id="clientBillingStatus" class="help">Les modes disponibles dépendent du pays et de la configuration FAST.</p>`;
   const support=cp$('profilePage').querySelector('.card-lite');if(support)cp$('profilePage').insertBefore(card,support);else cp$('profilePage').prepend(card);
   cp$('saveClientBilling').onclick=saveBilling;
 }
@@ -28,20 +28,37 @@ async function saveBilling(){
   const last4=(cp$('clientBillingLast4')?.value||'').replace(/\D/g,'');if(last4&&last4.length!==4)return toast('Entrez uniquement les 4 derniers chiffres');
   const payload={user_id:profile.id,account_holder_name:(cp$('clientBillingHolder')?.value||'').trim()||null,bank_name:(cp$('clientBillingBank')?.value||'').trim()||null,account_last4:last4||null,country_code:window.fastActiveMarket?.country_code||profile.country_code||null,preferred_method:cp$('clientBillingPreferred')?.value||'cash',updated_at:new Date().toISOString()};
   const btn=cp$('saveClientBilling');if(btn){btn.disabled=true;btn.textContent='Enregistrement…'}
-  try{await rest('client_billing_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});toast('Informations de paiement enregistrées dans votre profil');const sel=cp$('paymentMethod');if(sel&&[...sel.options].some(o=>o.value===payload.preferred_method&&!o.disabled))sel.value=payload.preferred_method}catch(e){toast(e.message)}finally{if(btn){btn.disabled=false;btn.textContent='Enregistrer dans mon profil'}}
+  try{await rest('client_billing_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});toast('Préférences de paiement enregistrées dans votre profil');const sel=cp$('paymentMethod');if(sel&&[...sel.options].some(o=>o.value===payload.preferred_method&&!o.disabled))sel.value=payload.preferred_method}catch(e){toast(e.message)}finally{if(btn){btn.disabled=false;btn.textContent='Enregistrer dans mon profil'}}
+}
+function methodEnabled(value){
+  if(value==='cash')return paymentConfig?.cash_available!==false;
+  if(value==='bank_transfer')return Boolean(paymentConfig?.bank_transfer_available);
+  return Boolean(paymentConfig?.online_payment_configured);
 }
 function enforcePaymentOptions(){
   const sel=cp$('paymentMethod');if(!sel||!paymentConfig||enforcingPaymentOptions)return;
   enforcingPaymentOptions=true;
   try{
-    [...sel.options].forEach(o=>{const current=o.textContent||o.value,base=current.replace(/\s*•\s*bientôt$/i,''),disabled=o.value!=='cash'&&!paymentConfig.online_payment_configured,target=disabled?base+' • bientôt':base;if(o.disabled!==disabled)o.disabled=disabled;if(current!==target)o.textContent=target});
-    if(sel.selectedOptions[0]?.disabled){const cash=[...sel.options].find(o=>o.value==='cash'&&!o.disabled);if(cash)sel.value='cash'}
+    [...sel.options].forEach(o=>{
+      const current=o.textContent||o.value,base=current.replace(/\s*•\s*bientôt$/i,''),enabled=methodEnabled(o.value),target=enabled?base:base+' • bientôt';
+      if(o.disabled===enabled)o.disabled=!enabled;
+      if(current!==target)o.textContent=target;
+    });
+    if(sel.selectedOptions[0]?.disabled){const fallback=[...sel.options].find(o=>!o.disabled);if(fallback)sel.value=fallback.value}
     if(!paymentSelectObserver){paymentSelectObserver=new MutationObserver(()=>{if(!enforcingPaymentOptions)setTimeout(enforcePaymentOptions,0)});paymentSelectObserver.observe(sel,{childList:true,subtree:true})}
   }finally{enforcingPaymentOptions=false}
 }
 async function applyPaymentAvailability(){
   if(!token||role!=='client')return;
-  try{paymentConfig=await control('/payment-config');enforcePaymentOptions();const st=cp$('clientBillingStatus');if(st&&!paymentConfig.online_payment_configured)st.textContent='Paiement en ligne préparé mais désactivé tant qu’un prestataire sécurisé n’est pas connecté. Les espèces restent payables à l’arrivée.'}catch(e){}
+  try{
+    paymentConfig=await control('/payment-config');enforcePaymentOptions();
+    const st=cp$('clientBillingStatus');
+    if(st){
+      if(paymentConfig.bank_transfer_available&&!paymentConfig.online_payment_configured)st.textContent='Virement bancaire FAST disponible. Les espèces restent payables à l’arrivée. La carte sera activée après connexion d’un prestataire de paiement sécurisé.';
+      else if(!paymentConfig.online_payment_configured)st.textContent='Les espèces restent payables à l’arrivée. Les autres paiements seront activés progressivement.';
+      else st.textContent='Vos moyens de paiement FAST sont disponibles selon votre pays.';
+    }
+  }catch(e){}
 }
 function boot(){ensureCard();if(role==='client'){loadBilling();applyPaymentAvailability()}}
 window.addEventListener('load',()=>{setTimeout(boot,500);setTimeout(boot,1300)});
