@@ -2,24 +2,20 @@ package cg.fast.n1
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.Settings
 import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -29,16 +25,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import org.json.JSONObject
-import java.io.File
+import androidx.webkit.WebViewAssetLoader
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
-    private var pendingUpdateUrl: String? = null
-    private var updateDownloadId: Long = -1L
-    private var updateFile: File? = null
 
     private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val callback = pendingFileCallback ?: return@registerForActivityResult
@@ -57,33 +48,15 @@ class MainActivity : AppCompatActivity() {
         pendingFileCallback = null
     }
 
-    private val updateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
-            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-            if (id != updateDownloadId) return
-            val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-            val cursor = manager.query(DownloadManager.Query().setFilterById(id))
-            cursor.use {
-                if (!it.moveToFirst()) {
-                    notifyUpdateStatus("error", "Téléchargement introuvable")
-                    return
-                }
-                val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    notifyUpdateStatus("downloaded", "Téléchargement terminé. Ouverture de l’installateur…")
-                    installDownloadedUpdate()
-                } else {
-                    notifyUpdateStatus("error", "Le téléchargement de la mise à jour a échoué")
-                }
-            }
-        }
-    }
-
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createDriverOfferChannel()
+
+        val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
         web = WebView(this)
         web.setBackgroundColor(android.graphics.Color.WHITE)
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
@@ -93,8 +66,8 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             databaseEnabled = true
             setGeolocationEnabled(true)
-            allowFileAccess = true
-            allowContentAccess = true
+            allowFileAccess = false
+            allowContentAccess = false
             cacheMode = WebSettings.LOAD_DEFAULT
             loadsImagesAutomatically = true
             blockNetworkImage = false
@@ -102,15 +75,20 @@ class MainActivity : AppCompatActivity() {
             loadWithOverviewMode = true
             textZoom = 100
             mediaPlaybackRequiresUserGesture = false
-            @Suppress("DEPRECATION") allowFileAccessFromFileURLs = true
-            @Suppress("DEPRECATION") allowUniversalAccessFromFileURLs = true
+            @Suppress("DEPRECATION") allowFileAccessFromFileURLs = false
+            @Suppress("DEPRECATION") allowUniversalAccessFromFileURLs = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
+
         web.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
+                val allowedOrigin = origin?.startsWith("https://appassets.androidplatform.net") == true
                 callback?.invoke(
                     origin,
-                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED,
+                    allowedOrigin && ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED,
                     false
                 )
             }
@@ -153,9 +131,28 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
         web.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val local = request?.url?.let { assetLoader.shouldInterceptRequest(it) }
+                return local ?: super.shouldInterceptRequest(view, request)
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val uri = request?.url ?: return true
+                val isLocalApp = uri.scheme == "https" && uri.host == "appassets.androidplatform.net"
+                if (isLocalApp) return false
+
+                if (request.isForMainFrame && uri.scheme == "https") {
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                    return true
+                }
+                return uri.scheme != "https"
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                if (url?.startsWith("https://appassets.androidplatform.net/assets/") != true) return
                 val qualityLayer = """
                     (function(){
                       document.documentElement.style.webkitFontSmoothing='antialiased';
@@ -176,35 +173,14 @@ class MainActivity : AppCompatActivity() {
                 view?.evaluateJavascript(qualityLayer, null)
             }
         }
-        web.addJavascriptInterface(FastBridge(), "FASTNative")
-        web.loadUrl("file:///android_asset/index.html")
-        setContentView(web)
 
-        ContextCompat.registerReceiver(
-            this,
-            updateReceiver,
-            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        web.addJavascriptInterface(FastBridge(), "FASTNative")
+        web.loadUrl("https://appassets.androidplatform.net/assets/index.html")
+        setContentView(web)
 
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms.add(Manifest.permission.POST_NOTIFICATIONS)
         ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1001)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.canRequestPackageInstalls()) {
-            pendingUpdateUrl?.let { url ->
-                pendingUpdateUrl = null
-                startUpdateDownload(url)
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        runCatching { unregisterReceiver(updateReceiver) }
-        super.onDestroy()
     }
 
     private fun createDriverOfferChannel() {
@@ -217,65 +193,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun notifyUpdateStatus(state: String, message: String) {
-        runOnUiThread {
-            if (!::web.isInitialized) return@runOnUiThread
-            val s = JSONObject.quote(state)
-            val m = JSONObject.quote(message)
-            web.evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent('fast:update-status',{detail:{state:$s,message:$m}}));",
-                null
-            )
-        }
-    }
-
     private fun isAllowedUpdateUrl(url: String): Boolean {
         val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
         if (uri.scheme != "https") return false
         val host = (uri.host ?: "").lowercase()
         return host == "github.com" || host.endsWith(".githubusercontent.com") || host.endsWith(".github.com")
-    }
-
-    private fun startUpdateDownload(url: String) {
-        if (!isAllowedUpdateUrl(url)) {
-            notifyUpdateStatus("error", "Adresse de mise à jour non autorisée")
-            return
-        }
-        val downloads = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
-        val file = File(downloads, "FAST-N1-update.apk")
-        runCatching { if (file.exists()) file.delete() }
-        updateFile = file
-        val request = DownloadManager.Request(Uri.parse(url)).apply {
-            setTitle("FAST N°1")
-            setDescription("Téléchargement de la mise à jour")
-            setMimeType("application/vnd.android.package-archive")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setAllowedOverMetered(true)
-            setAllowedOverRoaming(false)
-            setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, file.name)
-        }
-        val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-        updateDownloadId = manager.enqueue(request)
-        notifyUpdateStatus("downloading", "Téléchargement de la mise à jour…")
-    }
-
-    private fun installDownloadedUpdate() {
-        val file = updateFile ?: return notifyUpdateStatus("error", "Fichier de mise à jour manquant")
-        if (!file.exists() || file.length() <= 0L) return notifyUpdateStatus("error", "APK téléchargé invalide")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
-            notifyUpdateStatus("permission", "Autorisez FAST à installer les mises à jour")
-            val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))
-            startActivity(settingsIntent)
-            return
-        }
-        val apkUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(apkUri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { startActivity(intent) }
-            .onFailure { notifyUpdateStatus("error", "Impossible d’ouvrir l’installateur Android") }
     }
 
     inner class FastBridge {
@@ -299,16 +221,9 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface
         fun installUpdate(url: String): Boolean {
             if (!isAllowedUpdateUrl(url)) return false
+            val uri = Uri.parse(url)
             runOnUiThread {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
-                    pendingUpdateUrl = url
-                    notifyUpdateStatus("permission", "Autorisez FAST à installer les mises à jour")
-                    runCatching {
-                        startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
-                    }
-                } else {
-                    startUpdateDownload(url)
-                }
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
             }
             return true
         }
@@ -332,8 +247,13 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface
         fun notifyDriverOffer(title: String, body: String) {
             val intent = Intent(this@MainActivity, MainActivity::class.java)
-            val pending = PendingIntent.getActivity(this@MainActivity, 401, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-            val n = NotificationCompat.Builder(this@MainActivity, "fast_driver_offers")
+            val pending = PendingIntent.getActivity(
+                this@MainActivity,
+                401,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            val notification = NotificationCompat.Builder(this@MainActivity, "fast_driver_offers")
                 .setSmallIcon(android.R.drawable.ic_dialog_map)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -342,8 +262,12 @@ class MainActivity : AppCompatActivity() {
                 .setAutoCancel(true)
                 .setContentIntent(pending)
                 .build()
-            if (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                NotificationManagerCompat.from(this@MainActivity).notify((System.currentTimeMillis() % 100000).toInt(), n)
+            if (
+                Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ) {
+                NotificationManagerCompat.from(this@MainActivity)
+                    .notify((System.currentTimeMillis() % 100000).toInt(), notification)
             }
         }
 
