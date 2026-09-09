@@ -26,7 +26,7 @@ def test_navigation_labels_are_localized():
 
 
 def test_final_backend_version_is_aligned():
-    assert APP_VERSION == "6.0"
+    assert APP_VERSION == "V1 09.09.26"
 
 
 def test_history_route_precedes_dynamic_ride_route():

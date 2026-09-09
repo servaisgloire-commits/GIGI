@@ -82,9 +82,9 @@ jobs:
           node --check app/src/main/assets/client-payment.js
           node --check app/src/main/assets/car-marker.js
           node --check app/src/main/assets/trip-controls.js
-          grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 613' app/build.gradle.kts
-          grep -q '"build": 613' updates/latest.json
+          grep -q 'versionName = "V1 09.09.26"' app/build.gradle.kts
+          grep -q 'versionCode = 614' app/build.gradle.kts
+          grep -q '"build": 614' updates/latest.json
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
           grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
@@ -135,6 +135,6 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0-build613-debug-apk
+          name: FAST-production-gate-V1-09.09.26-build614-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14

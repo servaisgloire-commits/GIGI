@@ -1,4 +1,4 @@
-# FAST N°1
+# FAST N°1 — V1 09.09.26
 
 Application de réservation de courses : client Android, administration web et API Python.
 
@@ -62,3 +62,15 @@ L’administration possède sa propre configuration Vercel dans `admin/`.
 Après un changement d’hébergement, adapter les URL correspondantes dans la
 configuration Android et les clients API. Les modifications locales ne déploient
 pas automatiquement ces services.
+
+## Télécharger la mise à jour Android
+
+Dans **Mon compte → Mises à jour FAST**, vérifier les mises à jour puis choisir
+**Télécharger l’APK**. Le fichier s’ouvre dans le navigateur pour téléchargement ;
+ouvrir ensuite l’APK téléchargé et confirmer son installation dans Android.
+La fenêtre de nouvelle version propose aussi le téléchargement direct et conserve
+le bouton de mise à jour via l’installateur Android.
+
+Cette version porte le nom **V1 09.09.26** et le numéro interne **614**.
+Le lien de téléchargement provient de `updates/latest.json`. Il devient utilisable
+après la publication de l’APK signé par le workflow Android sur `main`.
