@@ -7,6 +7,7 @@ const money=(v,c='EUR')=>{try{return new Intl.NumberFormat('fr-FR',{style:'curre
 let timer=null,busy=false,lastSignature='';
 function token(){return localStorage.getItem('fast_admin_token')||''}
 async function req(path,opts={}){const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json','x-fast-admin-token':token(),...(opts.headers||{})},cache:'no-store'});let d={};try{d=await r.json()}catch{}if(!r.ok||d.ok===false)throw new Error(d.error||d.detail||`HTTP ${r.status}`);return d}
+function loadAdminUsers(){if(document.getElementById('fastAdminUsersScript'))return;const s=document.createElement('script');s.id='fastAdminUsersScript';s.src='admin-users.js?v=20260909-1';s.async=false;document.body.appendChild(s)}
 function ensurePanel(){
   const page=$('page-payments');if(!page)return null;let panel=$('bankTransferReviewPanel');if(panel)return panel;
   panel=document.createElement('div');panel.id='bankTransferReviewPanel';panel.className='panel';panel.style.marginBottom='16px';panel.innerHTML='<div class="panel-head"><h2>Virements bancaires à valider</h2><span>Avant départ</span></div><div id="bankTransferReviewBody" class="muted">Chargement…</div>';
@@ -28,6 +29,6 @@ function render(data){
 async function verify(id){if(!id)return;try{await req('/payment/verify',{method:'POST',body:JSON.stringify({id})});if(typeof window.refreshAll==='function')window.refreshAll();await refresh()}catch(e){alert(e.message)}}
 async function reject(id){if(!id)return;const reason=prompt('Motif du refus du paiement :','Virement non reçu')||'';if(!reason.trim())return;try{await req('/payment/reject',{method:'POST',body:JSON.stringify({id,reason})});if(typeof window.refreshAll==='function')window.refreshAll();await refresh()}catch(e){alert(e.message)}}
 async function refresh(){if(busy||!token())return;const view=$('adminView');if(!view||view.classList.contains('hidden'))return;busy=true;try{const d=await req('/snapshot');render(d.data||{})}catch(e){}finally{busy=false}}
-function boot(){ensurePanel();clearInterval(timer);timer=setInterval(refresh,5000);setTimeout(refresh,500)}
+function boot(){loadAdminUsers();ensurePanel();clearInterval(timer);timer=setInterval(refresh,5000);setTimeout(refresh,500)}
 window.addEventListener('load',boot);document.addEventListener('click',e=>{if(e.target?.closest?.('[data-page="payments"],#refreshBtn'))setTimeout(refresh,180)},true);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(refresh,150)});
 })();
