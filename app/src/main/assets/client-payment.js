@@ -21,7 +21,7 @@ function ensureProfileCard(){
   <div id="clientSavedCard" class="fast-card-summary"><b>Aucune carte enregistrée</b><span>La carte sera enregistrée sous forme de jeton sécurisé après un paiement réussi.</span></div>
   <button id="saveClientBilling" type="button" class="btn outline" style="margin-top:10px">Enregistrer mes préférences</button>
   <p id="clientBillingStatus" class="help">Les modes disponibles dépendent du pays et de la configuration FAST.</p>`;
-  const support=cp$('profilePage').querySelector('.card-lite');if(support)cp$('profilePage').insertBefore(card,support);else cp$('profilePage').prepend(card);
+  const support=cp$('profilePage').querySelector(':scope > .card-lite');if(support)cp$('profilePage').insertBefore(card,support);else cp$('profilePage').prepend(card);
   cp$('saveClientBilling').onclick=saveBilling;
 }
 function ensureCheckoutPanel(){
