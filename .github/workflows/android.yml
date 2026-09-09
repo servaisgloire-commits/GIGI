@@ -56,7 +56,7 @@ jobs:
           node --check app/src/main/assets/trip-controls.js
       - name: Check flexible pricing backend syntax
         run: python -m py_compile backend/app/flex_main.py
-      - name: Verify production presentation
+      - name: Verify production presentation and Android hardening
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
@@ -85,12 +85,15 @@ jobs:
           grep -q 'Paiement sécurisé avant la recherche du chauffeur' app/src/main/assets/client-payment.js
           grep -q 'Virement bancaire' app/src/main/assets/global-market.js
           grep -q 'data:image/svg+xml' app/src/main/assets/car-marker.js
-          grep -q 'installUpdate' app/src/main/assets/update-manager.js
           grep -q 'fun installUpdate' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'FileProvider' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml
-          test -f app/src/main/res/xml/file_paths.xml
+          grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'appassets.androidplatform.net/assets/index.html' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'allowFileAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'allowContentAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
+          if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
+          if grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Self APK downloader must not be present'; exit 1; fi
+          if grep -q 'FileProvider' app/src/main/AndroidManifest.xml app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'APK installer FileProvider must not be present'; exit 1; fi
+          if grep -q 'allowUniversalAccessFromFileURLs = true' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Unsafe universal file URL access enabled'; exit 1; fi
           grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -121,6 +124,14 @@ jobs:
           test -f updates/latest.json
       - name: Build verification APK
         run: gradle assembleDebug
+      - name: Require production signing secrets on main
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+        run: |
+          missing=0
+          for name in FAST_KEYSTORE_BASE64 FAST_KEYSTORE_PASSWORD FAST_KEY_ALIAS FAST_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "Missing required signing secret: $name"; missing=1; fi
+          done
+          test "$missing" -eq 0
       - name: Decode production keystore
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: |
@@ -129,6 +140,13 @@ jobs:
       - name: Build production release
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: gradle assembleRelease
+      - name: Verify production APK signature
+        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+          sha256sum app/build/outputs/apk/release/app-release.apk > app/build/outputs/apk/release/FAST-N1-v6.0-production.apk.sha256
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
@@ -140,7 +158,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FAST-N1-v6.0-build613-production
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/FAST-N1-v6.0-production.apk.sha256
           retention-days: 90
       - name: Publish signed production release
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
@@ -148,7 +168,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="fast-v6.0"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 613 : paiement carte sécurisé avant recherche chauffeur, champs carte tokenisés, prix flexible, virement bancaire et contrôles de course."
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 production signée."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 613 : APK de production signé, WebView durcie, suppression de l’auto-installation d’APK, paiement carte sécurisé, prix flexible, virement bancaire et contrôles de course."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
-          gh release upload "$TAG" FAST-N1-v6.0-production.apk --clobber
+          cp app/build/outputs/apk/release/FAST-N1-v6.0-production.apk.sha256 FAST-N1-v6.0-production.apk.sha256
+          gh release upload "$TAG" FAST-N1-v6.0-production.apk FAST-N1-v6.0-production.apk.sha256 --clobber
