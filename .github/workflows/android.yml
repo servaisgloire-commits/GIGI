@@ -59,11 +59,11 @@ jobs:
       - name: Verify production presentation
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
-          grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 613' app/build.gradle.kts
+          grep -q 'versionName = "V1 09.09.26"' app/build.gradle.kts
+          grep -q 'versionCode = 614' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
-          grep -q '"build": 613' updates/latest.json
+          grep -q '"build": 614' updates/latest.json
           grep -q 'touch-fix.js' app/src/main/assets/index.html
           grep -q 'flex-price.js' app/src/main/assets/index.html
           grep -q 'client-payment.js' app/src/main/assets/index.html
@@ -132,14 +132,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build613-debug
+          name: FAST-N1-V1-09.09.26-build614-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build613-production
+          name: FAST-N1-V1-09.09.26-build614-production
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 90
       - name: Publish signed production release
@@ -147,8 +147,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v6.0"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 final."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 613 : paiement carte sécurisé avant recherche chauffeur, champs carte tokenisés, prix flexible, virement bancaire et contrôles de course."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
-          gh release upload "$TAG" FAST-N1-v6.0-production.apk --clobber
+          TAG="fast-v1-09.09.26"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 V1 09.09.26" --notes "FAST N°1 V1 09.09.26 final."
+          gh release edit "$TAG" --notes "FAST N°1 V1 09.09.26 build 614 : navigation centralisée, trois onglets passager et téléchargement direct de la mise à jour APK."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-V1-09.09.26-production.apk
+          gh release upload "$TAG" FAST-N1-V1-09.09.26-production.apk --clobber

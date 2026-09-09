@@ -75,11 +75,32 @@ function editPricing(id){const p=state.pricing.find(x=>x.id===id);if(!p)return;m
 async function savePricing(id){const row={id,base_fare:Number($('prBase').value),per_km:Number($('prKm').value),per_minute:Number($('prMin').value),minimum_fare:Number($('prMinimum').value),booking_fee:Number($('prBooking').value),currency:$('prCurrency').value.trim().toUpperCase()};try{await request('/pricing/update',{method:'POST',body:JSON.stringify(row)});closeModal();toast('Tarif mis à jour');await refreshAll()}catch(e){toast(e.message)}}
 function exportRows(){switch(currentPage){case'drivers':return state.drivers.map(d=>{const p=profile(d.user_id),l=state.locations.find(x=>x.driver_id===d.user_id),pay=state.payouts.find(x=>x.driver_id===d.user_id);return{Nom:fullName(d.user_id),Telephone:p?.phone||'',Pays:l?.country_name||countryName(p?.country_code),Statut:d.status,Verifie:d.is_verified?'Oui':'Non',Note:d.rating,Courses:d.total_rides,Paie:pay?.payout_status||'non configurée'}});case'clients':return state.profiles.filter(p=>String(p.role)==='client').map(p=>({Nom:fullName(p.id),Telephone:p.phone||'',Pays:countryName(p.country_code),Inscription:p.created_at,Courses:state.rides.filter(r=>r.client_id===p.id).length}));case'documents':return state.documents.map(d=>({Chauffeur:fullName(d.driver_id),Type:d.document_type,Fichier:d.file_name,Pays:countryName(d.country_code),Statut:d.status,Motif:d.rejection_reason||'',Date:d.created_at}));case'payments':return state.payments.map(p=>({Date:p.created_at,Client:fullName(p.user_id),Course:p.ride_id,Methode:p.provider||p.method_type,Montant:p.amount,Devise:p.currency,Statut:p.status,Reference:p.provider_reference||''}));case'payouts':return state.payouts.map(p=>({Chauffeur:fullName(p.driver_id),Pays:countryName(p.country_code),Mode:p.payout_method,Titulaire:p.account_holder,Operateur:p.mobile_operator,Telephone:p.phone_number,Banque:p.bank_name,Compte:p.iban_or_account,SWIFT:p.bank_bic_swift,Devise:p.payout_currency,Statut:p.payout_status}));case'rides':return state.rides.map(r=>({Date:r.created_at,Pays:r.pickup_country_name||countryName(r.pickup_country_code),Client:fullName(r.client_id),Chauffeur:fullName(r.driver_id),Depart:r.pickup_address,Destination:r.destination_address,Prix:r.final_price??r.estimated_price,Devise:r.currency,Paiement:r.payment_method,Statut:r.status}));case'markets':return state.pricing.map(p=>({Pays:countryName(p.country_code),Code:p.country_code,Service:p.service_type,Base:p.base_fare,ParKm:p.per_km,ParMinute:p.per_minute,Minimum:p.minimum_fare,Reservation:p.booking_fee,Devise:p.currency}));default:return[{Indicateur:'Clients',Valeur:state.profiles.filter(p=>String(p.role)==='client').length},{Indicateur:'Chauffeurs',Valeur:state.drivers.length},{Indicateur:'Courses',Valeur:state.rides.length},{Indicateur:'Paiements',Valeur:state.payments.length},{Indicateur:'Documents en attente',Valeur:state.documents.filter(d=>d.status==='pending').length}]}}
 function exportExcel(){if(!window.XLSX)return toast('Module Excel indisponible');try{const ws=XLSX.utils.json_to_sheet(exportRows()),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,pageTitle(currentPage).slice(0,31));XLSX.writeFile(wb,`FAST_${currentPage}_${new Date().toISOString().slice(0,10)}.xlsx`)}catch(e){toast('Export impossible : '+e.message)}}
-function switchPage(page){currentPage=page;document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===`page-${page}`));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));$('pageTitle').textContent=pageTitle(page);if(innerWidth<761)window.scrollTo({top:0,behavior:'smooth'})}
+const workspaces={
+  dashboard:{title:'Vue d’ensemble',pages:['dashboard','rides']},
+  drivers:{title:'Personnes',pages:['drivers','clients','documents']},
+  payments:{title:'Finances',pages:['payments','payouts']},
+  markets:{title:'Configuration',pages:['markets']}
+};
+function switchPage(page){
+  const key=Object.keys(workspaces).find(k=>workspaces[k].pages.includes(page))||'dashboard';
+  const workspace=workspaces[key];
+  currentPage=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',workspace.pages.includes(p.id.replace('page-',''))));
+  document.querySelectorAll('#nav button').forEach(b=>{
+    const active=b.dataset.page===key;
+    b.classList.toggle('active',active);
+    if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
+  $('pageTitle').textContent=workspace.title;
+  const selector=$('exportScope');
+  selector.replaceChildren(...workspace.pages.map(p=>new Option(pageTitle(p),p)));
+  selector.value=page;
+  if(innerWidth<761)window.scrollTo({top:0,behavior:'smooth'});
+}
 function wire(){
-  $('loginBtn').onclick=login;$('loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginPassword').focus()});$('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('logoutBtn').onclick=()=>logout();$('refreshBtn').onclick=refreshAll;$('exportBtn').onclick=exportExcel;$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal()};
+  $('loginBtn').onclick=login;$('loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginPassword').focus()});$('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('logoutBtn').onclick=()=>logout();$('refreshBtn').onclick=refreshAll;$('exportBtn').onclick=exportExcel;$('exportScope').onchange=e=>{currentPage=e.target.value};$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal()};
   document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>switchPage(b.dataset.page));$('driverSearch').oninput=renderDrivers;$('driverCountryFilter').onchange=renderDrivers;$('clientSearch').oninput=renderClients;$('docStatusFilter').onchange=renderDocuments;$('paymentStatusFilter').onchange=renderPayments;$('rideStatusFilter').onchange=renderRides;$('newMarketBtn').onclick=()=>editMarket('');
 }
-async function boot(){wire();setLoginVisible(true);if(!adminToken)return;try{setLoginVisible(false);await refreshAll()}catch{logout(true)}}
+async function boot(){wire();switchPage('dashboard');setLoginVisible(true);if(!adminToken)return;try{setLoginVisible(false);await refreshAll()}catch{logout(true)}}
 window.closeModal=closeModal;window.addEventListener('load',boot,{once:true});
 })();
