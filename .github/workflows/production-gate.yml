@@ -82,8 +82,9 @@ jobs:
           node --check app/src/main/assets/client-payment.js
           node --check app/src/main/assets/car-marker.js
           node --check app/src/main/assets/trip-controls.js
-          grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 614' app/build.gradle.kts
+          grep -q 'versionName = "6.0.1"' app/build.gradle.kts
+          grep -q 'versionCode = 615' app/build.gradle.kts
+          # latest.json reste volontairement sur la dernière APK signée publiée (build 614)
           grep -q '"build": 614' updates/latest.json
           grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
           grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
@@ -144,6 +145,6 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0-build614-debug-apk
+          name: FAST-production-gate-v6.0.1-build615-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
