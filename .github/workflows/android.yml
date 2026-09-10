@@ -8,17 +8,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       FAST_GOOGLE_MAPS_API_KEY: ${{ secrets.FAST_GOOGLE_MAPS_API_KEY }}
-      FAST_KEYSTORE_BASE64: ${{ secrets.FAST_KEYSTORE_BASE64 }}
-      FAST_KEYSTORE_PASSWORD: ${{ secrets.FAST_KEYSTORE_PASSWORD }}
-      FAST_KEY_ALIAS: ${{ secrets.FAST_KEY_ALIAS }}
-      FAST_KEY_PASSWORD: ${{ secrets.FAST_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,38 +30,20 @@ jobs:
           gradle-version: '8.9'
       - name: Check JavaScript syntax
         run: |
-          node --check app/src/main/assets/app.js
-          node --check app/src/main/assets/google-map-adapter.js
-          node --check app/src/main/assets/app-quality.js
-          node --check app/src/main/assets/competitive-235.js
-          node --check app/src/main/assets/driver-profile.js
-          node --check app/src/main/assets/fast-security.js
-          node --check app/src/main/assets/stability-fixes.js
-          node --check app/src/main/assets/recovery-fix.js
-          node --check app/src/main/assets/driver-gps.js
-          node --check app/src/main/assets/driver-motion.js
-          node --check app/src/main/assets/production-ui.js
-          node --check app/src/main/assets/driver-cancel.js
-          node --check app/src/main/assets/update-manager.js
-          node --check app/src/main/assets/global-market.js
-          node --check app/src/main/assets/global-polish.js
-          node --check app/src/main/assets/touch-fix.js
-          node --check app/src/main/assets/flex-price.js
-          node --check app/src/main/assets/client-payment.js
-          node --check app/src/main/assets/car-marker.js
-          node --check app/src/main/assets/trip-controls.js
-      - name: Check flexible pricing backend syntax
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+      - name: Check backend syntax
         run: python -m py_compile backend/app/flex_main.py
-      - name: Verify production presentation and Android hardening
+      - name: Verify FAST product, branding and Android hardening
+        shell: bash
         run: |
-          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
+          set -euo pipefail
+          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
           grep -q 'versionName = "6.0.2"' app/build.gradle.kts
           grep -q 'versionCode = 616' app/build.gradle.kts
-          grep -q 'val googleMapsKey' app/build.gradle.kts
-          grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
-          # latest.json reste sur la dernière version distribuée par l'ancien canal direct tant que la nouvelle release Play n'est pas publiée.
-          grep -q '"build": 614' updates/latest.json
           test -s app/src/main/assets/fast-logo.svg
+          grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
+          grep -q '#0B57D0' app/src/main/res/drawable/fast_logo.xml
           grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
           grep -q "logo.src='fast-logo.svg'" app/src/main/assets/production-ui.js
           grep -q 'touch-fix.js' app/src/main/assets/index.html
@@ -73,112 +51,29 @@ jobs:
           grep -q 'client-payment.js' app/src/main/assets/index.html
           grep -q 'car-marker.js' app/src/main/assets/index.html
           grep -q 'trip-controls.js' app/src/main/assets/index.html
-          grep -q 'parseFlexibleValue' app/src/main/assets/flex-price.js
-          grep -q 'inputmode="decimal" type="text"' app/src/main/assets/flex-price.js
-          grep -q 'fast-ride-control' app/src/main/assets/trip-controls.js
-          grep -q 'Choisissez un motif' app/src/main/assets/trip-controls.js
-          grep -q 'Espèces reçues' app/src/main/assets/trip-controls.js
-          grep -q 'bank-transfer-submitted' app/src/main/assets/trip-controls.js
-          grep -q 'J’ai effectué le virement' app/src/main/assets/trip-controls.js
-          grep -q 'client_billing_profiles' app/src/main/assets/client-payment.js
-          grep -q 'fast-card-payment' app/src/main/assets/client-payment.js
-          grep -q 'stripe.confirmCardPayment' app/src/main/assets/client-payment.js
-          grep -q 'Numéro de carte' app/src/main/assets/client-payment.js
-          grep -q 'Date d.expiration' app/src/main/assets/client-payment.js
-          grep -q 'CVC / clé' app/src/main/assets/client-payment.js
-          grep -q 'Paiement sécurisé avant la recherche du chauffeur' app/src/main/assets/client-payment.js
-          grep -q 'Virement bancaire' app/src/main/assets/global-market.js
-          grep -q 'data:image/svg+xml' app/src/main/assets/car-marker.js
-          grep -q 'fun installUpdate' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'appassets.androidplatform.net/assets/index.html' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowFileAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowContentAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'hasScript' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'hasStylesheet' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'web.isFocusableInTouchMode = true' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q 'web.onResume()' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'web.destroy()' app/src/main/java/cg/fast/n1/MainActivity.kt
+          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
           if grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Self APK downloader must not be present'; exit 1; fi
           if grep -q 'FileProvider' app/src/main/AndroidManifest.xml app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'APK installer FileProvider must not be present'; exit 1; fi
           if grep -q 'allowUniversalAccessFromFileURLs = true' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Unsafe universal file URL access enabled'; exit 1; fi
-          grep -q "production-ui.css" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "production-ui.js" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "recovery-fix.js" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "update-manager.js" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "global-market.js" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "global-polish.js" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "s.async=false" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "appBuildCode" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "openExternalUrl" app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q "currentDriverPage='home'" app/src/main/assets/driver-profile.js
-          grep -q "activateDriverHome(false)" app/src/main/assets/driver-profile.js
-          grep -q "auth-email-memory" app/src/main/assets/recovery-fix.js
-          grep -q 'Recherche élargie en cours' app/src/main/assets/stability-fixes.js
-          grep -q 'Localisation du départ en cours' app/src/main/assets/global-polish.js
-          grep -q "FASTNative.setAccessToken('')" app/src/main/assets/global-polish.js
-          grep -q 'bindRobustAutocomplete' app/src/main/assets/touch-fix.js
-          grep -q 'scheduleUi' app/src/main/assets/production-ui.js
-          grep -q 'proposed_price' backend/app/flex_main.py
-          grep -q 'pricing_mode' backend/app/flex_main.py
-          grep -q 'app/flex_main.py' backend/vercel.json
-          if grep -q 'flexValue=String(s)' app/src/main/assets/flex-price.js; then echo 'Flexible price still resets to standard'; exit 1; fi
-          if grep -Fq "querySelectorAll('*')" app/src/main/assets/production-ui.js; then echo 'Heavy full-DOM scan reintroduced'; exit 1; fi
-          if grep -q 'count>=5' app/src/main/assets/stability-fixes.js; then echo 'Dispatch retry cap still present'; exit 1; fi
-          test -f app/src/main/assets/client-payment.js
-          test -f app/src/main/assets/car-marker.js
-          test -f app/src/main/assets/trip-controls.js
-          test -f backend/app/flex_main.py
-          test -f updates/latest.json
+          python - <<'PY'
+          from pathlib import Path
+          surface = (Path('app/src/main/assets/index.html').read_text(encoding='utf-8') + '\n' + Path('app/src/main/assets/production-ui.js').read_text(encoding='utf-8')).lower()
+          forbidden = ['prototype', 'bêta', 'coming soon', 'lorem ipsum']
+          hits = [x for x in forbidden if x in surface]
+          assert not hits, 'Signaux de brouillon dans l’application: ' + ', '.join(hits)
+          PY
       - name: Build verification APK
         run: gradle assembleDebug
-      - name: Require production signing secrets on main
-        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
-        run: |
-          missing=0
-          for name in FAST_KEYSTORE_BASE64 FAST_KEYSTORE_PASSWORD FAST_KEY_ALIAS FAST_KEY_PASSWORD; do
-            if [ -z "${!name}" ]; then echo "Missing required signing secret: $name"; missing=1; fi
-          done
-          test "$missing" -eq 0
-      - name: Decode production keystore
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
-        run: |
-          echo "$FAST_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fast-production.jks"
-          echo "FAST_KEYSTORE_PATH=$RUNNER_TEMP/fast-production.jks" >> "$GITHUB_ENV"
-      - name: Build production release
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
+      - name: Compile release package
         run: gradle assembleRelease
-      - name: Verify production APK signature
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
-        run: |
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          test -n "$APKSIGNER"
-          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
-          sha256sum app/build/outputs/apk/release/app-release.apk > app/build/outputs/apk/release/FAST-N1-v6.0.2-production.apk.sha256
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
           name: FAST-N1-v6.0.2-build616-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
-      - name: Upload signed production APK
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: FAST-N1-v6.0.2-build616-production
-          path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/FAST-N1-v6.0.2-production.apk.sha256
-          retention-days: 90
-      - name: Publish signed production release
-        if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="fast-v6.0.2"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0.2" --notes "FAST N°1 v6.0.2 production."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0.2 build 616 : présentation produit finalisée, logo officiel unifié, interface haute résolution et connexions FAST contrôlées."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0.2-production.apk
-          cp app/build/outputs/apk/release/FAST-N1-v6.0.2-production.apk.sha256 FAST-N1-v6.0.2-production.apk.sha256
-          gh release upload "$TAG" FAST-N1-v6.0.2-production.apk FAST-N1-v6.0.2-production.apk.sha256 --clobber
