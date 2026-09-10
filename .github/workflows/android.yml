@@ -60,10 +60,10 @@ jobs:
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           grep -q 'versionName = "6.0"' app/build.gradle.kts
-          grep -q 'versionCode = 613' app/build.gradle.kts
+          grep -q 'versionCode = 614' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
-          grep -q '"build": 613' updates/latest.json
+          grep -q '"build": 614' updates/latest.json
           grep -q 'touch-fix.js' app/src/main/assets/index.html
           grep -q 'flex-price.js' app/src/main/assets/index.html
           grep -q 'client-payment.js' app/src/main/assets/index.html
@@ -90,6 +90,11 @@ jobs:
           grep -q 'appassets.androidplatform.net/assets/index.html' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowFileAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowContentAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'hasScript' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'hasStylesheet' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'web.isFocusableInTouchMode = true' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'web.onResume()' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'web.destroy()' app/src/main/java/cg/fast/n1/MainActivity.kt
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
           if grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Self APK downloader must not be present'; exit 1; fi
           if grep -q 'FileProvider' app/src/main/AndroidManifest.xml app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'APK installer FileProvider must not be present'; exit 1; fi
@@ -150,14 +155,14 @@ jobs:
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build613-debug
+          name: FAST-N1-v6.0-build614-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0-build613-production
+          name: FAST-N1-v6.0-build614-production
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/FAST-N1-v6.0-production.apk.sha256
@@ -169,7 +174,7 @@ jobs:
         run: |
           TAG="fast-v6.0"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0" --notes "FAST N°1 v6.0 production signée."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 613 : APK de production signé, WebView durcie, suppression de l’auto-installation d’APK, paiement carte sécurisé, prix flexible, virement bancaire et contrôles de course."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0 build 614 : WebView plus stable, prévention du double chargement des scripts/styles, meilleur focus tactile Android, APK signée, paiement carte sécurisé, prix flexible, virement bancaire et contrôles de course."
           cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0-production.apk
           cp app/build/outputs/apk/release/FAST-N1-v6.0-production.apk.sha256 FAST-N1-v6.0-production.apk.sha256
           gh release upload "$TAG" FAST-N1-v6.0-production.apk FAST-N1-v6.0-production.apk.sha256 --clobber
