@@ -61,6 +61,8 @@ class MainActivity : AppCompatActivity() {
         web.setBackgroundColor(android.graphics.Color.WHITE)
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         web.overScrollMode = View.OVER_SCROLL_NEVER
+        web.isFocusable = true
+        web.isFocusableInTouchMode = true
         with(web.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -156,8 +158,10 @@ class MainActivity : AppCompatActivity() {
                 val qualityLayer = """
                     (function(){
                       document.documentElement.style.webkitFontSmoothing='antialiased';
-                      function css(id,href){if(!document.getElementById(id)){var l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l);}}
-                      function js(id,src){if(!document.getElementById(id)){var s=document.createElement('script');s.id=id;s.async=false;s.src=src;document.body.appendChild(s);}}
+                      function hasStylesheet(href){return Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(function(l){return (l.getAttribute('href')||'').endsWith(href);});}
+                      function hasScript(src){return Array.from(document.scripts).some(function(s){return (s.getAttribute('src')||'').endsWith(src);});}
+                      function css(id,href){if(document.getElementById(id)||hasStylesheet(href))return;var l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href=href;document.head.appendChild(l);}
+                      function js(id,src){if(document.getElementById(id)||hasScript(src))return;var s=document.createElement('script');s.id=id;s.async=false;s.src=src;document.body.appendChild(s);}
                       css('fast-polish-css','app-polish.css');
                       css('fast-driver-profile-css','driver-profile.css');
                       css('fast-production-ui-css','production-ui.css');
@@ -171,16 +175,46 @@ class MainActivity : AppCompatActivity() {
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(qualityLayer, null)
+                view?.requestFocus(View.FOCUS_DOWN)
             }
         }
 
         web.addJavascriptInterface(FastBridge(), "FASTNative")
         web.loadUrl("https://appassets.androidplatform.net/assets/index.html")
         setContentView(web)
+        web.requestFocus(View.FOCUS_DOWN)
 
         val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) perms.add(Manifest.permission.POST_NOTIFICATIONS)
         ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1001)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::web.isInitialized) {
+            web.onResume()
+            web.resumeTimers()
+            web.requestFocus(View.FOCUS_DOWN)
+        }
+    }
+
+    override fun onPause() {
+        if (::web.isInitialized) web.onPause()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        pendingFileCallback?.onReceiveValue(null)
+        pendingFileCallback = null
+        if (::web.isInitialized) {
+            web.removeJavascriptInterface("FASTNative")
+            web.stopLoading()
+            web.loadUrl("about:blank")
+            web.clearHistory()
+            web.removeAllViews()
+            web.destroy()
+        }
+        super.onDestroy()
     }
 
     private fun createDriverOfferChannel() {
