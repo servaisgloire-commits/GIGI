@@ -17,7 +17,7 @@
         android:roundIcon="@drawable/fast_logo">
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="portrait"
+            android:resizeableActivity="true"
             android:hardwareAccelerated="true"
             android:exported="true">
             <intent-filter>
