@@ -59,12 +59,15 @@ jobs:
       - name: Verify production presentation and Android hardening
         run: |
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
-          grep -q 'versionName = "6.0.1"' app/build.gradle.kts
-          grep -q 'versionCode = 615' app/build.gradle.kts
+          grep -q 'versionName = "6.0.2"' app/build.gradle.kts
+          grep -q 'versionCode = 616' app/build.gradle.kts
           grep -q 'val googleMapsKey' app/build.gradle.kts
           grep -q 'FAST_GOOGLE_MAPS_API_KEY' app/build.gradle.kts
-          # latest.json reste sur la dernière version signée effectivement publiée tant que 6.0.1 n'est pas signée.
+          # latest.json reste sur la dernière version distribuée par l'ancien canal direct tant que la nouvelle release Play n'est pas publiée.
           grep -q '"build": 614' updates/latest.json
+          test -s app/src/main/assets/fast-logo.svg
+          grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
+          grep -q "logo.src='fast-logo.svg'" app/src/main/assets/production-ui.js
           grep -q 'touch-fix.js' app/src/main/assets/index.html
           grep -q 'flex-price.js' app/src/main/assets/index.html
           grep -q 'client-payment.js' app/src/main/assets/index.html
@@ -152,30 +155,30 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
-          sha256sum app/build/outputs/apk/release/app-release.apk > app/build/outputs/apk/release/FAST-N1-v6.0.1-production.apk.sha256
+          sha256sum app/build/outputs/apk/release/app-release.apk > app/build/outputs/apk/release/FAST-N1-v6.0.2-production.apk.sha256
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0.1-build615-debug
+          name: FAST-N1-v6.0.2-build616-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
       - name: Upload signed production APK
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0.1-build615-production
+          name: FAST-N1-v6.0.2-build616-production
           path: |
             app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/FAST-N1-v6.0.1-production.apk.sha256
+            app/build/outputs/apk/release/FAST-N1-v6.0.2-production.apk.sha256
           retention-days: 90
       - name: Publish signed production release
         if: ${{ env.FAST_KEYSTORE_BASE64 != '' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="fast-v6.0.1"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0.1" --notes "FAST N°1 v6.0.1 production signée avec la clé FAST existante."
-          gh release edit "$TAG" --notes "FAST N°1 v6.0.1 build 615 : interface haute résolution, responsive tablette/écran pliable, reconnexion Google Maps/Supabase/API FAST et chargement fiabilisé."
-          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0.1-production.apk
-          cp app/build/outputs/apk/release/FAST-N1-v6.0.1-production.apk.sha256 FAST-N1-v6.0.1-production.apk.sha256
-          gh release upload "$TAG" FAST-N1-v6.0.1-production.apk FAST-N1-v6.0.1-production.apk.sha256 --clobber
+          TAG="fast-v6.0.2"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FAST N°1 v6.0.2" --notes "FAST N°1 v6.0.2 production."
+          gh release edit "$TAG" --notes "FAST N°1 v6.0.2 build 616 : présentation produit finalisée, logo officiel unifié, interface haute résolution et connexions FAST contrôlées."
+          cp app/build/outputs/apk/release/app-release.apk FAST-N1-v6.0.2-production.apk
+          cp app/build/outputs/apk/release/FAST-N1-v6.0.2-production.apk.sha256 FAST-N1-v6.0.2-production.apk.sha256
+          gh release upload "$TAG" FAST-N1-v6.0.2-production.apk FAST-N1-v6.0.2-production.apk.sha256 --clobber
