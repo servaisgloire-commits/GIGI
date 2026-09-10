@@ -3,7 +3,7 @@
 const q=id=>document.getElementById(id);
 let lastSearching=null,lastRouteReady=null,lastDriverProfilePrepared=false,resendCooldownTimer=null,uiTimer=null;
 
-function removePrototypeSignals(){
+function cleanPresentationSignals(){
   document.querySelectorAll('.map-status,.safety-row,.fast-trust-strip,.local-fleet-card,.fast-driver-advantages').forEach(el=>el.remove());
   const engine=document.querySelector('.map-engine');if(engine&&engine.style.display!=='none')engine.style.display='none';
   const dispatch=q('dispatchDetails');if(dispatch&&dispatch.style.display!=='none')dispatch.style.display='none';
@@ -12,6 +12,23 @@ function removePrototypeSignals(){
     if(/Aucun chauffeur adapté dans la première vague/i.test(t))booking.textContent='Nous élargissons la recherche autour de vous…';
     else if(/Nouvelle recherche chauffeur/i.test(t))booking.textContent='Recherche en cours…';
   }
+}
+
+function ensureOfficialBranding(){
+  document.querySelectorAll('.fast-mark').forEach(mark=>{
+    if(mark.querySelector('.fast-official-logo'))return;
+    mark.style.position='relative';
+    mark.style.overflow='hidden';
+    const logo=document.createElement('img');
+    logo.className='fast-official-logo';
+    logo.src='fast-logo.svg';
+    logo.alt='Logo FAST N°1';
+    logo.decoding='async';
+    Object.assign(logo.style,{position:'absolute',inset:'0',width:'100%',height:'100%',objectFit:'contain',display:'block',zIndex:'4'});
+    logo.addEventListener('error',()=>logo.remove(),{once:true});
+    mark.appendChild(logo);
+  });
+  document.querySelectorAll('.fast-word').forEach(word=>{if((word.textContent||'').trim()==='FAST')word.setAttribute('aria-label','FAST N°1')});
 }
 
 function ensureClientPrompt(){
@@ -79,14 +96,13 @@ function polishSearchingCard(){
   const box=q('bookingState');if(!box)return;
   const msg=q('bookingMessage');if(msg&&/Recherche|chauffeur|nouvelle/i.test((msg.textContent||'').trim()))msg.textContent='Nous cherchons le meilleur chauffeur pour vous';
   if(!box.querySelector('.fast-search-subtitle')){
-    const sub=document.createElement('span');sub.className='fast-search-subtitle';sub.textContent='Merci de patienter…';(msg||box).insertAdjacentElement('afterend',sub);
-    const eta=document.createElement('div');eta.className='fast-search-eta';eta.innerHTML='Temps d’attente estimé<strong>2 – 4 min</strong>';box.appendChild(eta);
+    const sub=document.createElement('span');sub.className='fast-search-subtitle';sub.textContent='Recherche active dans votre zone';(msg||box).insertAdjacentElement('afterend',sub);
   }
 }
 
 function updateClientState(){
   if(document.body.classList.contains('driver-mode'))return;
-  ensureClientPrompt();ensurePickupChoice();ensureQuickDestinations();removePrototypeSignals();
+  ensureOfficialBranding();ensureClientPrompt();ensurePickupChoice();ensureQuickDestinations();cleanPresentationSignals();
   const ready=routeIsReady(),searching=searchIsActive(),active=rideIsActive();
   if(lastRouteReady!==ready){document.body.classList.toggle('fast-client-route-ready',ready);lastRouteReady=ready}
   if(lastSearching!==searching){document.body.classList.toggle('fast-client-searching',searching);lastSearching=searching}
@@ -112,7 +128,7 @@ function prepareDriverProfile(){
   if(account){account.style.marginTop='10px';const logout=account.querySelector('#driverLogoutBtn');if(logout)logout.textContent='Se déconnecter'}
   lastDriverProfilePrepared=true;
 }
-function updateDriverState(){if(!document.body.classList.contains('driver-mode'))return;removePrototypeSignals();prepareDriverProfile()}
+function updateDriverState(){if(!document.body.classList.contains('driver-mode'))return;ensureOfficialBranding();cleanPresentationSignals();prepareDriverProfile()}
 
 function startResendCooldown(button,seconds){clearInterval(resendCooldownTimer);let remaining=Math.max(1,Math.ceil(Number(seconds)||120));button.disabled=true;const render=()=>{button.textContent=`Nouvel envoi dans ${remaining} s`;remaining-=1;if(remaining<0){clearInterval(resendCooldownTimer);button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};render();resendCooldownTimer=setInterval(render,1000)}
 async function readJson(response){let data={};try{data=await response.json()}catch(e){}return data}
@@ -126,12 +142,12 @@ function patchAuthResend(){
   button.onclick=async()=>{const email=(q('signupEmail')?.value||q('loginEmail')?.value||'').trim();if(!email)return toast('Entrez votre adresse e-mail');button.disabled=true;button.textContent='Envoi en cours…';try{const data=await requestResendWithMemory(email);toast(data.message||'Demande prise en compte');startResendCooldown(button,data.retry_after_seconds||120)}catch(e){toast(String(e?.message||'L’envoi est momentanément indisponible.'));button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};
 }
 
-function boot(){removePrototypeSignals();updateClientState();updateDriverState();patchAuthResend()}
+function boot(){ensureOfficialBranding();cleanPresentationSignals();updateClientState();updateDriverState();patchAuthResend()}
 function scheduleUi(){clearTimeout(uiTimer);uiTimer=setTimeout(boot,90)}
 window.addEventListener('load',()=>{boot();setTimeout(boot,350);setTimeout(boot,1000)});
 document.addEventListener('click',scheduleUi,true);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleUi()});
 window.addEventListener('fast:ride-restored',scheduleUi);window.addEventListener('fast:ride-cancelled',scheduleUi);
 window.addEventListener('online',scheduleUi);
-setInterval(()=>{updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()},3500);
+setInterval(()=>{ensureOfficialBranding();updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()},3500);
 })();
