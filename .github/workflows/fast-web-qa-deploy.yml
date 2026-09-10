@@ -1,0 +1,140 @@
+name: FAST Web QA and Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'admin/**'
+      - '.github/workflows/fast-web-qa-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-qa:
+    name: Vérifier sites FAST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Vérifier syntaxe JavaScript admin
+        run: |
+          node --check admin/app.js
+          node --check admin/admin-users.js
+          node --check admin/payment-actions.js
+          node --check admin/business-workspace.js
+          node --check admin/export-modern.js
+          node --check admin/site-editor-refresh.js
+      - name: Vérifier navigation, APK et absence CSV
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          admin = Path('admin/index.html').read_text(encoding='utf-8')
+          public = Path('admin/site/index.html').read_text(encoding='utf-8')
+          users = Path('admin/admin-users.js').read_text(encoding='utf-8')
+          expected_admin = ['dashboard','drivers','clients','rides','documents','payments','payouts','markets','exports','website','admins']
+          nav_pages = re.findall(r'data-page="([^"]+)"', admin)
+          unique_nav = list(dict.fromkeys(nav_pages))
+          assert unique_nav == expected_admin, f'Onglets admin inattendus: {unique_nav}'
+          for page in expected_admin:
+              assert f'id="page-{page}"' in admin, f'Section admin absente: {page}'
+
+          public_sections = ['services','about','safety','countries','download','contact']
+          for section in public_sections:
+              assert f'href="#{section}"' in public, f'Lien public absent: {section}'
+              assert f'id="{section}"' in public, f'Section publique absente: {section}'
+
+          apk = 'https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v0.5.0/FAST-N1-v0.5.0.apk'
+          assert public.count(apk) >= 3, 'Le téléchargement APK doit être visible dans la navigation, le hero et la section Application.'
+          assert Path('admin/site/fast-logo.svg').is_file(), 'Logo public autonome absent.'
+
+          assert "AUTH_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api'" in users
+          assert "AUTH_API+'/register'" in users
+          assert 'Créer un compte administrateur' in users
+          assert 'en attente de validation Supabase' in users
+          assert 'is_active' in users
+
+          forbidden = ['.csv', 'FileReader', 'fast_admin_datasets']
+          scan_files = [p for p in Path('admin').rglob('*') if p.is_file() and p.suffix.lower() in {'.html','.js','.css','.json'}]
+          hits = []
+          for p in scan_files:
+              text = p.read_text(encoding='utf-8', errors='ignore')
+              for token in forbidden:
+                  if token in text:
+                      hits.append(f'{p}: {token}')
+          assert not hits, 'Fonctions/données CSV encore présentes: ' + ', '.join(hits)
+          print(f'OK: {len(expected_admin)}/{len(expected_admin)} onglets admin reliés')
+          print(f'OK: {len(public_sections)}/{len(public_sections)} sections publiques reliées')
+          print('OK: 3 accès APK officiels présents')
+          print('OK: création admin en attente de validation Supabase')
+          print('OK: aucun import/jeu CSV dans le code FAST admin/public')
+          PY
+      - name: Vérifier release APK publiée
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location --head \
+            'https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v0.5.0/FAST-N1-v0.5.0.apk' \
+            >/dev/null
+
+  deploy-vercel:
+    name: Publier sur les deux projets Vercel existants
+    needs: web-qa
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Détecter l'autorisation Vercel
+        id: vercel
+        shell: bash
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo '::warning::Le secret GitHub VERCEL_TOKEN est absent. QA terminée, déploiement Vercel ignoré.'
+          fi
+      - uses: actions/setup-node@v5
+        if: steps.vercel.outputs.available == 'true'
+        with:
+          node-version: '22'
+      - name: Installer Vercel CLI
+        if: steps.vercel.outputs.available == 'true'
+        run: npm install --global vercel@latest
+      - name: Publier le site officiel FAST
+        if: steps.vercel.outputs.available == 'true'
+        shell: bash
+        run: |
+          mkdir -p admin/site/.vercel
+          printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_nuvIyl2pAuinnsTSRUktMbMyMU9j"}' > admin/site/.vercel/project.json
+          vercel deploy --prod --yes --token "$VERCEL_TOKEN" --cwd admin/site
+      - name: Publier FAST Administration
+        if: steps.vercel.outputs.available == 'true'
+        shell: bash
+        run: |
+          mkdir -p admin/.vercel
+          printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_uLsneU5g12XU6Ld8Xlhf9A2DUbts"}' > admin/.vercel/project.json
+          vercel deploy --prod --yes --token "$VERCEL_TOKEN" --cwd admin
+      - name: Vérifier les productions publiées
+        if: steps.vercel.outputs.available == 'true'
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5 6; do
+            PUBLIC="$(curl -fsSL https://fast-n1-officiel.vercel.app || true)"
+            ADMIN="$(curl -fsSL https://the-fast-n1-admin.vercel.app || true)"
+            if grep -q 'Télécharger FAST pour Android' <<<"$PUBLIC" && \
+               grep -q 'aria-label="Navigation administration"' <<<"$ADMIN" && \
+               ! grep -q 'GIGI@9c7836628e931ea64afb335d82bbf553d1d6bcc6' <<<"$ADMIN"; then
+              echo 'OK: les deux domaines de production servent la nouvelle version FAST.'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Les domaines Vercel ne servent pas encore la nouvelle version.'
+          exit 1
