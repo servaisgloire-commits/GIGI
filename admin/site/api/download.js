@@ -4,29 +4,35 @@ export default async function handler(req, res) {
     return res.status(405).send('Method Not Allowed');
   }
 
-  const apkUrl = 'https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-11-09-2026/FAST-N1-11-09-2026-ANDROID.apk';
-
   try {
+    const manifestResponse = await fetch('https://raw.githubusercontent.com/servaisgloire-commits/GIGI/main/updates/latest.json', {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'FAST-N1-Official-Downloader/1.0' }
+    });
+    if (!manifestResponse.ok) throw new Error(`manifest HTTP ${manifestResponse.status}`);
+
+    const manifest = await manifestResponse.json();
+    const apkUrl = manifest.sourceApkUrl;
+    const fileName = manifest.fileName || 'FAST-N1-ANDROID.apk';
+    if (!apkUrl || !apkUrl.startsWith('https://github.com/servaisgloire-commits/GIGI/releases/download/')) {
+      throw new Error('Invalid APK source');
+    }
+
     const upstream = await fetch(apkUrl, {
       redirect: 'follow',
       headers: { 'User-Agent': 'FAST-N1-Official-Downloader/1.0' }
     });
-
-    if (!upstream.ok) {
-      return res.status(502).json({ ok: false, error: `APK upstream HTTP ${upstream.status}` });
-    }
+    if (!upstream.ok) throw new Error(`APK upstream HTTP ${upstream.status}`);
 
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    res.setHeader('Content-Disposition', 'attachment; filename="FAST-N1-11-09-2026-ANDROID.apk"');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/[^A-Za-z0-9._-]/g, '_')}"`);
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
     if (req.method === 'HEAD') return res.status(200).end();
 
     const buffer = Buffer.from(await upstream.arrayBuffer());
-    if (buffer.length < 1000000) {
-      return res.status(502).json({ ok: false, error: 'APK file is unexpectedly small' });
-    }
+    if (buffer.length < 1000000) throw new Error('APK file is unexpectedly small');
     res.setHeader('Content-Length', String(buffer.length));
     return res.status(200).send(buffer);
   } catch (error) {
