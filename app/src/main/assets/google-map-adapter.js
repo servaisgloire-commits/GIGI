@@ -1,26 +1,54 @@
 /* FAST Google Maps adapter - Google Maps only, Android WebView, resilient loading. */
 (function(){
+  /* Android WebView peut exceptionnellement refuser localStorage pendant l'initialisation.
+     L'application doit continuer à démarrer dans ce cas au lieu de casser app.js. */
+  try{
+    const storage=window.localStorage,probe='__fast_storage_probe__';
+    storage.setItem(probe,'1');storage.removeItem(probe);
+  }catch(e){
+    try{
+      const memory=Object.create(null);
+      const fallbackStorage={
+        getItem:key=>Object.prototype.hasOwnProperty.call(memory,key)?memory[key]:null,
+        setItem:(key,value)=>{memory[key]=String(value)},
+        removeItem:key=>{delete memory[key]},
+        clear:()=>{Object.keys(memory).forEach(key=>delete memory[key])},
+        key:index=>Object.keys(memory)[index]||null,
+        get length(){return Object.keys(memory).length}
+      };
+      Object.defineProperty(window,'localStorage',{configurable:true,value:fallbackStorage});
+    }catch(ignore){}
+  }
+
   const state={ready:false,loading:false,waiters:[],timer:null,error:'',attempts:0};
   window.FAST_MAP_ENGINE='google';
   function apiKey(){try{return window.FASTNative&&FASTNative.googleMapsApiKey?String(FASTNative.googleMapsApiKey()||'').trim():''}catch(e){return ''}}
   function setStatus(text){const t=document.getElementById('mapEngineText');if(t)t.textContent=text}
+  function mapNode(){return document.getElementById('map')}
+  function clearFallback(){const el=mapNode();el?.querySelector?.('.fast-map-fallback')?.remove()}
+  function renderFallback(message){
+    const el=mapNode();if(!el||el.querySelector('.fast-map-fallback'))return;
+    const box=document.createElement('div');box.className='fast-map-fallback';
+    box.innerHTML='<div style="display:grid;place-items:center;height:100%;min-height:230px;padding:24px;text-align:center;background:linear-gradient(145deg,#eef4fb,#dfeaf7);color:#334155"><div><div style="font-size:34px;margin-bottom:10px">📍</div><b style="display:block;color:#0b57d0;margin-bottom:6px">FAST reste disponible</b><span style="font-size:12px;line-height:1.5">'+String(message||'Carte temporairement indisponible')+'. Vous pouvez continuer à utiliser les adresses et réserver votre trajet.</span></div></div>';
+    el.appendChild(box)
+  }
   function emit(){try{window.dispatchEvent(new CustomEvent('fast:google-map-status',{detail:{ready:state.ready,loading:state.loading,error:state.error,attempts:state.attempts}}))}catch(e){}}
-  function markReady(){state.ready=true;state.loading=false;state.error='';clearTimeout(state.timer);setStatus('Google Maps');emit();flush()}
-  function fail(message){state.ready=false;state.loading=false;state.error=String(message||'Carte indisponible');clearTimeout(state.timer);setStatus(state.error);console.error('FAST MAP:',state.error);emit()}
+  function markReady(){state.ready=true;state.loading=false;state.error='';clearTimeout(state.timer);clearFallback();setStatus('Google Maps');emit();flush()}
+  function fail(message){state.ready=false;state.loading=false;state.error=String(message||'Carte indisponible');clearTimeout(state.timer);setStatus(state.error);renderFallback(state.error);console.error('FAST MAP:',state.error);emit()}
   function loadGoogle(){
     if(state.ready||state.loading)return;
     if(window.google&&google.maps){markReady();return;}
     const key=apiKey();
-    if(!key){fail('Clé Google absente');return;}
+    if(!key){fail('Carte momentanément indisponible');return;}
     state.loading=true;state.error='';state.attempts+=1;setStatus('Chargement Google Maps…');emit();
     window.__fastGoogleMapsReady=markReady;
-    window.gm_authFailure=function(){fail('Clé Google Maps refusée ou non autorisée')};
+    window.gm_authFailure=function(){fail('Carte momentanément indisponible')};
     const old=document.getElementById('fast-google-maps-sdk');if(old)old.remove();
     const s=document.createElement('script');s.id='fast-google-maps-sdk';s.async=true;s.defer=true;s.referrerPolicy='origin';
     s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly&libraries=geometry&loading=async&callback=__fastGoogleMapsReady';
-    s.onerror=()=>{fail('Erreur réseau Google Maps');if(state.attempts<3&&navigator.onLine)setTimeout(retry,1200*state.attempts)};
+    s.onerror=()=>{fail('Connexion à la carte indisponible');if(state.attempts<3&&navigator.onLine)setTimeout(retry,1200*state.attempts)};
     document.head.appendChild(s);
-    state.timer=setTimeout(()=>{if(!state.ready){fail('Google Maps ne répond pas');if(state.attempts<3&&navigator.onLine)setTimeout(retry,1000)}},18000);
+    state.timer=setTimeout(()=>{if(!state.ready){fail('Carte momentanément indisponible');if(state.attempts<3&&navigator.onLine)setTimeout(retry,1000)}},18000);
   }
   function retry(){clearTimeout(state.timer);state.loading=false;state.error='';if(window.google&&google.maps){markReady();return}const old=document.getElementById('fast-google-maps-sdk');if(old)old.remove();setStatus('Reconnexion Google Maps…');setTimeout(loadGoogle,80)}
   function flush(){const q=state.waiters.splice(0);q.forEach(fn=>{try{fn()}catch(e){console.error(e)}})}
@@ -41,7 +69,7 @@
     _init(){
       const el=typeof this.opts.container==='string'?document.getElementById(this.opts.container):this.opts.container;
       if(!el){fail('Zone carte absente');return}
-      el.style.background='#e8eef6';
+      clearFallback();el.style.background='#e8eef6';
       this.gmap=new google.maps.Map(el,{center:toLatLng(this.opts.center||[15.2429,-4.2634]),zoom:number(this.opts.zoom,15),mapTypeControl:false,streetViewControl:false,fullscreenControl:false,rotateControl:false,clickableIcons:false,gestureHandling:'greedy',backgroundColor:'#e7edf5',disableDefaultUI:true,zoomControl:false,styles:fastMapStyle});
       this.loaded=true;
       google.maps.event.addListenerOnce(this.gmap,'idle',()=>{google.maps.event.trigger(this.gmap,'resize');this._emit('load');setStatus('Google Maps');emit()});
@@ -76,6 +104,7 @@
     setPopup(p){this.popup=p;return this}
     addTo(map){this.map=map;whenReady(()=>this._mount());return this}
     _mount(){if(!this.map||!this.map.gmap||!this.position)return;this.overlay=new google.maps.Marker({map:this.map.gmap,position:this.position});if(this.popup&&this.popup.html)this.overlay.addListener('click',()=>{if(!this.info)this.info=new google.maps.InfoWindow();this.info.setContent(this.popup.html);this.info.open({map:this.map.gmap,anchor:this.overlay})})}
+    getElement(){return this.el||null}
     remove(){if(this.overlay)this.overlay.setMap(null);if(this.info)this.info.close();this.overlay=null}
   }
   window.mapboxgl={Map:MapCompat,Marker:MarkerCompat,Popup:PopupCompat,LngLatBounds:BoundsCompat,accessToken:''};
