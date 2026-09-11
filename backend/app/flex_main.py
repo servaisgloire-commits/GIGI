@@ -1,5 +1,4 @@
 import asyncio
-import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -188,6 +187,10 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
     now = datetime.now(timezone.utc)
     db().table("dispatch_offers").update({"status": "expired"}).eq("ride_id", ride_id).eq("status", "offered").lt("expires_at", now.isoformat()).execute()
 
+    # fast_global_available_drivers is deliberately strict: verified + available +
+    # fresh GPS + requested vehicle type + exact pickup country, ordered by PostGIS
+    # geographic distance. Keeping this order guarantees that the first driver we
+    # can actually offer is the nearest eligible driver in the same country.
     rows = global_driver_rows(
         float(ride["pickup_lat"]),
         float(ride["pickup_lng"]),
@@ -203,28 +206,13 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
             "country_code": country_code,
         }
 
-    async def score_candidate(d):
-        rt = await route_info(
-            GlobalLocation(lat=float(d["latitude"]), lng=float(d["longitude"])),
-            GlobalLocation(lat=float(ride["pickup_lat"]), lng=float(ride["pickup_lng"])),
-        )
-        eta = rt["duration_min"]
-        distance = rt["distance_km"]
-        rating = float(d.get("rating") or 5.0)
-        hist = min(100, math.log10(max(1, int(d.get("total_rides") or 0)) + 1) / 3 * 100)
-        score = round(0.55 * eta + 0.30 * distance + 0.10 * (5 - rating) + 0.05 * (100 - hist) / 10, 4)
-        return {"score": score, "eta": eta, "distance": distance, "driver": d}
-
-    candidates = await asyncio.gather(*(score_candidate(x) for x in rows[:8]))
-    candidates.sort(key=lambda x: (x["score"], x["distance"]))
-
-    best = None
-    for candidate in candidates:
+    nearest = None
+    for driver in rows:
         active = (
             db()
             .table("dispatch_offers")
             .select("id")
-            .eq("driver_id", candidate["driver"]["driver_id"])
+            .eq("driver_id", driver["driver_id"])
             .eq("status", "offered")
             .gt("expires_at", now.isoformat())
             .limit(1)
@@ -233,17 +221,28 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
             or []
         )
         if not active:
-            best = candidate
+            nearest = driver
             break
-    if best is None:
-        return {"matched": False, "candidates": len(candidates), "reason": "drivers_already_offered"}
+
+    if nearest is None:
+        return {"matched": False, "candidates": len(rows), "reason": "drivers_already_offered"}
+
+    # Only one road ETA call is needed after the nearest eligible driver has been
+    # selected. Distance ranking itself remains the authoritative dispatch rule.
+    road = await route_info(
+        GlobalLocation(lat=float(nearest["latitude"]), lng=float(nearest["longitude"])),
+        GlobalLocation(lat=float(ride["pickup_lat"]), lng=float(ride["pickup_lng"])),
+    )
+    eta = int(road["duration_min"])
+    road_distance = float(road["distance_km"])
+    geographic_distance = float(nearest.get("distance_km") or road_distance)
+    dispatch_score = round(geographic_distance, 4)
 
     pricing_mode = ride.get("pricing_mode") or "standard"
     standard_price = float(ride.get("standard_price") or ride.get("estimated_price") or 0)
     offered_price = float(ride.get("customer_proposed_price") or ride.get("estimated_price") or standard_price)
     currency = ride.get("currency") or "USD"
 
-    dr = best["driver"]
     expires = (now + timedelta(seconds=25)).isoformat()
     offer = (
         db()
@@ -251,13 +250,13 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
         .insert(
             {
                 "ride_id": ride_id,
-                "driver_id": dr["driver_id"],
-                "vehicle_id": dr.get("vehicle_id"),
-                "distance_km": round(best["distance"], 2),
-                "eta_min": best["eta"],
-                "driver_rating": dr.get("rating"),
-                "driver_total_rides": dr.get("total_rides"),
-                "score": best["score"],
+                "driver_id": nearest["driver_id"],
+                "vehicle_id": nearest.get("vehicle_id"),
+                "distance_km": round(road_distance, 2),
+                "eta_min": eta,
+                "driver_rating": nearest.get("rating"),
+                "driver_total_rides": nearest.get("total_rides"),
+                "score": dispatch_score,
                 "status": "offered",
                 "expires_at": expires,
                 "standard_price": standard_price if standard_price > 0 else None,
@@ -271,10 +270,10 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
     )
     db().table("rides").update(
         {
-            "driver_id": dr["driver_id"],
-            "vehicle_id": dr.get("vehicle_id"),
-            "driver_eta_min": best["eta"],
-            "dispatch_score": best["score"],
+            "driver_id": nearest["driver_id"],
+            "vehicle_id": nearest.get("vehicle_id"),
+            "driver_eta_min": eta,
+            "dispatch_score": dispatch_score,
             "dispatch_attempts": int(ride.get("dispatch_attempts") or 0) + 1,
         }
     ).eq("id", ride_id).execute()
@@ -283,9 +282,9 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
     label = "Prix proposé" if pricing_mode == "flexible" else "Prix FAST"
     db().table("notifications").insert(
         {
-            "user_id": dr["driver_id"],
+            "user_id": nearest["driver_id"],
             "title": "Nouvelle course FAST",
-            "body": f"{label} {price_text} • Passager à {round(best['distance'], 1)} km • ETA {best['eta']} min",
+            "body": f"{label} {price_text} • Passager à {round(road_distance, 1)} km • ETA {eta} min",
             "data": {
                 "ride_id": ride_id,
                 "offer_id": offer["id"],
@@ -294,15 +293,20 @@ async def dispatch_flexible(ride_id: str, user: AuthUser = Depends(current_user)
                 "offered_price": offered_price,
                 "standard_price": standard_price,
                 "currency": currency,
+                "dispatch_rule": "nearest_same_country",
+                "geographic_distance_km": round(geographic_distance, 3),
             },
         }
     ).execute()
     return {
         "matched": True,
         "offer": offer,
-        "candidates": len(candidates),
+        "candidates": len(rows),
         "country_code": country_code,
         "same_country_only": True,
+        "dispatch_rule": "nearest_same_country",
+        "nearest_distance_km": round(geographic_distance, 3),
+        "road_distance_km": round(road_distance, 2),
         "pricing": {
             "mode": pricing_mode,
             "standard_price": standard_price,
