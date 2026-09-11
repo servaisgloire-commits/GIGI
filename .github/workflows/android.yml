@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -67,13 +67,31 @@ jobs:
           hits = [x for x in forbidden if x in surface]
           assert not hits, 'Signaux de brouillon dans l’application: ' + ', '.join(hits)
           PY
-      - name: Build verification APK
+      - name: Build installable Android APK
         run: gradle assembleDebug
       - name: Compile release package
         run: gradle assembleRelease
+      - name: Prepare direct-install APK
+        if: github.event_name != 'pull_request'
+        run: cp app/build/outputs/apk/debug/app-debug.apk FAST-N1-v6.0.2-build616-ANDROID.apk
       - name: Upload verification APK
         uses: actions/upload-artifact@v4
         with:
           name: FAST-N1-v6.0.2-build616-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+      - name: Publish Android direct-download release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG='fast-android-v6.0.2-build616'
+          ASSET='FAST-N1-v6.0.2-build616-ANDROID.apk'
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "$ASSET" \
+              --title 'FAST N°1 Android 6.0.2 (build 616)' \
+              --notes 'APK Android pour installation directe. Cette version utilise le package de test FAST afin d’éviter les conflits avec une ancienne installation de production.'
+          else
+            gh release upload "$TAG" "$ASSET" --clobber
+          fi
