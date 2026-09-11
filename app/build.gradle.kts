@@ -11,8 +11,8 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 616
-        versionName = "6.0.2"
+        versionCode = 617
+        versionName = "6.0.3"
 
         val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY")?.takeIf { it.isNotBlank() }
             ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
@@ -44,6 +44,13 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+        }
+        create("directInstall") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".direct617"
+            versionNameSuffix = "-android"
+            isDebuggable = false
+            isJniDebuggable = false
         }
         release {
             isDebuggable = false
