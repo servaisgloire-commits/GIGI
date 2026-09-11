@@ -1,8 +1,8 @@
 {
-  "version": "6.0",
-  "build": 614,
+  "version": "6.0.2",
+  "build": 616,
   "minimumBuild": 602,
   "mandatory": false,
-  "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-v6.0/FAST-N1-v6.0-production.apk",
-  "notes": "FAST 6.0 build 614 : WebView plus stable, prévention du double chargement des scripts et styles, meilleur focus tactile Android et contrôles CI harmonisés."
+  "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-android-v6.0.2-build616/FAST-N1-v6.0.2-build616-ANDROID.apk",
+  "notes": "FAST N°1 6.0.2 build 616 : APK Android d’installation directe, nouvelle interface FAST, logo officiel et téléchargement public corrigé."
 }
