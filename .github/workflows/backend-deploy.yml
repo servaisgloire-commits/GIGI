@@ -37,21 +37,30 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
 
-      - name: Ensure Vercel authorization is available
+      - name: Detect Vercel authorization
+        id: vercel
         shell: bash
         run: |
-          test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN GitHub secret'; exit 1; }
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo '::warning::VERCEL_TOKEN absent. Backend QA passed; production deploy skipped.'
+          fi
 
       - name: Install Vercel CLI
+        if: steps.vercel.outputs.available == 'true'
         run: npm install --global vercel@latest
 
       - name: Link FAST API project
+        if: steps.vercel.outputs.available == 'true'
         shell: bash
         run: |
           mkdir -p backend/.vercel
           printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_fFq7tf0gmVRerxi1bYNzloFh8L1l"}' > backend/.vercel/project.json
 
       - name: Deploy FAST API to production
+        if: steps.vercel.outputs.available == 'true'
         run: vercel deploy --prod --yes --token "$VERCEL_TOKEN" --cwd backend
 
       - name: Verify production API
