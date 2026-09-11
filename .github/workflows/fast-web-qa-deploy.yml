@@ -28,7 +28,7 @@ jobs:
           node --check admin/business-workspace.js
           node --check admin/export-modern.js
           node --check admin/site-editor-refresh.js
-      - name: Vérifier navigation, marque et absence de signaux de brouillon
+      - name: Vérifier navigation, marque et site vitrine
         shell: bash
         run: |
           python - <<'PY'
@@ -38,6 +38,7 @@ jobs:
           admin = Path('admin/index.html').read_text(encoding='utf-8')
           public = Path('admin/site/index.html').read_text(encoding='utf-8')
           users = Path('admin/admin-users.js').read_text(encoding='utf-8')
+
           expected_admin = ['dashboard','drivers','clients','rides','documents','payments','payouts','markets','exports','website','admins']
           nav_pages = re.findall(r'data-page="([^"]+)"', admin)
           unique_nav = list(dict.fromkeys(nav_pages))
@@ -45,16 +46,22 @@ jobs:
           for page in expected_admin:
               assert f'id="page-{page}"' in admin, f'Section admin absente: {page}'
 
-          public_sections = ['services','about','drivers','safety','countries','application','contact']
-          for section in public_sections:
-              assert f'id="{section}"' in public, f'Section publique absente: {section}'
-          for section in ['services','about','drivers','safety','countries','contact']:
-              assert f'href="#{section}"' in public, f'Lien public absent: {section}'
+          # Le site officiel est volontairement une vitrine simple de l'application.
+          for section in ['features','download']:
+              assert f'id="{section}"' in public, f'Section vitrine absente: {section}'
+              assert f'href="#{section}"' in public, f'Lien vitrine absent: {section}'
+          assert 'FAST N°1 • Application Android' in public
+          assert 'Le site présente uniquement l\'application.' in public
+          assert 'Télécharger FAST N°1' in public
+          assert 'Télécharger l\'APK' in public
 
-          assert public.count('fast-logo.svg') >= 4, 'Le logo FAST doit être visible dans la navigation, la maquette téléphone et le pied de page.'
+          assert public.count('fast-logo.svg') >= 4, 'Le nouveau logo FAST doit être visible dans la navigation, la maquette téléphone, le favicon et le pied de page.'
           assert Path('admin/site/fast-logo.svg').is_file(), 'Logo public autonome absent.'
           assert 'fast-v0.5.0' not in public, 'Ancienne APK v0.5.0 encore exposée sur le site officiel.'
           assert 'Aucun pays activé' not in public, 'Message de configuration interne visible sur le site officiel.'
+          for obsolete in ['id="drivers"','id="countries"','id="contact"','href="#drivers"','href="#countries"','href="#contact"']:
+              assert obsolete not in public, f'Ancienne navigation publique encore présente: {obsolete}'
+
           forbidden_public = ['prototype', 'pré-dev', 'pre-dev', 'preview', 'beta', 'bêta', 'lorem ipsum', 'configuration depuis supabase']
           lower_public = public.lower()
           hits_public = [token for token in forbidden_public if token in lower_public]
@@ -76,16 +83,16 @@ jobs:
                   if token in text:
                       hits.append(f'{p}: {token}')
           assert not hits, 'Fonctions/données CSV encore présentes: ' + ', '.join(hits)
+
           print(f'OK: {len(expected_admin)}/{len(expected_admin)} onglets admin reliés')
-          print(f'OK: {len(public_sections)}/{len(public_sections)} sections publiques présentes')
-          print('OK: logo officiel FAST présent et autonome')
+          print('OK: site officiel limité à la présentation et au téléchargement de l’application')
+          print('OK: nouveau logo officiel FAST présent et autonome')
+          print('OK: ancienne navigation publique supprimée')
           print('OK: ancienne APK et signaux de brouillon retirés du site public')
-          print('OK: création admin en attente de validation Supabase')
-          print('OK: aucun import/jeu CSV dans le code FAST admin/public')
           PY
 
   deploy-vercel:
-    name: Préparer le déploiement Vercel
+    name: Publier sur Vercel
     needs: web-qa
     runs-on: ubuntu-latest
     env:
@@ -115,7 +122,7 @@ jobs:
         run: |
           mkdir -p admin/site/.vercel
           printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_nuvIyl2pAuinnsTSRUktMbMyMU9j"}' > admin/site/.vercel/project.json
-          vercel deploy --prod --yes --token "$VERCEL_TOKEN" --cwd admin/site
+          vercel deploy --prod --yes --force --token "$VERCEL_TOKEN" --cwd admin/site
       - name: Publier FAST Administration
         if: steps.vercel.outputs.available == 'true'
         shell: bash
@@ -127,17 +134,20 @@ jobs:
         if: steps.vercel.outputs.available == 'true'
         shell: bash
         run: |
-          for i in 1 2 3 4 5 6; do
-            PUBLIC="$(curl -fsSL https://fast-n1-officiel.vercel.app || true)"
+          for i in 1 2 3 4 5 6 7 8; do
+            PUBLIC="$(curl -fsSL -H 'Cache-Control: no-cache' "https://fast-n1-officiel.vercel.app/?qa=$(date +%s)" || true)"
             ADMIN="$(curl -fsSL https://the-fast-n1-admin.vercel.app || true)"
-            if grep -q 'FAST dans votre téléphone' <<<"$PUBLIC" && \
+            if grep -q 'FAST N°1 • Application Android' <<<"$PUBLIC" && \
+               grep -q 'Télécharger FAST N°1' <<<"$PUBLIC" && \
                grep -q 'fast-logo.svg' <<<"$PUBLIC" && \
+               ! grep -q 'Ouverture du site officiel' <<<"$PUBLIC" && \
+               ! grep -q 'id="drivers"' <<<"$PUBLIC" && \
                grep -q 'aria-label="Navigation administration"' <<<"$ADMIN" && \
                ! grep -qiE 'prototype|pre-dev|preview|beta|bêta' <<<"$PUBLIC"; then
-              echo 'OK: les deux domaines de production servent la présentation officielle FAST.'
+              echo 'OK: Vercel sert la nouvelle vitrine FAST et le nouvel habillage.'
               exit 0
             fi
             sleep 5
           done
-          echo 'Les domaines Vercel ne servent pas encore la version contrôlée.'
+          echo 'Le domaine Vercel ne sert pas encore la nouvelle vitrine FAST.'
           exit 1
