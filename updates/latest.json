@@ -1,8 +1,8 @@
 {
-  "version": "6.0.3",
-  "build": 617,
-  "minimumBuild": 602,
+  "version": "11.09.2026",
+  "build": 11092026,
+  "minimumBuild": 11092026,
   "mandatory": false,
-  "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-android-v6.0.3-build617/FAST-N1-v6.0.3-build617-ANDROID.apk",
-  "notes": "FAST N°1 6.0.3 build 617 : démarrage Android renforcé, stockage WebView sécurisé, carte non bloquante, suivi chauffeur corrigé et APK d’installation directe vérifié."
+  "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-11-09-2026/FAST-N1-11-09-2026-ANDROID.apk",
+  "notes": "FAST N°1 — version 11/09/2026 : nouvelle application Android isolée des anciens packages, connexions Supabase/API conservées, signature APK vérifiée et installation/lancement testés sur Android 35."
 }

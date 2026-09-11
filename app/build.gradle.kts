@@ -8,11 +8,13 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "cg.fast.n1"
+        // New isolated Android identity for the 11/09/2026 rebuild.
+        // This avoids signature/package conflicts with every previously installed FAST APK.
+        applicationId = "cg.fast.n1.v11092026"
         minSdk = 26
         targetSdk = 35
-        versionCode = 617
-        versionName = "6.0.3"
+        versionCode = 11092026
+        versionName = "11.09.2026"
 
         val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY")?.takeIf { it.isNotBlank() }
             ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
@@ -46,8 +48,9 @@ android {
             versionNameSuffix = "-debug"
         }
         create("directInstall") {
+            // A directly installable package, isolated from both the old FAST app and debug builds.
             initWith(getByName("debug"))
-            applicationIdSuffix = ".direct617"
+            applicationIdSuffix = ".install11092026"
             versionNameSuffix = "-android"
             isDebuggable = false
             isJniDebuggable = false

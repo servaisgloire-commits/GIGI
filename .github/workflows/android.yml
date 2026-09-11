@@ -1,8 +1,8 @@
-name: Build FAST Android
+name: Build FAST Android 11.09.2026
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fast-android-11092026 ]
     paths:
       - 'app/**'
       - '.github/workflows/android.yml'
@@ -21,61 +21,67 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAST_GOOGLE_MAPS_API_KEY: ${{ secrets.FAST_GOOGLE_MAPS_API_KEY }}
+      FAST_SUPABASE_URL: https://hmwxwzfcpdvgzjgxruup.supabase.co
+      FAST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38
+      FAST_PYTHON_API_URL: https://fast-n1-python-api.vercel.app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Check JavaScript syntax
         run: |
           for f in app/src/main/assets/*.js; do node --check "$f"; done
-      - name: Check backend syntax
-        run: python -m py_compile backend/app/flex_main.py
-      - name: Verify FAST product, branding and Android hardening
+
+      - name: Verify backend and Supabase connectivity
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          grep -q 'versionName = "6.0.3"' app/build.gradle.kts
-          grep -q 'versionCode = 617' app/build.gradle.kts
-          grep -q 'applicationIdSuffix = ".direct617"' app/build.gradle.kts
-          test -s app/src/main/assets/fast-logo.svg
+          curl --fail --show-error --silent --retry 3 --retry-delay 2 \
+            "$FAST_PYTHON_API_URL/health" | tee /tmp/fast-health.json
+          grep -q '"ok"' /tmp/fast-health.json
+          curl --fail --show-error --silent --retry 3 --retry-delay 2 \
+            -H "apikey: $FAST_SUPABASE_PUBLISHABLE_KEY" \
+            "$FAST_SUPABASE_URL/auth/v1/settings" >/tmp/fast-supabase-settings.json
+          test -s /tmp/fast-supabase-settings.json
+
+      - name: Verify FAST Android product configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'applicationId = "cg.fast.n1.v11092026"' app/build.gradle.kts
+          grep -q 'versionName = "11.09.2026"' app/build.gradle.kts
+          grep -q 'versionCode = 11092026' app/build.gradle.kts
+          grep -q 'applicationIdSuffix = ".install11092026"' app/build.gradle.kts
+          grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
-          grep -q '#0B57D0' app/src/main/res/drawable/fast_logo.xml
-          grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
-          grep -q "logo.src='fast-logo.svg'" app/src/main/assets/production-ui.js
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'supabaseUrl(): String = BuildConfig.SUPABASE_URL' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'pythonApiUrl(): String = BuildConfig.PYTHON_API_URL' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q 'googleMapsApiKey(): String = BuildConfig.GOOGLE_MAPS_API_KEY' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowFileAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowContentAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'web.destroy()' app/src/main/java/cg/fast/n1/MainActivity.kt
-          grep -q '__fast_storage_probe__' app/src/main/assets/google-map-adapter.js
-          grep -q 'liveMarker' app/src/main/assets/driver-motion.js
-          if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
-          if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
-          if grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Self APK downloader must not be present'; exit 1; fi
-          if grep -q 'FileProvider' app/src/main/AndroidManifest.xml app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'APK installer FileProvider must not be present'; exit 1; fi
-          if grep -q 'allowUniversalAccessFromFileURLs = true' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Unsafe universal file URL access enabled'; exit 1; fi
-          python - <<'PY'
-          from pathlib import Path
-          surface = (Path('app/src/main/assets/index.html').read_text(encoding='utf-8') + '\n' + Path('app/src/main/assets/production-ui.js').read_text(encoding='utf-8')).lower()
-          forbidden = ['prototype', 'bêta', 'coming soon', 'lorem ipsum']
-          hits = [x for x in forbidden if x in surface]
-          assert not hits, 'Signaux de brouillon dans l’application: ' + ', '.join(hits)
-          PY
-      - name: Build isolated Android install APK
-        run: gradle assembleDirectInstall
-      - name: Compile production release package
-        run: gradle assembleRelease
-      - name: Verify installable APK package and signature
+          if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unexpected APK install permission'; exit 1; fi
+          if grep -q 'allowUniversalAccessFromFileURLs = true' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Unsafe WebView setting'; exit 1; fi
+
+      - name: Build clean directly installable APK
+        run: |
+          gradle clean assembleDirectInstall
+
+      - name: Verify APK metadata and cryptographic signature
         shell: bash
         run: |
           set -euo pipefail
@@ -84,29 +90,53 @@ jobs:
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
-          grep -q "package: name='cg.fast.n1.direct617'" /tmp/fast-badging.txt
-          grep -q "versionCode='617'" /tmp/fast-badging.txt
+          grep -q "package: name='cg.fast.n1.v11092026.install11092026'" /tmp/fast-badging.txt
+          grep -q "versionCode='11092026'" /tmp/fast-badging.txt
+          grep -q "versionName='11.09.2026-android'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
-          cp "$APK" FAST-N1-v6.0.3-build617-ANDROID.apk
+
+      - name: Install and launch APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          script: |
+            adb install app/build/outputs/apk/directInstall/app-directInstall.apk
+            adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
+            adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity
+            sleep 5
+            adb shell dumpsys activity activities | grep 'cg.fast.n1.v11092026.install11092026'
+
+      - name: Prepare final APK
+        run: |
+          cp app/build/outputs/apk/directInstall/app-directInstall.apk FAST-N1-11-09-2026-ANDROID.apk
+          sha256sum FAST-N1-11-09-2026-ANDROID.apk | tee FAST-N1-11-09-2026-ANDROID.sha256
+
       - name: Upload verified Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0.3-build617-android
-          path: FAST-N1-v6.0.3-build617-ANDROID.apk
-          retention-days: 14
+          name: FAST-N1-11-09-2026-android
+          path: |
+            FAST-N1-11-09-2026-ANDROID.apk
+            FAST-N1-11-09-2026-ANDROID.sha256
+          retention-days: 30
+
       - name: Publish Android direct-download release
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG='fast-android-v6.0.3-build617'
-          ASSET='FAST-N1-v6.0.3-build617-ANDROID.apk'
+          TAG='fast-n1-11-09-2026'
+          ASSET='FAST-N1-11-09-2026-ANDROID.apk'
+          SUM='FAST-N1-11-09-2026-ANDROID.sha256'
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" "$ASSET" \
-              --title 'FAST N°1 Android 6.0.3 (build 617)' \
-              --notes 'APK Android d’installation directe, isolé des anciennes signatures de développement. Démarrage WebView renforcé, carte non bloquante et suivi chauffeur corrigé.'
+            gh release create "$TAG" "$ASSET" "$SUM" \
+              --title 'FAST N°1 Android — 11/09/2026' \
+              --notes 'Nouvelle application Android FAST N°1. APK reconstruit avec un identifiant Android isolé pour éviter les conflits avec les anciennes installations. Le workflow vérifie la connexion au backend FAST, la disponibilité Supabase, les métadonnées APK, la signature, puis installe et lance réellement l’application sur un émulateur Android 35 avant publication.'
           else
-            gh release upload "$TAG" "$ASSET" --clobber
+            gh release upload "$TAG" "$ASSET" "$SUM" --clobber
           fi

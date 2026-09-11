@@ -63,13 +63,14 @@ jobs:
         run: |
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          grep -q 'versionName = "6.0.3"' app/build.gradle.kts
-          grep -q 'versionCode = 617' app/build.gradle.kts
-          grep -q 'applicationIdSuffix = ".direct617"' app/build.gradle.kts
-          grep -q '"build": 617' updates/latest.json
-          grep -q 'fast-android-v6.0.3-build617' updates/latest.json
+          grep -q 'applicationId = "cg.fast.n1.v11092026"' app/build.gradle.kts
+          grep -q 'versionName = "11.09.2026"' app/build.gradle.kts
+          grep -q 'versionCode = 11092026' app/build.gradle.kts
+          grep -q 'applicationIdSuffix = ".install11092026"' app/build.gradle.kts
+          grep -q '"build": 11092026' updates/latest.json
+          grep -q 'fast-n1-11-09-2026' updates/latest.json
           test -s app/src/main/assets/fast-logo.svg
+          grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
@@ -96,13 +97,13 @@ jobs:
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
-          grep -q "package: name='cg.fast.n1.direct617'" /tmp/fast-badging.txt
-          grep -q "versionCode='617'" /tmp/fast-badging.txt
+          grep -q "package: name='cg.fast.n1.v11092026.install11092026'" /tmp/fast-badging.txt
+          grep -q "versionCode='11092026'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
       - name: Upload production-gate APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-v6.0.3-build617-android
+          name: FAST-production-gate-11-09-2026-android
           path: app/build/outputs/apk/directInstall/app-directInstall.apk
           retention-days: 14
