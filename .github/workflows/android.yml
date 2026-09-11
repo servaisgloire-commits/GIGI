@@ -140,3 +140,12 @@ jobs:
           else
             gh release upload "$TAG" "$ASSET" "$SUM" --clobber
           fi
+
+          # Le site FAST actuellement en production utilise encore cette URL historique.
+          # On remplace donc cet asset par la nouvelle APK vérifiée sans modifier l'interface du site.
+          LEGACY_TAG='fast-android-v6.0.3-build617'
+          LEGACY_ASSET='FAST-N1-v6.0.3-build617-ANDROID.apk'
+          cp "$ASSET" "$LEGACY_ASSET"
+          if gh release view "$LEGACY_TAG" >/dev/null 2>&1; then
+            gh release upload "$LEGACY_TAG" "$LEGACY_ASSET" --clobber
+          fi
