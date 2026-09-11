@@ -1,0 +1,67 @@
+name: FAST Brand and Product QA
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/src/main/**'
+      - 'admin/**'
+      - '.github/workflows/fast-brand-qa.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'app/src/main/**'
+      - 'admin/**'
+      - '.github/workflows/fast-brand-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  brand-product-qa:
+    name: Vérifier marque FAST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrôler logos et présentation produit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s admin/fast-logo.svg
+          test -s admin/site/fast-logo.svg
+          test -s app/src/main/assets/fast-logo.svg
+          cmp admin/fast-logo.svg admin/site/fast-logo.svg
+          cmp admin/fast-logo.svg app/src/main/assets/fast-logo.svg
+          grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
+          grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
+          grep -q "logo.src='fast-logo.svg'" app/src/main/assets/production-ui.js
+          grep -q 'fast-logo.svg' admin/index.html
+          test "$(grep -o 'fast-logo.svg' admin/site/index.html | wc -l)" -ge 4
+          python - <<'PY'
+          from pathlib import Path
+
+          public = Path('admin/site/index.html').read_text(encoding='utf-8').lower()
+          app_html = Path('app/src/main/assets/index.html').read_text(encoding='utf-8').lower()
+          app_ui = Path('app/src/main/assets/production-ui.js').read_text(encoding='utf-8').lower()
+
+          forbidden_public = [
+              'prototype', 'bêta', 'beta', 'pré-dev', 'pre-dev',
+              'coming soon', 'lorem ipsum', 'aucun pays activé',
+              'configuration depuis supabase', 'fast-v0.5.0'
+          ]
+          bad_public = [x for x in forbidden_public if x in public]
+          assert not bad_public, 'Signaux non commerciaux dans le site public: ' + ', '.join(bad_public)
+
+          forbidden_app = ['prototype', 'bêta', 'coming soon', 'lorem ipsum']
+          app_surface = app_html + '\n' + app_ui
+          bad_app = [x for x in forbidden_app if x in app_surface]
+          assert not bad_app, 'Signaux de brouillon dans l’interface Android: ' + ', '.join(bad_app)
+
+          assert 'fast-logo.svg' in app_ui
+          assert 'logo fast n°1' in app_ui
+          print('OK: même logo FAST sur site public, administration et application Android')
+          print('OK: icône Android FAST configurée')
+          print('OK: aucun signal de prototype/bêta/pré-dev dans les surfaces contrôlées')
+          PY

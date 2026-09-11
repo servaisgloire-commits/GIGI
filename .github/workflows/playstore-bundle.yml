@@ -1,0 +1,44 @@
+name: FAST Play Store Bundle
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/playstore-bundle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Validate FAST release identity
+        run: |
+          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          grep -q 'versionName = "6.0.2"' app/build.gradle.kts
+          grep -q 'versionCode = 616' app/build.gradle.kts
+          test -s app/src/main/assets/fast-logo.svg
+          grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
+      - name: Build unsigned Play Store bundle
+        run: gradle bundleRelease
+      - name: Upload unsigned AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-N1-v6.0.2-build616-unsigned-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
