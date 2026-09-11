@@ -24,6 +24,10 @@ jobs:
       FAST_SUPABASE_URL: https://hmwxwzfcpdvgzjgxruup.supabase.co
       FAST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38
       FAST_PYTHON_API_URL: https://fast-n1-python-api.vercel.app
+      FAST_KEYSTORE_B64: ${{ secrets.FAST_KEYSTORE_B64 }}
+      FAST_KEYSTORE_PASSWORD: ${{ secrets.FAST_KEYSTORE_PASSWORD }}
+      FAST_KEY_ALIAS: ${{ secrets.FAST_KEY_ALIAS }}
+      FAST_KEY_PASSWORD: ${{ secrets.FAST_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,6 +43,22 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      - name: Prepare stable Android signing when configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${FAST_KEYSTORE_B64:-}" ] && [ -n "${FAST_KEYSTORE_PASSWORD:-}" ] && [ -n "${FAST_KEY_ALIAS:-}" ] && [ -n "${FAST_KEY_PASSWORD:-}" ]; then
+            KEYSTORE="$RUNNER_TEMP/fast-production.jks"
+            printf '%s' "$FAST_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+            test -s "$KEYSTORE"
+            echo "FAST_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+            echo "FAST_UPDATE_SIGNING=production" >> "$GITHUB_ENV"
+            echo "Stable FAST production signing enabled."
+          else
+            echo "FAST_UPDATE_SIGNING=debug-fallback" >> "$GITHUB_ENV"
+            echo "::warning::Stable production keystore secrets are not configured. This APK can install cleanly, but future in-place Android updates are not guaranteed until FAST_KEYSTORE_B64 and signing passwords are configured."
+          fi
 
       - name: Check JavaScript syntax
         run: |
@@ -64,6 +84,7 @@ jobs:
           grep -q 'versionName = "11.09.2026"' app/build.gradle.kts
           grep -q 'versionCode = 11092026' app/build.gradle.kts
           grep -q 'applicationIdSuffix = ".install11092026"' app/build.gradle.kts
+          grep -q 'signingConfigs.findByName("production")' app/build.gradle.kts
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
@@ -95,6 +116,7 @@ jobs:
           grep -q "versionName='11.09.2026-android'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
+          echo "Signing mode: ${FAST_UPDATE_SIGNING:-unknown}"
 
       - name: Install and launch APK on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -136,13 +158,11 @@ jobs:
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "$ASSET" "$SUM" \
               --title 'FAST N°1 Android — 11/09/2026' \
-              --notes 'Nouvelle application Android FAST N°1. APK reconstruit avec un identifiant Android isolé pour éviter les conflits avec les anciennes installations. Le workflow vérifie la connexion au backend FAST, la disponibilité Supabase, les métadonnées APK, la signature, puis installe et lance réellement l’application sur un émulateur Android 35 avant publication.'
+              --notes 'APK FAST N°1 vérifiée : backend, Supabase, métadonnées, signature, installation et lancement Android 35 testés avant publication.'
           else
             gh release upload "$TAG" "$ASSET" "$SUM" --clobber
           fi
 
-          # Le site FAST actuellement en production utilise encore cette URL historique.
-          # On remplace donc cet asset par la nouvelle APK vérifiée sans modifier l'interface du site.
           LEGACY_TAG='fast-android-v6.0.3-build617'
           LEGACY_ASSET='FAST-N1-v6.0.3-build617-ANDROID.apk'
           cp "$ASSET" "$LEGACY_ASSET"
