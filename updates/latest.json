@@ -3,6 +3,6 @@
   "build": 11092026,
   "minimumBuild": 11092026,
   "mandatory": false,
-  "url": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-11-09-2026/FAST-N1-11-09-2026-ANDROID.apk",
-  "notes": "FAST N°1 — version 11/09/2026 : nouvelle application Android isolée des anciens packages, connexions Supabase/API conservées, signature APK vérifiée et installation/lancement testés sur Android 35."
+  "url": "https://fast-n1-officiel.vercel.app/#download",
+  "notes": "FAST N°1 — version 11/09/2026 : application Android avec nouvelle identité visuelle, connexions Supabase/API, adresses favorites et recherche du chauffeur le plus proche dans le même pays."
 }
