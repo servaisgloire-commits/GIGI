@@ -95,8 +95,17 @@ async function useSavedPlace(type){
   const row=savedPlaces[type];if(!row)return typeof toast==='function'&&toast('Définissez d’abord '+placeDefs[type].label.toLowerCase());
   try{destination={label:row.address||row.label,lat:Number(row.latitude),lng:Number(row.longitude)};const input=q('destinationInput');if(input)input.value=destination.label;if(typeof refreshRoute==='function')await refreshRoute();if(typeof toast==='function')toast(placeDefs[type].label+' sélectionnée')}catch(e){if(typeof toast==='function')toast('Impossible de charger cette adresse')}
 }
+function validateStrongPassword(password,email=''){
+  const value=String(password||'');
+  if(value.length<12)return 'Mot de passe : 12 caractères minimum';
+  if(!/[a-z]/.test(value)||!/[A-Z]/.test(value)||!/[0-9]/.test(value)||!/[^A-Za-z0-9]/.test(value))return 'Utilisez majuscule, minuscule, chiffre et symbole';
+  const normalized=value.toLowerCase(),local=String(email||'').split('@')[0].toLowerCase();
+  const weak=['password','motdepasse','azerty','qwerty','123456','fast123','admin','welcome','bonjour'];
+  if(weak.some(x=>normalized.includes(x))||(local.length>=4&&normalized.includes(local)))return 'Choisissez un mot de passe moins prévisible';
+  return '';
+}
 async function signupWithVerifiedMail(){
-  const email=q('signupEmail')?.value.trim()||'',password=q('signupPassword')?.value||'';if(!email)return typeof toast==='function'&&toast('Entrez votre adresse e-mail');if(password.length<8)return typeof toast==='function'&&toast('Mot de passe : 8 caractères minimum');
+  const email=q('signupEmail')?.value.trim()||'',password=q('signupPassword')?.value||'';if(!email)return typeof toast==='function'&&toast('Entrez votre adresse e-mail');const passwordError=validateStrongPassword(password,email);if(passwordError)return typeof toast==='function'&&toast(passwordError);
   hydrateRuntimeConfig();const base=(typeof SUPABASE_URL!=='undefined'&&SUPABASE_URL)||FALLBACK_SUPABASE_URL,key=(typeof SUPABASE_KEY!=='undefined'&&SUPABASE_KEY)||FALLBACK_SUPABASE_KEY;
   const body={email,password,data:{role:q('signupRole')?.value||'client',first_name:q('firstName')?.value.trim()||'',last_name:q('lastName')?.value.trim()||'',phone:q('phone')?.value.trim()||''}};
   try{const url=base.replace(/\/$/,'')+'/auth/v1/signup?redirect_to='+encodeURIComponent(FAST_AUTH_REDIRECT);const r=await fetchWithTimeout(url,{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body)},10000);let d={};try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d.msg||d.message||d.error_description||'Création du compte impossible');if(typeof toast==='function')toast('Compte créé. Vérifiez l’e-mail envoyé par FAST N°1.');q('signupBtn')&&(q('signupBtn').disabled=true);setTimeout(()=>{if(q('signupBtn'))q('signupBtn').disabled=false},4000)}catch(e){if(typeof toast==='function')toast(e.message)}
@@ -110,7 +119,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){resizeMap
 window.addEventListener('error',e=>{const m=String(e?.message||'');if(/google|maps/i.test(m)){console.warn('FAST map error',e.error||m);mapFailure('Erreur de chargement Google Maps.')}});
 window.addEventListener('unhandledrejection',e=>{const m=String(e?.reason?.message||e?.reason||'');if(/google|maps/i.test(m))console.warn('FAST map promise',m)});
 window.addEventListener('load',()=>{
-  hydrateRuntimeConfig();injectFast85Style();a11y();preventRapidTap();removeRideSharing();ensureSavedPlacesUi();watchMap();scheduleProbe(900,false);if(q('signupBtn'))q('signupBtn').onclick=signupWithVerifiedMail;
+  hydrateRuntimeConfig();injectFast85Style();a11y();preventRapidTap();removeRideSharing();ensureSavedPlacesUi();watchMap();scheduleProbe(900,false);if(q('signupBtn'))q('signupBtn').onclick=signupWithVerifiedMail;if(q('signupPassword')){q('signupPassword').minLength=12;q('signupPassword').autocomplete='new-password';q('signupPassword').setAttribute('aria-describedby','fastPasswordRule')}
   const main=q('mainApp');if(main){new MutationObserver(()=>{if(!main.classList.contains('hidden')){ensureSavedPlacesUi();setTimeout(()=>loadSavedPlaces(false),250)}}).observe(main,{attributes:true,attributeFilter:['class']})}
   const observer=new MutationObserver(()=>{a11y();removeRideSharing();ensureSavedPlacesUi()});observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),60000);
   setTimeout(()=>loadSavedPlaces(false),700);setTimeout(()=>loadSavedPlaces(false),1800);if(!navigator.onLine)pill('Mode hors connexion')
