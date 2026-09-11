@@ -12,7 +12,7 @@
         android:usesCleartextTraffic="false"
         android:hardwareAccelerated="true"
         android:theme="@style/Theme.Fast"
-        android:label="FAST"
+        android:label="FAST N°1"
         android:icon="@drawable/fast_logo"
         android:roundIcon="@drawable/fast_logo">
         <activity
