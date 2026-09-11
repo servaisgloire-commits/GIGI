@@ -44,23 +44,21 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          grep -q 'versionName = "6.0.2"' app/build.gradle.kts
-          grep -q 'versionCode = 616' app/build.gradle.kts
+          grep -q 'versionName = "6.0.3"' app/build.gradle.kts
+          grep -q 'versionCode = 617' app/build.gradle.kts
+          grep -q 'applicationIdSuffix = ".direct617"' app/build.gradle.kts
           test -s app/src/main/assets/fast-logo.svg
           grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q '#0B57D0' app/src/main/res/drawable/fast_logo.xml
           grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
           grep -q "logo.src='fast-logo.svg'" app/src/main/assets/production-ui.js
-          grep -q 'touch-fix.js' app/src/main/assets/index.html
-          grep -q 'flex-price.js' app/src/main/assets/index.html
-          grep -q 'client-payment.js' app/src/main/assets/index.html
-          grep -q 'car-marker.js' app/src/main/assets/index.html
-          grep -q 'trip-controls.js' app/src/main/assets/index.html
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowFileAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'allowContentAccess = false' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -q 'web.destroy()' app/src/main/java/cg/fast/n1/MainActivity.kt
+          grep -q '__fast_storage_probe__' app/src/main/assets/google-map-adapter.js
+          grep -q 'liveMarker' app/src/main/assets/driver-motion.js
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
           if grep -q 'DownloadManager' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Self APK downloader must not be present'; exit 1; fi
@@ -73,18 +71,29 @@ jobs:
           hits = [x for x in forbidden if x in surface]
           assert not hits, 'Signaux de brouillon dans l’application: ' + ', '.join(hits)
           PY
-      - name: Build installable Android APK
-        run: gradle assembleDebug
-      - name: Compile release package
+      - name: Build isolated Android install APK
+        run: gradle assembleDirectInstall
+      - name: Compile production release package
         run: gradle assembleRelease
-      - name: Prepare direct-install APK
-        if: github.event_name != 'pull_request'
-        run: cp app/build/outputs/apk/debug/app-debug.apk FAST-N1-v6.0.2-build616-ANDROID.apk
-      - name: Upload verification APK
+      - name: Verify installable APK package and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK='app/build/outputs/apk/directInstall/app-directInstall.apk'
+          test -s "$APK"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
+          grep -q "package: name='cg.fast.n1.direct617'" /tmp/fast-badging.txt
+          grep -q "versionCode='617'" /tmp/fast-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
+          grep -q 'Verifies' /tmp/fast-signature.txt
+          cp "$APK" FAST-N1-v6.0.3-build617-ANDROID.apk
+      - name: Upload verified Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0.2-build616-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: FAST-N1-v6.0.3-build617-android
+          path: FAST-N1-v6.0.3-build617-ANDROID.apk
           retention-days: 14
       - name: Publish Android direct-download release
         if: github.event_name != 'pull_request'
@@ -92,12 +101,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG='fast-android-v6.0.2-build616'
-          ASSET='FAST-N1-v6.0.2-build616-ANDROID.apk'
+          TAG='fast-android-v6.0.3-build617'
+          ASSET='FAST-N1-v6.0.3-build617-ANDROID.apk'
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "$ASSET" \
-              --title 'FAST N°1 Android 6.0.2 (build 616)' \
-              --notes 'APK Android pour installation directe. Cette version utilise le package de test FAST afin d’éviter les conflits avec une ancienne installation de production.'
+              --title 'FAST N°1 Android 6.0.3 (build 617)' \
+              --notes 'APK Android d’installation directe, isolé des anciennes signatures de développement. Démarrage WebView renforcé, carte non bloquante et suivi chauffeur corrigé.'
           else
             gh release upload "$TAG" "$ASSET" --clobber
           fi
