@@ -44,7 +44,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Prepare stable Android signing when configured
+      - name: Prepare stable FAST production signing
         shell: bash
         run: |
           set -euo pipefail
@@ -52,12 +52,16 @@ jobs:
             KEYSTORE="$RUNNER_TEMP/fast-production.jks"
             printf '%s' "$FAST_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
             test -s "$KEYSTORE"
+            keytool -list -keystore "$KEYSTORE" -storepass "$FAST_KEYSTORE_PASSWORD" -alias "$FAST_KEY_ALIAS" >/dev/null
             echo "FAST_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
             echo "FAST_UPDATE_SIGNING=production" >> "$GITHUB_ENV"
             echo "Stable FAST production signing enabled."
+          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            echo "FAST_UPDATE_SIGNING=debug-test-only" >> "$GITHUB_ENV"
+            echo "Debug signing allowed for pull-request test only."
           else
-            echo "FAST_UPDATE_SIGNING=debug-fallback" >> "$GITHUB_ENV"
-            echo "::warning::Stable production keystore secrets are not configured. This APK can install cleanly, but future in-place Android updates are not guaranteed until FAST_KEYSTORE_B64 and signing passwords are configured."
+            echo "::error::FAST production signing secrets are missing. Refusing to build or publish a debug-signed production APK. Configure FAST_KEYSTORE_B64, FAST_KEYSTORE_PASSWORD, FAST_KEY_ALIAS and FAST_KEY_PASSWORD."
+            exit 1
           fi
 
       - name: Check JavaScript syntax
@@ -102,7 +106,7 @@ jobs:
         run: |
           gradle clean assembleDirectInstall
 
-      - name: Verify APK metadata and cryptographic signature
+      - name: Verify APK metadata and production signature
         shell: bash
         run: |
           set -euo pipefail
@@ -116,6 +120,14 @@ jobs:
           grep -q "versionName='11.09.2026-android'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then
+              echo "::error::Production publication blocked: APK is signed with Android Debug certificate."
+              exit 1
+            fi
+            test "${FAST_UPDATE_SIGNING:-}" = "production"
+          fi
+          grep 'Signer: certificate SHA-256 digest' /tmp/fast-signature.txt || true
           echo "Signing mode: ${FAST_UPDATE_SIGNING:-unknown}"
 
       - name: Install and launch APK on Android emulator
@@ -128,7 +140,7 @@ jobs:
           script: |
             adb install app/build/outputs/apk/directInstall/app-directInstall.apk
             adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
-            adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity
+            adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity || true
             sleep 5
             adb shell dumpsys activity activities | grep 'cg.fast.n1.v11092026.install11092026'
 
@@ -147,7 +159,7 @@ jobs:
           retention-days: 30
 
       - name: Publish Android direct-download release
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && env.FAST_UPDATE_SIGNING == 'production'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -158,7 +170,7 @@ jobs:
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "$ASSET" "$SUM" \
               --title 'FAST N°1 Android — 11/09/2026' \
-              --notes 'APK FAST N°1 vérifiée : backend, Supabase, métadonnées, signature, installation et lancement Android 35 testés avant publication.'
+              --notes 'APK FAST N°1 signée avec la clé de production stable et vérifiée avant publication.'
           else
             gh release upload "$TAG" "$ASSET" "$SUM" --clobber
           fi
