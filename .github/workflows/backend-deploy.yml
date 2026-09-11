@@ -31,10 +31,11 @@ jobs:
           python -m compileall -q backend/app backend/api
 
       - name: Run backend tests
-        working-directory: backend
         run: |
-          pip install -q -r requirements.txt pytest
-          pytest -q
+          pip install -q -r backend/requirements.txt pytest
+          python -m pytest -q backend/tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
 
       - name: Ensure Vercel authorization is available
         shell: bash
