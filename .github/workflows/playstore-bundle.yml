@@ -28,17 +28,22 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Validate FAST release identity
+        shell: bash
         run: |
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          grep -q 'versionName = "6.0.2"' app/build.gradle.kts
-          grep -q 'versionCode = 616' app/build.gradle.kts
+          set -euo pipefail
+          grep -q 'applicationId = "cg.fast.n1.v11092026"' app/build.gradle.kts
+          grep -q 'versionName = "11.09.2026"' app/build.gradle.kts
+          grep -q 'versionCode = 11092026' app/build.gradle.kts
           test -s app/src/main/assets/fast-logo.svg
           grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
+          grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
       - name: Build unsigned Play Store bundle
         run: gradle bundleRelease
+      - name: Verify AAB exists
+        run: test -s app/build/outputs/bundle/release/app-release.aab
       - name: Upload unsigned AAB
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-v6.0.2-build616-unsigned-aab
+          name: FAST-N1-11-09-2026-build11092026-unsigned-aab
           path: app/build/outputs/bundle/release/app-release.aab
           retention-days: 14
