@@ -8,8 +8,6 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        // New isolated Android identity for the 11/09/2026 rebuild.
-        // This avoids signature/package conflicts with every previously installed FAST APK.
         applicationId = "cg.fast.n1.v11092026"
         minSdk = 26
         targetSdk = 35
@@ -48,12 +46,13 @@ android {
             versionNameSuffix = "-debug"
         }
         create("directInstall") {
-            // A directly installable package, isolated from both the old FAST app and debug builds.
             initWith(getByName("debug"))
             applicationIdSuffix = ".install11092026"
             versionNameSuffix = "-android"
             isDebuggable = false
             isJniDebuggable = false
+            // In-place Android updates require every published APK to use the same signing key.
+            signingConfigs.findByName("production")?.let { signingConfig = it }
         }
         release {
             isDebuggable = false
