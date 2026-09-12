@@ -67,18 +67,30 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Validate Android source, navigation, vehicle onboarding and branding
+      - name: Validate Android source, rebuilt passenger flow and branding
         shell: bash
         run: |
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1.v11092026"' app/build.gradle.kts
-          grep -q 'versionName = "11.09.2026"' app/build.gradle.kts
-          grep -q 'versionCode = 11092026' app/build.gradle.kts
+          grep -q 'versionName = "12.09.2026"' app/build.gradle.kts
+          grep -q 'versionCode = 12092026' app/build.gradle.kts
           grep -q 'applicationIdSuffix = ".install11092026"' app/build.gradle.kts
-          grep -q '"build": 11092026' updates/latest.json
+          grep -q '"build": 12092026' updates/latest.json
           grep -q 'https://fast-n1-officiel.vercel.app/#download' updates/latest.json
           test -s app/src/main/assets/fast-logo.svg
+          test -s app/src/main/assets/client-rebuild.js
+          test -s app/src/main/assets/client-rebuild.css
+          grep -q 'client-rebuild.css' app/src/main/assets/index.html
+          grep -q 'client-rebuild.js' app/src/main/assets/index.html
+          grep -q 'crDestinationInput' app/src/main/assets/client-rebuild.js
+          grep -q 'crBookBtn' app/src/main/assets/client-rebuild.js
+          grep -q '/v1/places/autocomplete' app/src/main/assets/client-rebuild.js
+          grep -q '/v1/routes/estimate' app/src/main/assets/client-rebuild.js
+          grep -q "request('/v1/rides'" app/src/main/assets/client-rebuild.js
+          grep -q "'/dispatch'" app/src/main/assets/client-rebuild.js || grep -q "/dispatch" app/src/main/assets/client-rebuild.js
+          grep -q 'issue_ride_pin' app/src/main/assets/client-rebuild.js
+          grep -q '/rest/v1/ratings' app/src/main/assets/client-rebuild.js
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
@@ -121,13 +133,26 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
           grep -q "package: name='cg.fast.n1.v11092026.install11092026'" /tmp/fast-badging.txt
-          grep -q "versionCode='11092026'" /tmp/fast-badging.txt
+          grep -q "versionCode='12092026'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
+      - name: Install and launch rebuilt client on Android 35 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7
+          script: |
+            APK='app/build/outputs/apk/directInstall/app-directInstall.apk'
+            adb install -r "$APK"
+            adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
+            adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity
+            sleep 6
+            adb shell dumpsys activity activities | grep 'cg.fast.n1.v11092026.install11092026'
       - name: Upload production-gate APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-11-09-2026-android
+          name: FAST-production-gate-12-09-2026-client-rebuild
           path: app/build/outputs/apk/directInstall/app-directInstall.apk
           retention-days: 14
 
