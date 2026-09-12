@@ -36,6 +36,7 @@ jobs:
           node --check admin/business-workspace.js
           node --check admin/export-modern.js
           node --check admin/site-editor-refresh.js
+          node --check admin/manual-actions.js
 
       - name: Verify administration interface
         shell: bash
@@ -52,6 +53,7 @@ jobs:
           assert 'Administration interne' in admin
           assert 'aria-label="Navigation administration"' in admin
           assert 'fast-logo.svg' in admin
+          assert 'manual-actions.js' in admin
           print('OK: FAST administration interface verified')
           PY
 
@@ -88,8 +90,9 @@ jobs:
             if grep -q 'FAST N°1 • Administration' <<<"$ADMIN" && \
                grep -q 'aria-label="Navigation administration"' <<<"$ADMIN" && \
                grep -q 'Connexion administrateur' <<<"$ADMIN" && \
+               grep -q 'manual-actions.js' <<<"$ADMIN" && \
                ! grep -q 'Ancienne administration FAST retirée' <<<"$ADMIN"; then
-              echo 'OK: FAST administration is live.'
+              echo 'OK: FAST administration is live with manual actions.'
               exit 0
             fi
             sleep 5
