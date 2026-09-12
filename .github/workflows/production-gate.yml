@@ -81,6 +81,7 @@ jobs:
           test -s app/src/main/assets/fast-logo.svg
           test -s app/src/main/assets/client-rebuild.js
           test -s app/src/main/assets/client-rebuild.css
+          test -s tests/client-rebuild-smoke.mjs
           grep -q 'client-rebuild.css' app/src/main/assets/index.html
           grep -q 'client-rebuild.js' app/src/main/assets/index.html
           grep -q 'crDestinationInput' app/src/main/assets/client-rebuild.js
@@ -88,7 +89,7 @@ jobs:
           grep -q '/v1/places/autocomplete' app/src/main/assets/client-rebuild.js
           grep -q '/v1/routes/estimate' app/src/main/assets/client-rebuild.js
           grep -q "request('/v1/rides'" app/src/main/assets/client-rebuild.js
-          grep -q "'/dispatch'" app/src/main/assets/client-rebuild.js || grep -q "/dispatch" app/src/main/assets/client-rebuild.js
+          grep -q "/dispatch" app/src/main/assets/client-rebuild.js
           grep -q 'issue_ride_pin' app/src/main/assets/client-rebuild.js
           grep -q '/rest/v1/ratings' app/src/main/assets/client-rebuild.js
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
@@ -119,6 +120,10 @@ jobs:
           grep -q 'pin_temporarily_locked' app/src/main/assets/stability-fixes.js || true
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
+      - name: Test rebuilt passenger address and booking flow
+        run: |
+          npm install --no-save --ignore-scripts jsdom@26.1.0
+          node tests/client-rebuild-smoke.mjs
       - name: Build isolated installable APK
         run: gradle assembleDirectInstall
       - name: Build production release package
