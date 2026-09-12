@@ -148,8 +148,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           script: |
-            APK='app/build/outputs/apk/directInstall/app-directInstall.apk'
-            adb install -r "$APK"
+            adb install -r app/build/outputs/apk/directInstall/app-directInstall.apk
             adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
             adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity
             sleep 6
