@@ -13,9 +13,10 @@ function installTouchCss(){
     body.client-mode #pickupInput,body.client-mode #destinationInput{position:relative;z-index:4;pointer-events:auto!important;touch-action:manipulation;-webkit-user-select:text;user-select:text}
     body.client-mode .fast-pickup-choice{position:relative;z-index:5;pointer-events:auto!important}
     body.client-mode .fast-pickup-choice button{pointer-events:auto!important;touch-action:manipulation}
-    body.client-mode .suggestions{position:absolute!important;left:0!important;right:0!important;z-index:99999!important;pointer-events:auto!important;max-height:min(320px,46vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;background:#fff!important;box-shadow:0 18px 36px rgba(6,20,33,.18)!important}
-    body.client-mode .suggestion{pointer-events:auto!important;touch-action:pan-y;cursor:pointer;position:relative;z-index:100000;user-select:none;-webkit-user-select:none}
-    body.client-mode .suggestion:active{background:#eef6ff!important}
+    body.client-mode .suggestions{position:absolute!important;left:0!important;right:0!important;z-index:99999!important;pointer-events:auto!important;max-height:min(320px,46vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;background:#fff!important;box-shadow:0 18px 36px rgba(6,20,33,.18)!important;overscroll-behavior:contain!important;touch-action:pan-y!important}
+    body.client-mode .suggestion{pointer-events:auto!important;touch-action:pan-y!important;cursor:pointer;position:relative;z-index:100000;user-select:none;-webkit-user-select:none;transition:background .12s ease,box-shadow .12s ease}
+    body.client-mode .suggestion.fast-await-double{background:#eef6ff!important;box-shadow:inset 3px 0 0 #1677ff!important}
+    body.client-mode .suggestion.fast-await-double::after{content:'Touchez encore pour sélectionner';display:block;margin-top:4px;color:#0b69ed;font-size:9px;font-weight:800}
   `;document.head.appendChild(s);
 }
 
@@ -54,17 +55,40 @@ function renderSuggestions(type,input,list,items){
   list.innerHTML='';
   (items||[]).slice(0,7).forEach(item=>{
     const row=document.createElement('div');row.className='suggestion';row.setAttribute('role','button');row.tabIndex=0;row.textContent=item.label||'';
-    let selecting=false;
+    row.setAttribute('aria-label',(item.label||'Adresse')+'. Double-cliquez ou touchez deux fois pour sélectionner.');
+    let selecting=false,lastTapAt=0,downX=0,downY=0,moved=false,clearHintTimer=null;
+    const clearHint=()=>{row.classList.remove('fast-await-double');lastTapAt=0;clearTimeout(clearHintTimer)};
     const select=e=>{
       if(selecting)return;
-      selecting=true;
+      selecting=true;clearHint();
       e?.preventDefault?.();e?.stopPropagation?.();
       Promise.resolve(choosePlace(type,input,list,item)).finally(()=>{setTimeout(()=>{selecting=false},250)});
     };
-    /* IMPORTANT : aucune validation sur pointerdown/touchstart. Cela permet de
-       faire défiler la liste sans confirmer une adresse par accident. */
-    row.addEventListener('click',select);
-    row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){select(e)}});
+    const firstTap=()=>{
+      list.querySelectorAll('.suggestion.fast-await-double').forEach(el=>{if(el!==row)el.classList.remove('fast-await-double')});
+      row.classList.add('fast-await-double');
+      clearTimeout(clearHintTimer);clearHintTimer=setTimeout(clearHint,850);
+    };
+    row.addEventListener('pointerdown',e=>{
+      downX=Number(e.clientX||0);downY=Number(e.clientY||0);moved=false;
+    },{passive:true});
+    row.addEventListener('pointermove',e=>{
+      if(Math.abs(Number(e.clientX||0)-downX)>10||Math.abs(Number(e.clientY||0)-downY)>10)moved=true;
+    },{passive:true});
+    row.addEventListener('pointercancel',()=>{moved=true;clearHint()},{passive:true});
+    row.addEventListener('pointerup',e=>{
+      if(moved)return;
+      const now=Date.now();
+      if(lastTapAt&&now-lastTapAt<=650){
+        e.preventDefault();e.stopPropagation();select(e);return;
+      }
+      lastTapAt=now;firstTap();
+    });
+    /* Un clic simple est volontairement neutralisé. Il ne doit jamais valider
+       une adresse, notamment après un scroll tactile qui produit un click synthétique. */
+    row.addEventListener('click',e=>{e.preventDefault();e.stopPropagation()});
+    row.addEventListener('dblclick',e=>select(e));
+    row.addEventListener('keydown',e=>{if(e.key==='Enter'){select(e)}});
     list.appendChild(row);
   });
   list.classList.toggle('hidden',!list.children.length);
