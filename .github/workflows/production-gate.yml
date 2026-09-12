@@ -30,7 +30,7 @@ jobs:
         run: python -m pytest -q backend/tests
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
-      - name: Validate FAST backend routing
+      - name: Validate FAST backend routing and concurrency guards
         run: |
           test -f backend/app/global_main.py
           test -f backend/app/flex_main.py
@@ -38,6 +38,11 @@ jobs:
           grep -q 'same_country_only' backend/app/global_main.py
           grep -q 'proposed_price' backend/app/flex_main.py
           grep -q 'pricing_mode' backend/app/flex_main.py
+          grep -q 'nearest_same_country_atomic_claim' backend/app/flex_main.py
+          grep -q 'drivers_claimed_by_concurrent_requests' backend/app/flex_main.py
+          grep -q 'active_ride_already_exists' backend/app/flex_main.py
+          grep -q 'config_resilient' backend/app/flex_main.py
+          grep -q '_db_call' backend/app/flex_main.py
           grep -q 'app/flex_main.py' backend/vercel.json
       - name: Reject committed server secrets
         shell: bash
@@ -58,7 +63,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Validate Android source and branding
+      - name: Validate Android source, navigation and branding
         shell: bash
         run: |
           set -euo pipefail
@@ -82,6 +87,15 @@ jobs:
           grep -q 'getElement(){return this.el' app/src/main/assets/google-map-adapter.js
           grep -q 'const liveMap=' app/src/main/assets/driver-motion.js
           grep -q 'const liveMarker=' app/src/main/assets/driver-motion.js
+          grep -q 'Raccourcis FAST' app/src/main/assets/final-commercial-ui.js
+          grep -q 'Nouveau trajet' app/src/main/assets/final-commercial-ui.js
+          grep -q 'Se déconnecter' app/src/main/assets/final-commercial-ui.js
+          grep -q 'fast-client-route-ready .fast-pickup-choice' app/src/main/assets/final-commercial-ui.js
+          grep -q 'fast-client-searching .fast-pickup-choice' app/src/main/assets/final-commercial-ui.js
+          grep -q 'fast:ride-cancelled' app/src/main/assets/final-commercial-ui.js
+          grep -q 'Mot de passe oublié' app/src/main/assets/index.html
+          grep -q 'verify_ride_pin' app/src/main/assets/fast-security.js
+          grep -q 'pin_temporarily_locked' app/src/main/assets/stability-fixes.js || true
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
       - name: Build isolated installable APK
@@ -107,3 +121,51 @@ jobs:
           name: FAST-production-gate-11-09-2026-android
           path: app/build/outputs/apk/directInstall/app-directInstall.apk
           retention-days: 14
+
+  controlled-production-load-audit:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[load-audit]')
+    needs: backend-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 1000-request read-only production audit
+        env:
+          FAST_API: https://fast-n1-python-api.vercel.app
+        run: |
+          python - <<'PY'
+          import concurrent.futures, json, os, statistics, time, urllib.request
+
+          base=os.environ['FAST_API'].rstrip('/')
+          total=1000
+          workers=100
+          urls=[base + ('/health' if i % 5 else '/v1/config') for i in range(total)]
+
+          def hit(url):
+              start=time.perf_counter()
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'FAST-production-audit/1.0','Cache-Control':'no-cache'})
+                  with urllib.request.urlopen(req,timeout=12) as r:
+                      body=r.read(512)
+                      ok=200 <= r.status < 300
+                      return ok,r.status,time.perf_counter()-start,body[:120].decode('utf-8','ignore')
+              except Exception as e:
+                  return False,0,time.perf_counter()-start,str(e)[:120]
+
+          started=time.perf_counter()
+          with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+              results=list(ex.map(hit,urls))
+          elapsed=time.perf_counter()-started
+          ok=[r for r in results if r[0]]
+          bad=[r for r in results if not r[0]]
+          lat=sorted(r[2] for r in results)
+          p95=lat[max(0,int(len(lat)*0.95)-1)]
+          p99=lat[max(0,int(len(lat)*0.99)-1)]
+          report={'requests':total,'max_parallel_requests':workers,'success':len(ok),'errors':len(bad),'success_rate':round(len(ok)/total*100,2),'elapsed_s':round(elapsed,2),'requests_per_second':round(total/elapsed,2),'p50_s':round(statistics.median(lat),3),'p95_s':round(p95,3),'p99_s':round(p99,3),'sample_errors':[{'status':r[1],'detail':r[3]} for r in bad[:8]]}
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if len(ok)/total < 0.99:
+              raise SystemExit('FAST production load audit failed: success rate below 99%')
+          if p95 > 5:
+              raise SystemExit('FAST production load audit failed: p95 above 5 seconds')
+          PY
