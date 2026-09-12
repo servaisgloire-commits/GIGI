@@ -1,15 +1,25 @@
 import * as XLSX from 'xlsx';
 import {getRides,getCommissionRules,getVehicles} from '@/services/data';
 import {computeStatistics} from '@/services/statistics';
+import {resolvePeriod,type PeriodKind} from '@/lib/periods';
 export const dynamic='force-dynamic';
+const validPeriod=(v:string):PeriodKind=>['day','week','month','custom'].includes(v)?v as PeriodKind:'month';
 
-export async function GET(){
+export async function GET(request:Request){
+  const url=new URL(request.url),p=url.searchParams;
   const [rides,rules,vehicles]=await Promise.all([getRides(),getCommissionRules(),getVehicles()]);
-  const to=new Date(),from=new Date(to.getFullYear(),to.getMonth(),1),s=computeStatistics(rides,rules,vehicles,from,to);
+  const period=validPeriod(p.get('period')||'month');
+  const {from,to}=resolvePeriod(period,p.get('from')||undefined,p.get('to')||undefined);
+  const driverId=p.get('driverId')||'',vehicleType=p.get('vehicleType')||'';
+  const typeVehicleIds=new Set(vehicles.filter((v:any)=>!vehicleType||v.vehicle_type===vehicleType).map((v:any)=>v.id));
+  const filtered=rides.filter((r:any)=>(!driverId||r.driver_id===driverId)&&(!vehicleType||r.requested_vehicle_type===vehicleType||typeVehicleIds.has(r.vehicle_id)));
+  const s=computeStatistics(filtered,rules,vehicles,from,to);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{
     Periode_de:from.toISOString(),
     Periode_a:to.toISOString(),
+    Chauffeur:driverId||'Tous',
+    Categorie:vehicleType||'Toutes',
     Courses:s.rides,
     Chiffre_affaires:s.revenue,
     Commissions_connues:s.commission,
