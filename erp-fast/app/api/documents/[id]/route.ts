@@ -1,0 +1,1 @@
+import { NextResponse } from 'next/server';import {getSignedDocumentUrl} from '@/services/documents';export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const d=await getSignedDocumentUrl(id);return NextResponse.redirect(d.url)}
