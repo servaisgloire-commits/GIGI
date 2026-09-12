@@ -7,14 +7,14 @@ function installTouchCss(){
   if(tf$('fast-touch-fix-style'))return;
   const s=document.createElement('style');s.id='fast-touch-fix-style';s.textContent=`
     body.client-mode #sharedMapWrap{z-index:1!important}
-    body.client-mode .booking-panel{position:relative!important;z-index:1200!important;isolation:isolate;pointer-events:auto!important}
+    body.client-mode .booking-panel{position:relative!important;z-index:1200!important;isolation:isolate;pointer-events:auto!important;overflow:visible!important}
     body.client-mode .booking-panel *{pointer-events:auto}
-    body.client-mode .route-fields,body.client-mode .route-field,body.client-mode .route-text{position:relative;z-index:2;pointer-events:auto!important}
+    body.client-mode .route-fields,body.client-mode .route-field,body.client-mode .route-text{position:relative;z-index:2;pointer-events:auto!important;overflow:visible!important}
     body.client-mode #pickupInput,body.client-mode #destinationInput{position:relative;z-index:4;pointer-events:auto!important;touch-action:manipulation;-webkit-user-select:text;user-select:text}
-    body.client-mode .fast-pickup-choice,body.client-mode .fast-quick-destinations{position:relative;z-index:5;pointer-events:auto!important}
-    body.client-mode .fast-pickup-choice button,body.client-mode .fast-quick-destinations button{pointer-events:auto!important;touch-action:manipulation}
-    body.client-mode .suggestions{z-index:9999!important;pointer-events:auto!important;max-height:min(300px,42vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch}
-    body.client-mode .suggestion{pointer-events:auto!important;touch-action:manipulation;cursor:pointer;position:relative;z-index:10000}
+    body.client-mode .fast-pickup-choice{position:relative;z-index:5;pointer-events:auto!important}
+    body.client-mode .fast-pickup-choice button{pointer-events:auto!important;touch-action:manipulation}
+    body.client-mode .suggestions{position:absolute!important;left:0!important;right:0!important;z-index:99999!important;pointer-events:auto!important;max-height:min(320px,46vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;background:#fff!important;box-shadow:0 18px 36px rgba(6,20,33,.18)!important}
+    body.client-mode .suggestion{pointer-events:auto!important;touch-action:manipulation;cursor:pointer;position:relative;z-index:100000}
   `;document.head.appendChild(s);
 }
 
@@ -88,11 +88,6 @@ function rebindPickupButtons(){
   }
   if(address&&address.dataset.fastTouchFix!=='1'){
     address.dataset.fastTouchFix='1';address.addEventListener('touchend',()=>setTimeout(()=>{try{setPickupMode('address')}catch(e){}},0),{passive:true});
-  }
-  const airport=document.querySelector('[data-fast-place="airport"]');
-  if(airport&&airport.dataset.fastGlobalAirport!=='1'){
-    airport.dataset.fastGlobalAirport='1';
-    airport.onclick=()=>{const input=tf$('destinationInput');if(!input)return;input.focus();input.value='Aéroport';input.dispatchEvent(new Event('input',{bubbles:true}))};
   }
 }
 function bootTouchFix(){installTouchCss();bindRobustAutocomplete('pickupInput','pickupSuggestions','pickup');bindRobustAutocomplete('destinationInput','destinationSuggestions','destination');rebindPickupButtons()}
