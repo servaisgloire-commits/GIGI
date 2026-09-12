@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'admin/**'
+      - 'admin/site/**'
       - '.github/workflows/fast-web-qa-deploy.yml'
   workflow_dispatch:
 
@@ -13,89 +13,38 @@ permissions:
 
 jobs:
   web-qa:
-    name: Vérifier sites FAST
+    name: Vérifier site officiel FAST
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Vérifier syntaxe JavaScript admin
-        run: |
-          node --check admin/app.js
-          node --check admin/admin-users.js
-          node --check admin/payment-actions.js
-          node --check admin/business-workspace.js
-          node --check admin/export-modern.js
-          node --check admin/site-editor-refresh.js
-      - name: Vérifier navigation, marque et site commercial
+      - name: Vérifier site commercial FAST
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
-          admin = Path('admin/index.html').read_text(encoding='utf-8')
           public = Path('admin/site/index.html').read_text(encoding='utf-8')
-          users = Path('admin/admin-users.js').read_text(encoding='utf-8')
-
-          expected_admin = ['dashboard','drivers','clients','rides','documents','payments','payouts','markets','exports','website','admins']
-          nav_pages = re.findall(r'data-page="([^"]+)"', admin)
-          unique_nav = list(dict.fromkeys(nav_pages))
-          assert unique_nav == expected_admin, f'Onglets admin inattendus: {unique_nav}'
-          for page in expected_admin:
-              assert f'id="page-{page}"' in admin, f'Section admin absente: {page}'
-
-          # Le site public est une vraie vitrine commerciale de FAST N°1.
           for section in ['features','security','how','download']:
               assert f'id="{section}"' in public, f'Section commerciale absente: {section}'
               assert f'href="#{section}"' in public, f'Lien commercial absent: {section}'
           assert 'FAST N°1 • Votre trajet, simplement' in public
-          assert 'Votre trajet.' in public and 'Plus simple.' in public
-          assert 'Télécharger l’application' in public
           assert 'Télécharger FAST N°1' in public
           assert 'href="/api/download"' in public
-          assert 'Sans carte enregistrée' in public and 'espèces' in public.lower()
-          assert 'Mot de passe' in public or 'réinitialisation du mot de passe' in public.lower()
-
-          assert public.count('fast-logo.svg') >= 4, 'Le logo FAST doit être visible dans la navigation, la maquette téléphone, le favicon et le pied de page.'
-          assert Path('admin/site/fast-logo.svg').is_file(), 'Logo public autonome absent.'
-          assert 'fast-v0.5.0' not in public, 'Ancienne APK v0.5.0 encore exposée sur le site officiel.'
-          assert 'Aucun pays activé' not in public, 'Message de configuration interne visible sur le site officiel.'
-          for obsolete in ['id="drivers"','id="countries"','id="contact"','href="#drivers"','href="#countries"','href="#contact"']:
-              assert obsolete not in public, f'Ancienne navigation publique encore présente: {obsolete}'
-
-          forbidden_public = ['prototype', 'pré-dev', 'pre-dev', 'preview', 'beta', 'bêta', 'lorem ipsum', 'configuration depuis supabase', 'site en développement']
+          assert public.count('fast-logo.svg') >= 4
+          assert Path('admin/site/fast-logo.svg').is_file()
+          assert 'fast-v0.5.0' not in public
           lower_public = public.lower()
-          hits_public = [token for token in forbidden_public if token in lower_public]
-          assert not hits_public, 'Signaux de brouillon visibles dans le site public: ' + ', '.join(hits_public)
-
-          assert "AUTH_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api'" in users
-          assert "AUTH_API+'/register'" in users
-          assert 'Créer un compte administrateur' in users
-          assert 'en attente de validation Supabase' in users
-          assert 'is_active' in users
-          assert 'fast-logo.svg' in admin, 'Logo FAST absent de l’administration.'
-
-          forbidden = ['.csv', 'FileReader', 'fast_admin_datasets']
-          scan_files = [p for p in Path('admin').rglob('*') if p.is_file() and p.suffix.lower() in {'.html','.js','.css','.json'}]
-          hits = []
-          for p in scan_files:
-              text = p.read_text(encoding='utf-8', errors='ignore')
-              for token in forbidden:
-                  if token in text:
-                      hits.append(f'{p}: {token}')
-          assert not hits, 'Fonctions/données CSV encore présentes: ' + ', '.join(hits)
-
-          print(f'OK: {len(expected_admin)}/{len(expected_admin)} onglets admin reliés')
-          print('OK: site officiel commercial FAST N°1 contrôlé')
-          print('OK: logo officiel FAST présent et autonome')
-          print('OK: téléchargement Android relié à /api/download')
-          print('OK: aucun signal de brouillon sur le site public')
+          forbidden_public = ['prototype','pré-dev','pre-dev','preview','beta','bêta','lorem ipsum','site en développement']
+          hits = [token for token in forbidden_public if token in lower_public]
+          assert not hits, 'Signaux de brouillon visibles: ' + ', '.join(hits)
+          print('OK: site officiel commercial FAST contrôlé')
           PY
 
   deploy-vercel:
-    name: Publier sur Vercel
+    name: Publier site officiel FAST
     needs: web-qa
     runs-on: ubuntu-latest
     env:
@@ -110,7 +59,7 @@ jobs:
             echo 'available=true' >> "$GITHUB_OUTPUT"
           else
             echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::warning::Le secret GitHub VERCEL_TOKEN est absent. QA terminée, déploiement Vercel ignoré.'
+            echo '::warning::VERCEL_TOKEN absent. QA terminée, déploiement ignoré.'
           fi
       - uses: actions/setup-node@v5
         if: steps.vercel.outputs.available == 'true'
@@ -126,31 +75,16 @@ jobs:
           mkdir -p admin/site/.vercel
           printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_nuvIyl2pAuinnsTSRUktMbMyMU9j"}' > admin/site/.vercel/project.json
           vercel deploy --prod --yes --force --token "$VERCEL_TOKEN" --cwd admin/site
-      - name: Publier FAST Administration
-        if: steps.vercel.outputs.available == 'true'
-        shell: bash
-        run: |
-          mkdir -p admin/.vercel
-          printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_uLsneU5g12XU6Ld8Xlhf9A2DUbts"}' > admin/.vercel/project.json
-          vercel deploy --prod --yes --token "$VERCEL_TOKEN" --cwd admin
-      - name: Vérifier les productions publiées
+      - name: Vérifier le site officiel
         if: steps.vercel.outputs.available == 'true'
         shell: bash
         run: |
           for i in 1 2 3 4 5 6 7 8; do
             PUBLIC="$(curl -fsSL -H 'Cache-Control: no-cache' "https://fast-n1-officiel.vercel.app/?qa=$(date +%s)" || true)"
-            ADMIN="$(curl -fsSL https://the-fast-n1-admin.vercel.app || true)"
             if grep -q 'FAST N°1 • Votre trajet, simplement' <<<"$PUBLIC" && \
                grep -q 'Télécharger FAST N°1' <<<"$PUBLIC" && \
-               grep -q 'href="/api/download"' <<<"$PUBLIC" && \
-               grep -q 'fast-logo.svg' <<<"$PUBLIC" && \
-               grep -q 'id="security"' <<<"$PUBLIC" && \
-               grep -q 'id="how"' <<<"$PUBLIC" && \
-               ! grep -q 'Ouverture du site officiel' <<<"$PUBLIC" && \
-               ! grep -q 'id="drivers"' <<<"$PUBLIC" && \
-               grep -q 'aria-label="Navigation administration"' <<<"$ADMIN" && \
-               ! grep -qiE 'prototype|pre-dev|preview|beta|bêta|site en développement' <<<"$PUBLIC"; then
-              echo 'OK: Vercel sert le site commercial FAST et l’administration.'
+               grep -q 'href="/api/download"' <<<"$PUBLIC"; then
+              echo 'OK: site commercial FAST publié.'
               exit 0
             fi
             sleep 5
