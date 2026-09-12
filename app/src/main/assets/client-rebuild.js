@@ -220,7 +220,7 @@ function startNearby(){
 }
 
 async function bookRideV4(){
-  if(state.bookingBusy)return;if(!isClient())return message('Compte passager requis');if(!validLoc(pickup))return message('Choisissez votre point de départ');if(!validLoc(destination))return message('Choisissez une destination dans la liste');if(currentRideId)return showRideState();
+  if(state.bookingBusy)return;if(!isClient())return message('Compte passager requis');if(!validLoc(pickup))return message('Choisissez votre point de départ');if(!validLoc(destination))return message('Choisissez une destination dans la liste');if(currentRideId){refreshRide();return}
   state.bookingBusy=true;updateBookState();showSearching('Création de la course…','FAST prépare votre trajet');clearInterval(state.nearbyTimer);try{if(typeof clearDriverMarkers==='function')clearDriverMarkers()}catch(e){}
   try{
     const created=await request('/v1/rides',{method:'POST',body:JSON.stringify(routePayload())});if(!created?.ride?.id)throw new Error('Course non créée');currentRideId=created.ride.id;state.lastRide=created.ride;try{localStorage.setItem('fast_client_active_ride',currentRideId)}catch(e){}
@@ -291,6 +291,8 @@ try{loadNearbyDrivers=loadNearbyV4}catch(e){}
 try{startNearbyPolling=function(){state.pendingNearby=true;if(state.ready)startNearby()}}catch(e){}
 try{pollRide=startRidePolling}catch(e){}
 
+window.addEventListener('fast:ride-cancelled',()=>{if(state.ready&&(currentRideId||state.lastRide))finishRide('Course annulée')});
+window.addEventListener('fast:ride-completed',()=>{if(!state.ready)return;const ride=state.lastRide?{...state.lastRide,status:'completed'}:null;if(currentRideId||ride)finishRide('Course terminée');if(ride?.driver_id)showRating(ride)});
 window.addEventListener('load',()=>setTimeout(rebuildPassengerDom,40));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.ready&&authToken()&&isClient()){if(currentRideId)refreshRide();else startNearby()}});
 })();
