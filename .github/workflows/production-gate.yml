@@ -30,10 +30,11 @@ jobs:
         run: python -m pytest -q backend/tests
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
-      - name: Validate FAST backend routing and concurrency guards
+      - name: Validate FAST backend routing, vehicle and concurrency guards
         run: |
           test -f backend/app/global_main.py
           test -f backend/app/flex_main.py
+          test -f backend/app/vehicle_main.py
           grep -q 'fast_global_available_drivers' backend/app/global_main.py
           grep -q 'same_country_only' backend/app/global_main.py
           grep -q 'proposed_price' backend/app/flex_main.py
@@ -43,7 +44,10 @@ jobs:
           grep -q 'active_ride_already_exists' backend/app/flex_main.py
           grep -q 'config_resilient' backend/app/flex_main.py
           grep -q '_db_call' backend/app/flex_main.py
-          grep -q 'app/flex_main.py' backend/vercel.json
+          grep -q 'vehicle_profile_required' backend/app/vehicle_main.py
+          grep -q 'vehicle-photos' backend/app/vehicle_main.py
+          grep -q 'photo_url' backend/app/vehicle_main.py
+          grep -q 'app/vehicle_main.py' backend/vercel.json
       - name: Reject committed server secrets
         shell: bash
         run: |
@@ -63,7 +67,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Validate Android source, navigation and branding
+      - name: Validate Android source, navigation, vehicle onboarding and branding
         shell: bash
         run: |
           set -euo pipefail
@@ -95,6 +99,11 @@ jobs:
           grep -q 'fast:ride-cancelled' app/src/main/assets/final-commercial-ui.js
           grep -q 'Mot de passe oublié' app/src/main/assets/index.html
           grep -q 'verify_ride_pin' app/src/main/assets/fast-security.js
+          grep -q 'signupVehiclePlate' app/src/main/assets/vehicle-profile.js
+          grep -q 'signupVehiclePhoto' app/src/main/assets/vehicle-profile.js
+          grep -q 'vehicle-photos' app/src/main/assets/vehicle-profile.js
+          grep -q 'assignedVehiclePhoto' app/src/main/assets/vehicle-ride-photo.js
+          grep -q 'vehicle-ride-photo.js' app/src/main/assets/index.html
           grep -q 'pin_temporarily_locked' app/src/main/assets/stability-fixes.js || true
           if grep -RniE 'unpkg.com/maplibre|maplibre-gl.css|maplibre-gl.js|maplibregl' app/src/main/assets; then echo 'MapLibre runtime reference found'; exit 1; fi
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unknown APK install permission must not be present'; exit 1; fi
