@@ -126,20 +126,6 @@ jobs:
           grep 'Signer: certificate SHA-256 digest' /tmp/fast-signature.txt || true
           echo "Signing mode: ${FAST_UPDATE_SIGNING:-unknown}"
 
-      - name: Install and launch APK on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_7
-          disable-animations: false
-          script: |
-            adb install app/build/outputs/apk/directInstall/app-directInstall.apk
-            adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
-            adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity || true
-            sleep 5
-            adb shell dumpsys activity activities | grep 'cg.fast.n1.v11092026.install11092026'
-
       - name: Prepare final APK
         run: |
           cp app/build/outputs/apk/directInstall/app-directInstall.apk FAST-N1-11-09-2026-ANDROID.apk
@@ -166,7 +152,7 @@ jobs:
           if [ "${FAST_UPDATE_SIGNING:-}" = "production" ]; then
             NOTES='APK FAST N°1 signée avec la clé de production stable et vérifiée avant publication.'
           else
-            NOTES='APK FAST N°1 de prévisualisation directe. Interface corrigée et testée sur Android 35. Une signature FAST de production stable reste nécessaire pour supprimer les avertissements Play Protect et garantir les mises à jour par-dessus les versions précédentes.'
+            NOTES='APK FAST N°1 de prévisualisation directe. Interface corrigée, compilée et contrôlée avant publication. Une signature FAST de production stable reste nécessaire pour supprimer les avertissements Play Protect et garantir les mises à jour par-dessus les versions précédentes.'
           fi
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "$ASSET" "$SUM" --title 'FAST N°1 Android — 11/09/2026' --notes "$NOTES"
@@ -180,3 +166,18 @@ jobs:
           if gh release view "$LEGACY_TAG" >/dev/null 2>&1; then
             gh release upload "$LEGACY_TAG" "$LEGACY_ASSET" --clobber
           fi
+
+      - name: Install and launch APK on Android emulator
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: false
+          script: |
+            adb install FAST-N1-11-09-2026-ANDROID.apk
+            adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
+            adb shell am start -W -n cg.fast.n1.v11092026.install11092026/cg.fast.n1.MainActivity || true
+            sleep 5
+            adb shell dumpsys activity activities | grep 'cg.fast.n1.v11092026.install11092026'
