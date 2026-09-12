@@ -1,0 +1,55 @@
+name: FAST Stable Unsigned APK Isolated
+
+on:
+  push:
+    branches: [ fast-release-build-20260912 ]
+    paths:
+      - '.github/workflows/fast-stable-unsigned-branch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Force permanent FAST package identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i -E 's/applicationId = "[^"]+"/applicationId = "cg.fast.n1"/' app/build.gradle.kts
+          sed -i -E '/applicationIdSuffix = "\.install[0-9]+"/d' app/build.gradle.kts
+          sed -i '/versionNameSuffix = "-android"/d' app/build.gradle.kts
+          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          if grep -q 'applicationIdSuffix = ".install' app/build.gradle.kts; then exit 1; fi
+      - name: Validate application JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+          grep -q 'ride-flow-repair.js' app/src/main/assets/index.html
+      - name: Build unsigned stable release APK
+        run: gradle clean assembleRelease
+      - name: Locate unsigned APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -type f -name '*.apk' | head -1)"
+          test -s "$APK"
+          cp "$APK" FAST-N1-11-09-2026-STABLE-UNSIGNED.apk
+      - name: Upload unsigned stable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-N1-stable-unsigned-isolated
+          path: FAST-N1-11-09-2026-STABLE-UNSIGNED.apk
+          retention-days: 1
