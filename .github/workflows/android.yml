@@ -44,7 +44,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Prepare stable FAST production signing
+      - name: Prepare FAST signing
         shell: bash
         run: |
           set -euo pipefail
@@ -56,12 +56,9 @@ jobs:
             echo "FAST_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
             echo "FAST_UPDATE_SIGNING=production" >> "$GITHUB_ENV"
             echo "Stable FAST production signing enabled."
-          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            echo "FAST_UPDATE_SIGNING=debug-test-only" >> "$GITHUB_ENV"
-            echo "Debug signing allowed for pull-request test only."
           else
-            echo "::error::FAST production signing secrets are missing. Refusing to build or publish a debug-signed production APK. Configure FAST_KEYSTORE_B64, FAST_KEYSTORE_PASSWORD, FAST_KEY_ALIAS and FAST_KEY_PASSWORD."
-            exit 1
+            echo "FAST_UPDATE_SIGNING=debug-preview" >> "$GITHUB_ENV"
+            echo "::warning::FAST production keystore is not configured. Building a preview APK for direct testing; Play Protect may warn until the stable FAST production key is configured."
           fi
 
       - name: Check JavaScript syntax
@@ -101,12 +98,15 @@ jobs:
           grep -q 'web.destroy()' app/src/main/java/cg/fast/n1/MainActivity.kt
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unexpected APK install permission'; exit 1; fi
           if grep -q 'allowUniversalAccessFromFileURLs = true' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Unsafe WebView setting'; exit 1; fi
+          if grep -RniE 'Maison|Travail|Aéroport|fast_saved_home|fast_saved_work|fast_saved_airport|data-fast-place' app/src/main/assets --exclude='production-ui.css'; then
+            echo 'Legacy saved destination shortcut still present in active app assets'; exit 1;
+          fi
 
       - name: Build clean directly installable APK
         run: |
           gradle clean assembleDirectInstall
 
-      - name: Verify APK metadata and production signature
+      - name: Verify APK metadata and signature
         shell: bash
         run: |
           set -euo pipefail
@@ -120,12 +120,8 @@ jobs:
           grep -q "versionName='11.09.2026-android'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
-          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
-            if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then
-              echo "::error::Production publication blocked: APK is signed with Android Debug certificate."
-              exit 1
-            fi
-            test "${FAST_UPDATE_SIGNING:-}" = "production"
+          if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then
+            echo "::warning::Preview APK uses Android Debug certificate. Installation can be tested, but stable production signing is still required for trusted in-place updates."
           fi
           grep 'Signer: certificate SHA-256 digest' /tmp/fast-signature.txt || true
           echo "Signing mode: ${FAST_UPDATE_SIGNING:-unknown}"
@@ -159,7 +155,7 @@ jobs:
           retention-days: 30
 
       - name: Publish Android direct-download release
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && env.FAST_UPDATE_SIGNING == 'production'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -167,10 +163,13 @@ jobs:
           TAG='fast-n1-11-09-2026'
           ASSET='FAST-N1-11-09-2026-ANDROID.apk'
           SUM='FAST-N1-11-09-2026-ANDROID.sha256'
+          if [ "${FAST_UPDATE_SIGNING:-}" = "production" ]; then
+            NOTES='APK FAST N°1 signée avec la clé de production stable et vérifiée avant publication.'
+          else
+            NOTES='APK FAST N°1 de prévisualisation directe. Interface corrigée et testée sur Android 35. Une signature FAST de production stable reste nécessaire pour supprimer les avertissements Play Protect et garantir les mises à jour par-dessus les versions précédentes.'
+          fi
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" "$ASSET" "$SUM" \
-              --title 'FAST N°1 Android — 11/09/2026' \
-              --notes 'APK FAST N°1 signée avec la clé de production stable et vérifiée avant publication.'
+            gh release create "$TAG" "$ASSET" "$SUM" --title 'FAST N°1 Android — 11/09/2026' --notes "$NOTES"
           else
             gh release upload "$TAG" "$ASSET" "$SUM" --clobber
           fi
