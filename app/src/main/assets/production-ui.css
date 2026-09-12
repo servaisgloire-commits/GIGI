@@ -1,5 +1,6 @@
 /* FAST production UI — final passenger/driver presentation */
 :root{--fast-blue:#1677ff;--fast-blue-dark:#0b57d0;--fast-ink:#111827;--fast-muted:#6b7280;--fast-line:#e5e7eb;--fast-bg:#f7f9fc}
+#fastSavedPlaces,.fast-saved-wrap,.fast-quick-destinations,.fast-saved-place-sheet{display:none!important}
 body{background:#fff;color:var(--fast-ink)}
 body.client-mode .app{background:#fff}
 body.client-mode #mainHeader{height:64px;background:#fff;border-bottom:1px solid #eef2f7;box-shadow:none;grid-template-columns:50px 1fr 50px}
