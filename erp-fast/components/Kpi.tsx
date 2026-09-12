@@ -1,0 +1,1 @@
+export function Kpi({label,value,detail}:{label:string;value:string|number;detail?:string}){return <div className="card p-4"><div className="text-xs font-bold uppercase text-slate-500">{label}</div><div className="text-3xl font-black mt-2">{value}</div>{detail&&<div className="text-xs text-slate-500 mt-1">{detail}</div>}</div>}

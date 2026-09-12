@@ -1,0 +1,5 @@
+import 'server-only';
+import { supabaseAdmin } from '@/lib/supabase/server';
+export async function cancelRide(id:string,reason:string){const db=supabaseAdmin(),now=new Date().toISOString();const {error}=await db.from('rides').update({status:'cancelled',cancelled_at:now,cancellation_note:reason||'Annulation administrative'}).eq('id',id);if(error)throw error;await db.from('ride_events').insert({ride_id:id,event_type:'admin_cancelled',actor_user_id:null,payload:{reason}})}
+export async function reassignRide(id:string,driverId:string){const db=supabaseAdmin();const {error}=await db.from('rides').update({driver_id:driverId}).eq('id',id);if(error)throw error;await db.from('ride_events').insert({ride_id:id,event_type:'admin_reassigned',actor_user_id:null,payload:{driver_id:driverId}})}
+export async function updateRidePrice(id:string,price:number){const db=supabaseAdmin();const {error}=await db.from('rides').update({final_price:price}).eq('id',id);if(error)throw error;await db.from('ride_events').insert({ride_id:id,event_type:'admin_price_updated',actor_user_id:null,payload:{final_price:price}})}
