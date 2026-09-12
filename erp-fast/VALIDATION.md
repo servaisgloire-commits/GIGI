@@ -15,6 +15,16 @@ Référence : checklist finale de mise en production ERP FAST.
 - ❌ Le test réel d'un compte `invalidated` / `is_active=false` sur le backend preview n'a donc pas encore pu être effectué.
 - ❌ Étape 1 NON VALIDÉE. Interdiction de promotion production.
 
+## Étape 2 — Jeu de données TEST_ (préparé, non injecté)
+- ✅ Script idempotent préparé : `erp-fast/sql/test_data.sql`.
+- ✅ Script de purge séparé préparé : `erp-fast/sql/purge_test_data.sql`.
+- ✅ Script de charge préparé : `erp-fast/sql/test_volume.sql` (5 000 courses TEST_ supplémentaires pour l'export/performance).
+- ✅ Aucun mot de passe de fixture en clair n'est versionné : les hashes utilisent un secret aléatoire généré côté PostgreSQL.
+- ✅ Compatibilité Supabase vérifiée : `uuid_generate_v5`, `crypt`, `gen_salt` et `gen_random_bytes` sont réellement disponibles dans le projet.
+- ✅ Dry-run transactionnel effectué sur les contraintes réelles FAST : création temporaire d'un Auth user chauffeur, profil/driver via trigger, identity, véhicule, contrôle admin, document, commission et course terminée, puis `ROLLBACK` sans erreur.
+- ✅ Après rollback, contrôle explicite : 0 Auth user TEST_DRYRUN, 0 profil, 0 course, 0 document et 0 commission persistants.
+- ❌ Le jeu complet TEST_ n'est volontairement PAS injecté tant que l'étape 1 n'est pas ✅, conformément à l'ordre du plan de mise en production.
+
 ## 0. Configuration générale
 - ✅ Projet Supabase de production identifié : `hmwxwzfcpdvgzjgxruup` — The Fast N°1.
 - ❌ Aucune preview Vercel distincte et validée du nouvel ERP n'existe encore ; la parité des variables preview/prod n'est donc pas vérifiée.
@@ -57,7 +67,8 @@ Référence : checklist finale de mise en production ERP FAST.
 ## 7. Exports Excel
 - ✅ Filtres période/chauffeur/statut/catégorie câblés dans les exports courses ; période/chauffeur/catégorie dans l'export comptable.
 - ✅ Lectures Supabase paginées par blocs de 1 000 jusqu'à 100 000 lignes pour éviter la troncature PostgREST.
-- ❌ La base réelle ne contient que 8 courses : test réel sur plusieurs milliers de lignes impossible actuellement.
+- ✅ Fixture de charge 5 000 lignes préparée mais non exécutée.
+- ❌ Le test réel d'export avec plusieurs milliers de lignes n'a pas encore été effectué.
 - ❌ Ouverture Excel/Google Sheets d'un fichier généré depuis la future preview reste à vérifier.
 
 ## 8. Paramètres généraux
@@ -70,7 +81,7 @@ Référence : checklist finale de mise en production ERP FAST.
 - ✅ Tests unitaires ERP.
 - ✅ TypeScript sans erreur.
 - ✅ Build production Next.js.
-- ✅ Dernier pipeline ERP complet connu vert sur la branche isolée.
+- ✅ Pipeline ERP `34690152810` vert après ajout des scripts de fixture/charge.
 - ⚠️ Test de navigation réelle/console à faire sur preview.
 - ✅ Ancien admin `https://the-fast-n1-admin.vercel.app` répond et n'a pas été remplacé.
 
@@ -85,4 +96,4 @@ Référence : checklist finale de mise en production ERP FAST.
 ## Décision actuelle
 **NO-GO pour la bascule du domaine production.**
 
-Le premier bloqueur est désormais précisément identifié et reproductible : `VERCEL_TOKEN` n'est pas disponible dans GitHub Actions. Le workflow ne peut donc pas produire la preview backend obligatoire et le blocage administratif des comptes ne peut pas encore être certifié en conditions réelles. Les étapes de données de test, validation complète, preview ERP et bascule restent volontairement non exécutées tant que cette étape 1 n'est pas ✅.
+Le premier bloqueur reste `VERCEL_TOKEN` absent de GitHub Actions. Le workflow ne peut donc pas produire la preview backend obligatoire et le blocage administratif des comptes ne peut pas encore être certifié en conditions réelles. Les scripts TEST_ sont désormais prêts, audités par dry-run et réversibles, mais ils ne seront injectés qu'après validation réelle de l'étape 1.
