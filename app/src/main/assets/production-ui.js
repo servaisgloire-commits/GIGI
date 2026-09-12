@@ -54,35 +54,15 @@ function ensurePickupChoice(){
   box.querySelectorAll('button').forEach(btn=>btn.onclick=()=>setPickupMode(btn.dataset.pickupMode));
 }
 
-function openSavedPlace(kind,label){
+function removeLegacySavedDestinations(){
+  q('fastQuickDestinations')?.remove();
   document.querySelector('.fast-saved-place-sheet')?.remove();
-  const sheet=document.createElement('div');sheet.className='fast-saved-place-sheet';
-  sheet.innerHTML=`<div class="fast-saved-place-card"><h3>Ajouter ${label}</h3><p>Enregistrez cette adresse pour vos prochains trajets.</p><input id="fastSavedPlaceInput" placeholder="Saisissez une adresse"><div class="fast-saved-place-actions"><button id="fastSavedCancel" type="button">Annuler</button><button id="fastSavedSave" type="button" class="save">Enregistrer</button></div></div>`;
-  document.body.appendChild(sheet);
-  const input=q('fastSavedPlaceInput');setTimeout(()=>input?.focus(),30);
-  q('fastSavedCancel').onclick=()=>sheet.remove();
-  q('fastSavedSave').onclick=()=>{const value=(input?.value||'').trim();if(!value)return;localStorage.setItem('fast_saved_'+kind,value);sheet.remove();applyQuickDestination(value)};
-  sheet.onclick=e=>{if(e.target===sheet)sheet.remove()};
-}
-
-function applyQuickDestination(value){
-  const input=q('destinationInput');if(!input)return;
-  try{input.focus({preventScroll:true})}catch(e){input.focus()}
-  input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));
-}
-window.applyQuickDestination=applyQuickDestination;
-
-function ensureQuickDestinations(){
-  const fields=document.querySelector('#passengerArea .route-fields');if(!fields||q('fastQuickDestinations'))return;
-  const row=document.createElement('div');row.id='fastQuickDestinations';row.className='fast-quick-destinations';
-  row.innerHTML='<button type="button" data-fast-place="home"><span>⌂</span>Maison</button><button type="button" data-fast-place="work"><span>▣</span>Travail</button><button type="button" data-fast-place="airport"><span>✈</span>Aéroport</button>';
-  fields.insertAdjacentElement('afterend',row);
-  row.querySelectorAll('button').forEach(btn=>btn.onclick=()=>{
-    const kind=btn.dataset.fastPlace;
-    if(kind==='airport')return applyQuickDestination('Aéroport');
-    const label=kind==='home'?'Maison':'Travail',saved=localStorage.getItem('fast_saved_'+kind);
-    if(saved)applyQuickDestination(saved);else openSavedPlace(kind,label);
-  });
+  document.querySelectorAll('[data-fast-place]').forEach(el=>el.remove());
+  try{
+    localStorage.removeItem('fast_saved_home');
+    localStorage.removeItem('fast_saved_work');
+    localStorage.removeItem('fast_saved_airport');
+  }catch(e){}
 }
 
 function routeIsReady(){
@@ -102,7 +82,7 @@ function polishSearchingCard(){
 
 function updateClientState(){
   if(document.body.classList.contains('driver-mode'))return;
-  ensureOfficialBranding();ensureClientPrompt();ensurePickupChoice();ensureQuickDestinations();cleanPresentationSignals();
+  ensureOfficialBranding();ensureClientPrompt();ensurePickupChoice();removeLegacySavedDestinations();cleanPresentationSignals();
   const ready=routeIsReady(),searching=searchIsActive(),active=rideIsActive();
   if(lastRouteReady!==ready){document.body.classList.toggle('fast-client-route-ready',ready);lastRouteReady=ready}
   if(lastSearching!==searching){document.body.classList.toggle('fast-client-searching',searching);lastSearching=searching}
@@ -142,12 +122,12 @@ function patchAuthResend(){
   button.onclick=async()=>{const email=(q('signupEmail')?.value||q('loginEmail')?.value||'').trim();if(!email)return toast('Entrez votre adresse e-mail');button.disabled=true;button.textContent='Envoi en cours…';try{const data=await requestResendWithMemory(email);toast(data.message||'Demande prise en compte');startResendCooldown(button,data.retry_after_seconds||120)}catch(e){toast(String(e?.message||'L’envoi est momentanément indisponible.'));button.disabled=false;button.textContent='Renvoyer l’e-mail de confirmation'}};
 }
 
-function boot(){ensureOfficialBranding();cleanPresentationSignals();updateClientState();updateDriverState();patchAuthResend()}
+function boot(){ensureOfficialBranding();removeLegacySavedDestinations();cleanPresentationSignals();updateClientState();updateDriverState();patchAuthResend()}
 function scheduleUi(){clearTimeout(uiTimer);uiTimer=setTimeout(boot,90)}
 window.addEventListener('load',()=>{boot();setTimeout(boot,350);setTimeout(boot,1000)});
 document.addEventListener('click',scheduleUi,true);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleUi()});
 window.addEventListener('fast:ride-restored',scheduleUi);window.addEventListener('fast:ride-cancelled',scheduleUi);
 window.addEventListener('online',scheduleUi);
-setInterval(()=>{ensureOfficialBranding();updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()},3500);
+setInterval(()=>{ensureOfficialBranding();removeLegacySavedDestinations();updateClientState();if(!lastDriverProfilePrepared||document.body.classList.contains('driver-mode'))updateDriverState();patchAuthResend()},3500);
 })();
