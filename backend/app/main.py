@@ -46,6 +46,26 @@ def db():
     return _supabase
 
 
+def db_retry(factory, attempts: int = 3, base_delay: float = 0.18):
+    """Execute a fresh PostgREST/Supabase query with short exponential retry.
+
+    Supabase can occasionally return a transient gateway timeout. Rebuilding the query
+    for every attempt avoids reusing a consumed request builder. Persistent failures are
+    converted to a controlled 503 instead of an unhandled ASGI exception.
+    """
+    last = None
+    for attempt in range(max(1, attempts)):
+        try:
+            return factory().execute()
+        except HTTPException:
+            raise
+        except Exception as exc:
+            last = exc
+            if attempt + 1 < attempts:
+                time.sleep(base_delay * (2 ** attempt))
+    raise HTTPException(503, "FAST data service temporarily unavailable") from last
+
+
 class TTLCache:
     def __init__(self, max_items: int = 512):
         self.max_items = max_items
@@ -74,6 +94,7 @@ _place_cache = TTLCache(400)
 _auth_cache = TTLCache(1000)
 _config_cache = TTLCache(8)
 _pricing_cache = TTLCache(16)
+_last_good_config: dict[str, object] = {}
 
 
 class AuthUser(BaseModel):
@@ -110,7 +131,7 @@ async def current_user(authorization: Optional[str] = Header(default=None)) -> A
         raise HTTPException(401, "Invalid or expired session")
 
     auth = r.json()
-    profile = db().table("profiles").select("id,role").eq("id", auth["id"]).single().execute().data
+    profile = db_retry(lambda: db().table("profiles").select("id,role").eq("id", auth["id"]).single()).data
     if not profile:
         raise HTTPException(403, "FAST profile missing")
 
@@ -399,16 +420,17 @@ def price_for(vehicle_type: str, distance_km: float, duration_min: int):
     cache_key = f"pricing:{vehicle_type}"
     c = _pricing_cache.get(cache_key)
     if c is None:
-        cfg = (
-            db()
-            .table("pricing_config")
-            .select("*")
-            .eq("service_type", vehicle_type)
-            .eq("is_active", True)
-            .limit(1)
-            .execute()
-            .data
-        )
+        try:
+            cfg = db_retry(
+                lambda: db()
+                .table("pricing_config")
+                .select("*")
+                .eq("service_type", vehicle_type)
+                .eq("is_active", True)
+                .limit(1)
+            ).data or []
+        except HTTPException:
+            cfg = []
         c = cfg[0] if cfg else False
         _pricing_cache.put(cache_key, c, 60)
     if c:
@@ -537,10 +559,16 @@ def config():
     cached = _config_cache.get("config")
     if cached is not None:
         return cached
-    rows = db().table("app_settings").select("key,value").execute().data or []
-    result = {r["key"]: r["value"] for r in rows}
-    _config_cache.put("config", result, 60)
-    return result
+    try:
+        rows = db_retry(lambda: db().table("app_settings").select("key,value")).data or []
+        result = {r["key"]: r["value"] for r in rows}
+        _last_good_config.clear()
+        _last_good_config.update(result)
+        _config_cache.put("config", result, 60)
+        return result
+    except HTTPException:
+        # Configuration is safe to serve stale during a short Supabase outage.
+        return dict(_last_good_config)
 
 
 @app.post("/v1/version/check")
@@ -857,8 +885,8 @@ async def dispatch(ride_id: str, user: AuthUser = Depends(require_role("client",
 @app.get("/v1/driver/offers/current")
 def driver_current_offer(user: AuthUser = Depends(require_role("driver", "admin"))):
     now = datetime.now(timezone.utc).isoformat()
-    rows = (
-        db()
+    rows = db_retry(
+        lambda: db()
         .table("dispatch_offers")
         .select("*")
         .eq("driver_id", user.id)
@@ -866,10 +894,7 @@ def driver_current_offer(user: AuthUser = Depends(require_role("driver", "admin"
         .gt("expires_at", now)
         .order("offered_at", desc=True)
         .limit(1)
-        .execute()
-        .data
-        or []
-    )
+    ).data or []
     return {"offer": rows[0] if rows else None}
 
 
@@ -918,7 +943,7 @@ def update_driver_location(body: DriverLocation, user: AuthUser = Depends(requir
         "accuracy_m": body.accuracy_m,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    db().table("driver_locations").upsert(payload, on_conflict="driver_id").execute()
+    db_retry(lambda: db().table("driver_locations").upsert(payload, on_conflict="driver_id"))
     return {"ok": True, "gps_quality": "high" if (body.accuracy_m or 99) <= 20 else "degraded"}
 
 
@@ -944,14 +969,14 @@ def ride_history(user: AuthUser = Depends(current_user)):
 
 @app.get("/v1/rides/{ride_id}/navigation")
 async def ride_navigation(ride_id: str, user: AuthUser = Depends(current_user)):
-    ride = db().table("rides").select("*").eq("id", ride_id).single().execute().data
+    ride = db_retry(lambda: db().table("rides").select("*").eq("id", ride_id).single()).data
     if not ride:
         raise HTTPException(404, "Ride not found")
     if user.role != "admin" and user.id not in {ride["client_id"], ride.get("driver_id")}:
         raise HTTPException(403, "Forbidden")
     if not ride.get("driver_id"):
         return {"active": False, "reason": "driver_not_assigned"}
-    loc = db().table("driver_locations").select("*").eq("driver_id", ride["driver_id"]).single().execute().data
+    loc = db_retry(lambda: db().table("driver_locations").select("*").eq("driver_id", ride["driver_id"]).single()).data
     if not loc:
         return {"active": False, "reason": "driver_location_missing"}
     origin = Location(lat=float(loc["latitude"]), lng=float(loc["longitude"]))
