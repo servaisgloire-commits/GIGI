@@ -84,7 +84,8 @@ function ensureDriverNav(){
   let ride=nav.querySelector('[data-fast-driver-nav="ride"]');if(!ride){ride=extraButton('ride','🚕','Course');ride.onclick=openDriverRide}
   let avail=nav.querySelector('[data-fast-driver-nav="availability"]');if(!avail){avail=extraButton('availability','●','En ligne');avail.onclick=toggleAvailability}
   let menu=nav.querySelector('[data-fast-driver-nav="menu"]');if(!menu){menu=extraButton('menu','☰','Menu');menu.onclick=openDriverMenu}
-  [home,ride,avail,profileBtn,menu].forEach(x=>nav.appendChild(x));
+  const desired=[home,ride,avail,profileBtn,menu],current=[...nav.children];
+  if(desired.some((x,i)=>current[i]!==x))desired.forEach(x=>nav.appendChild(x));
   if(home.querySelector('small'))home.querySelector('small').textContent='Carte';else home.innerHTML='<span>⌂</span>Carte';
   if(profileBtn.querySelector('small'))profileBtn.querySelector('small').textContent='Profil';
   updateAvailabilityButton();
@@ -164,7 +165,7 @@ async function syncRideStatus(){
 function boot(){
   installCss();ensureTripHud();ensureDriverNav();hookNavigation();
   d('driverToggleInput')?.addEventListener('change',updateAvailabilityButton);
-  const mo=new MutationObserver(()=>{ensureDriverNav();autoStartAfterPin()});mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  document.addEventListener('click',e=>{if(e.target?.closest?.('#fastVerifyPin'))setTimeout(autoStartAfterPin,500)},true);
   clearInterval(statusTimer);statusTimer=setInterval(syncRideStatus,2200);syncRideStatus();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,200));else setTimeout(boot,200);
