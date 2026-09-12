@@ -1,0 +1,98 @@
+name: FAST Administration Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'admin/index.html'
+      - 'admin/*.js'
+      - 'admin/*.css'
+      - 'admin/fast-logo.svg'
+      - 'admin/vercel.json'
+      - '.github/workflows/fast-admin-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admin-qa-deploy:
+    name: Verify and deploy FAST administration
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Check administration JavaScript
+        run: |
+          node --check admin/app.js
+          node --check admin/admin-users.js
+          node --check admin/payment-actions.js
+          node --check admin/business-workspace.js
+          node --check admin/export-modern.js
+          node --check admin/site-editor-refresh.js
+
+      - name: Verify administration interface
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          admin = Path('admin/index.html').read_text(encoding='utf-8')
+          expected = ['dashboard','drivers','clients','rides','documents','payments','payouts','markets','exports','website','admins']
+          nav = list(dict.fromkeys(re.findall(r'data-page="([^"]+)"', admin)))
+          assert nav == expected, f'Unexpected admin navigation: {nav}'
+          for page in expected:
+              assert f'id="page-{page}"' in admin, f'Missing page: {page}'
+          assert 'Administration interne' in admin
+          assert 'aria-label="Navigation administration"' in admin
+          assert 'fast-logo.svg' in admin
+          print('OK: FAST administration interface verified')
+          PY
+
+      - name: Check Vercel credentials
+        id: vercel
+        shell: bash
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo '::error::VERCEL_TOKEN is missing.'
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        if: steps.vercel.outputs.available == 'true'
+        run: npm install -g vercel@latest
+
+      - name: Deploy FAST administration to production
+        if: steps.vercel.outputs.available == 'true'
+        shell: bash
+        run: |
+          mkdir -p admin/.vercel
+          printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_uLsneU5g12XU6Ld8Xlhf9A2DUbts"}' > admin/.vercel/project.json
+          vercel deploy --prod --yes --force --token "$VERCEL_TOKEN" --cwd admin
+
+      - name: Verify production administration
+        if: steps.vercel.outputs.available == 'true'
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5 6 7 8; do
+            ADMIN="$(curl -fsSL -H 'Cache-Control: no-cache' "https://the-fast-n1-admin.vercel.app/?qa=$(date +%s)" || true)"
+            if grep -q 'FAST N°1 • Administration' <<<"$ADMIN" && \
+               grep -q 'aria-label="Navigation administration"' <<<"$ADMIN" && \
+               grep -q 'Connexion administrateur' <<<"$ADMIN" && \
+               ! grep -q 'Ancienne administration FAST retirée' <<<"$ADMIN"; then
+              echo 'OK: FAST administration is live.'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::Production administration verification failed.'
+          exit 1
