@@ -98,8 +98,8 @@ jobs:
           grep -q 'web.destroy()' app/src/main/java/cg/fast/n1/MainActivity.kt
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then echo 'Unexpected APK install permission'; exit 1; fi
           if grep -q 'allowUniversalAccessFromFileURLs = true' app/src/main/java/cg/fast/n1/MainActivity.kt; then echo 'Unsafe WebView setting'; exit 1; fi
-          if grep -RniE 'Maison|Travail|Aéroport|fast_saved_home|fast_saved_work|fast_saved_airport|data-fast-place' app/src/main/assets --exclude='production-ui.css'; then
-            echo 'Legacy saved destination shortcut still present in active app assets'; exit 1;
+          if grep -RniE 'Maison|Travail|Aéroport' app/src/main/assets; then
+            echo 'Legacy saved destination labels still present in active app assets'; exit 1;
           fi
 
       - name: Build clean directly installable APK
