@@ -14,7 +14,8 @@ function installTouchCss(){
     body.client-mode .fast-pickup-choice{position:relative;z-index:5;pointer-events:auto!important}
     body.client-mode .fast-pickup-choice button{pointer-events:auto!important;touch-action:manipulation}
     body.client-mode .suggestions{position:absolute!important;left:0!important;right:0!important;z-index:99999!important;pointer-events:auto!important;max-height:min(320px,46vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;background:#fff!important;box-shadow:0 18px 36px rgba(6,20,33,.18)!important}
-    body.client-mode .suggestion{pointer-events:auto!important;touch-action:manipulation;cursor:pointer;position:relative;z-index:100000}
+    body.client-mode .suggestion{pointer-events:auto!important;touch-action:pan-y;cursor:pointer;position:relative;z-index:100000;user-select:none;-webkit-user-select:none}
+    body.client-mode .suggestion:active{background:#eef6ff!important}
   `;document.head.appendChild(s);
 }
 
@@ -53,11 +54,17 @@ function renderSuggestions(type,input,list,items){
   list.innerHTML='';
   (items||[]).slice(0,7).forEach(item=>{
     const row=document.createElement('div');row.className='suggestion';row.setAttribute('role','button');row.tabIndex=0;row.textContent=item.label||'';
-    let fired=false;const select=e=>{if(fired)return;fired=true;e?.preventDefault?.();e?.stopPropagation?.();choosePlace(type,input,list,item)};
-    row.addEventListener('pointerdown',select,{passive:false});
-    row.addEventListener('touchstart',select,{passive:false});
+    let selecting=false;
+    const select=e=>{
+      if(selecting)return;
+      selecting=true;
+      e?.preventDefault?.();e?.stopPropagation?.();
+      Promise.resolve(choosePlace(type,input,list,item)).finally(()=>{setTimeout(()=>{selecting=false},250)});
+    };
+    /* IMPORTANT : aucune validation sur pointerdown/touchstart. Cela permet de
+       faire défiler la liste sans confirmer une adresse par accident. */
     row.addEventListener('click',select);
-    row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){fired=false;select(e)}});
+    row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){select(e)}});
     list.appendChild(row);
   });
   list.classList.toggle('hidden',!list.children.length);
