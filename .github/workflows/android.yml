@@ -1,0 +1,136 @@
+name: Build FAST Android Stable
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FAST_KEYSTORE_B64: ${{ secrets.FAST_KEYSTORE_B64 }}
+      FAST_KEYSTORE_PASSWORD: ${{ secrets.FAST_KEYSTORE_PASSWORD }}
+      FAST_KEY_ALIAS: ${{ secrets.FAST_KEY_ALIAS }}
+      FAST_KEY_PASSWORD: ${{ secrets.FAST_KEY_PASSWORD }}
+      FAST_GOOGLE_MAPS_API_KEY: ${{ secrets.FAST_GOOGLE_MAPS_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Require stable FAST production signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${FAST_KEYSTORE_B64:-}" ] || [ -z "${FAST_KEYSTORE_PASSWORD:-}" ] || [ -z "${FAST_KEY_ALIAS:-}" ] || [ -z "${FAST_KEY_PASSWORD:-}" ]; then
+            echo "::error::FAST production signing secrets are missing. Build stopped to prevent an incompatible APK."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/fast-production.jks"
+          printf '%s' "$FAST_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$FAST_KEYSTORE_PASSWORD" -alias "$FAST_KEY_ALIAS" >/dev/null
+          echo "FAST_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+
+      - name: Force permanent Android package identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i -E 's/applicationId = "[^"]+"/applicationId = "cg.fast.n1"/' app/build.gradle.kts
+          sed -i -E '/applicationIdSuffix = "\.install[0-9]+"/d' app/build.gradle.kts
+          sed -i '/versionNameSuffix = "-android"/d' app/build.gradle.kts
+          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          if grep -q 'applicationIdSuffix = ".install' app/build.gradle.kts; then
+            echo "::error::A version-specific package suffix is still present."
+            exit 1
+          fi
+
+      - name: Check application JavaScript
+        run: |
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+
+      - name: Build signed installable APK
+        run: gradle clean assembleDirectInstall
+
+      - name: Verify stable package and production certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK='app/build/outputs/apk/directInstall/app-directInstall.apk'
+          test -s "$APK"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
+          grep -q "package: name='cg.fast.n1'" /tmp/fast-badging.txt
+          grep -q "versionCode='11092026'" /tmp/fast-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
+          grep -q 'Verifies' /tmp/fast-signature.txt
+          if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then
+            echo "::error::Debug signing detected. Publication forbidden."
+            exit 1
+          fi
+          grep 'Signer: certificate SHA-256 digest' /tmp/fast-signature.txt
+
+      - name: Prepare FAST APK
+        run: |
+          cp app/build/outputs/apk/directInstall/app-directInstall.apk FAST-N1-11-09-2026-ANDROID.apk
+          sha256sum FAST-N1-11-09-2026-ANDROID.apk > FAST-N1-11-09-2026-ANDROID.sha256
+
+      - name: Upload verified APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-N1-stable-android
+          path: |
+            FAST-N1-11-09-2026-ANDROID.apk
+            FAST-N1-11-09-2026-ANDROID.sha256
+          retention-days: 30
+
+      - name: Publish official FAST download
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='fast-n1-11-09-2026'
+          APK='FAST-N1-11-09-2026-ANDROID.apk'
+          SUM='FAST-N1-11-09-2026-ANDROID.sha256'
+          NOTES='FAST N°1 Android utilise désormais le package permanent cg.fast.n1 et une clé de signature de production stable. Toutes les futures mises à jour doivent conserver les deux.'
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" "$SUM" --clobber
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" "$APK" "$SUM" --title 'FAST N°1 Android — 11/09/2026' --notes "$NOTES"
+          fi
+
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7
+          script: |
+            adb install FAST-N1-11-09-2026-ANDROID.apk
+            adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
+            sleep 5
+            adb shell dumpsys activity activities | grep 'cg.fast.n1'
