@@ -35,6 +35,13 @@ jobs:
         run: gradle assembleDirectInstall
       - name: Verify APK exists
         run: test -s app/build/outputs/apk/directInstall/app-directInstall.apk
+      - name: Enable Android emulator KVM
+        shell: bash
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          fi
       - name: Install and launch APK on Android 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
