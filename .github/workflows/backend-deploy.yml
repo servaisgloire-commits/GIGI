@@ -18,6 +18,7 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: team_ikooiav5lkWrGTZIY05wYg0n
       VERCEL_PROJECT_ID: prj_fFq7tf0gmVRerxi1bYNzloFh8L1l
+      FAST_DEPLOY_MODE: preview
     outputs:
       preview_url: ${{ steps.deploy.outputs.preview_url }}
     steps:
@@ -43,9 +44,18 @@ jobs:
         shell: bash
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
-            echo '::error::VERCEL_TOKEN absent. Preview deployment is mandatory before FAST production.'
+            echo '::error::VERCEL_TOKEN absent. Le déploiement preview FAST ne peut pas démarrer.'
             exit 1
           fi
+
+      - name: Enforce preview-only mode
+        shell: bash
+        run: |
+          if [ "$FAST_DEPLOY_MODE" != "preview" ]; then
+            echo '::error::FAST doit rester en preview. Déploiement production interdit par ce workflow.'
+            exit 1
+          fi
+          echo 'FAST deploy mode: preview only'
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
@@ -79,6 +89,6 @@ jobs:
           echo 'FAST API preview health check failed'
           exit 1
 
-      - name: Production promotion guard
+      - name: Preview-only guard
         run: |
-          echo 'Preview verified. Production promotion remains intentionally disabled until ERP go-live validation is fully green.'
+          echo 'Preview vérifiée. Aucune promotion production ni bascule de domaine n’est exécutée par ce workflow.'
