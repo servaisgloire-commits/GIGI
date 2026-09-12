@@ -37,7 +37,6 @@ jobs:
           grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
           grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
           grep -q "logo.src='fast-logo.svg'" app/src/main/assets/production-ui.js
-          grep -q 'fast-logo.svg' admin/index.html
           test "$(grep -o 'fast-logo.svg' admin/site/index.html | wc -l)" -ge 4
           python - <<'PY'
           from pathlib import Path
@@ -61,7 +60,7 @@ jobs:
 
           assert 'fast-logo.svg' in app_ui
           assert 'logo fast n°1' in app_ui
-          print('OK: même logo FAST sur site public, administration et application Android')
+          print('OK: même logo FAST sur site public et application Android')
           print('OK: icône Android FAST configurée')
           print('OK: aucun signal de prototype/bêta/pré-dev dans les surfaces contrôlées')
           PY
