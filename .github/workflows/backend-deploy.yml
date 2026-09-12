@@ -12,11 +12,14 @@ permissions:
   contents: read
 
 jobs:
-  verify-and-deploy:
+  verify-and-preview:
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      FAST_API_URL: https://fast-n1-python-api.vercel.app
+      VERCEL_ORG_ID: team_ikooiav5lkWrGTZIY05wYg0n
+      VERCEL_PROJECT_ID: prj_fFq7tf0gmVRerxi1bYNzloFh8L1l
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.preview_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,8 +30,7 @@ jobs:
           python-version: '3.12'
 
       - name: Verify backend Python syntax
-        run: |
-          python -m compileall -q backend/app backend/api
+        run: python -m compileall -q backend/app backend/api
 
       - name: Run backend tests
         run: |
@@ -37,42 +39,46 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
 
-      - name: Detect Vercel authorization
-        id: vercel
+      - name: Require Vercel authorization
         shell: bash
         run: |
-          if [ -n "$VERCEL_TOKEN" ]; then
-            echo 'available=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::warning::VERCEL_TOKEN absent. Backend QA passed; production deploy skipped.'
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo '::error::VERCEL_TOKEN absent. Preview deployment is mandatory before FAST production.'
+            exit 1
           fi
 
       - name: Install Vercel CLI
-        if: steps.vercel.outputs.available == 'true'
         run: npm install --global vercel@latest
 
       - name: Link FAST API project
-        if: steps.vercel.outputs.available == 'true'
         shell: bash
         run: |
           mkdir -p backend/.vercel
-          printf '%s\n' '{"orgId":"team_ikooiav5lkWrGTZIY05wYg0n","projectId":"prj_fFq7tf0gmVRerxi1bYNzloFh8L1l"}' > backend/.vercel/project.json
+          printf '%s\n' "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ID\"}" > backend/.vercel/project.json
 
-      - name: Deploy FAST API to production
-        if: steps.vercel.outputs.available == 'true'
-        run: vercel deploy --prod --yes --token "$VERCEL_TOKEN" --cwd backend
-
-      - name: Verify production API
+      - name: Deploy FAST API preview
+        id: deploy
         shell: bash
         run: |
+          PREVIEW_URL="$(vercel deploy --yes --token "$VERCEL_TOKEN" --cwd backend)"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          echo "FAST backend preview: $PREVIEW_URL"
+
+      - name: Verify preview API
+        shell: bash
+        run: |
+          URL='${{ steps.deploy.outputs.preview_url }}'
           for i in 1 2 3 4 5 6; do
-            BODY="$(curl -fsSL "$FAST_API_URL/health" || true)"
+            BODY="$(curl -fsSL "$URL/health" || true)"
             if grep -q '"ok"' <<<"$BODY"; then
               echo "$BODY"
               exit 0
             fi
             sleep 5
           done
-          echo 'FAST API production health check failed'
+          echo 'FAST API preview health check failed'
           exit 1
+
+      - name: Production promotion guard
+        run: |
+          echo 'Preview verified. Production promotion remains intentionally disabled until ERP go-live validation is fully green.'
