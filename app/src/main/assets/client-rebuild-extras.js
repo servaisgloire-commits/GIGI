@@ -7,6 +7,25 @@ const currency=()=>String(window.fastActiveMarket?.currency||x('crCurrency')?.te
 const cashMoney=v=>{try{return new Intl.NumberFormat('fr-FR',{style:'currency',currency:currency(),maximumFractionDigits:['XAF','XOF','JPY'].includes(currency())?0:2}).format(Number(v||0))}catch(e){return `${Number(v||0).toLocaleString('fr-FR')} ${currency()}`}};
 const notify=m=>{try{if(typeof toast==='function')toast(m)}catch(e){}};
 
+function injectExtrasStyle(){
+  if(x('crExtrasStyle'))return;const s=document.createElement('style');s.id='crExtrasStyle';s.textContent=`
+  #passengerArea.fast-client-rebuild .cr-flex-card{margin-top:9px;padding:10px;border:1px solid #dce7f2;border-radius:14px;background:#fff}
+  #passengerArea.fast-client-rebuild .cr-flex-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  #passengerArea.fast-client-rebuild .cr-flex-head small,#passengerArea.fast-client-rebuild .cr-flex-head b{display:block}
+  #passengerArea.fast-client-rebuild .cr-flex-head small{font-size:8px;font-weight:900;letter-spacing:.07em;color:#8091a4}
+  #passengerArea.fast-client-rebuild .cr-flex-head b{margin-top:2px;font-size:11px;color:#17314e}
+  #passengerArea.fast-client-rebuild .cr-flex-head>span{padding:5px 7px;border-radius:999px;background:#eef5ff;color:#0b57d0;font-size:8px;font-weight:900}
+  #passengerArea.fast-client-rebuild .cr-flex-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  #passengerArea.fast-client-rebuild .cr-flex-tabs button{min-height:36px;border:1px solid #dbe5ef;border-radius:10px;background:#f8fafc;color:#53677d;font-size:9px;font-weight:900}
+  #passengerArea.fast-client-rebuild .cr-flex-tabs button.on{border-color:#0b57d0;background:#0b57d0;color:#fff}
+  #passengerArea.fast-client-rebuild .cr-flex-custom{margin-top:8px;padding:9px;border-radius:11px;background:#f6f9fc}
+  #passengerArea.fast-client-rebuild .cr-flex-custom label{display:block;margin-bottom:5px;color:#61758b;font-size:9px;font-weight:850}
+  #passengerArea.fast-client-rebuild .cr-flex-custom>div{display:grid;grid-template-columns:1fr auto;align-items:center;overflow:hidden;border:1px solid #d3dfeb;border-radius:10px;background:#fff}
+  #passengerArea.fast-client-rebuild .cr-flex-custom input{min-width:0;border:0!important;outline:0!important;box-shadow:none!important;padding:9px 10px!important;background:#fff!important;color:#17314e!important;font-size:14px!important;font-weight:900!important}
+  #passengerArea.fast-client-rebuild .cr-flex-custom b{padding:0 10px;color:#0b57d0;font-size:10px}
+  #passengerArea.fast-client-rebuild .cr-flex-custom>small{display:block;margin-top:5px;color:#71859a;font-size:8px;line-height:1.35}
+  `;document.head.appendChild(s)
+}
 function ensureFlexUi(){
   if(x('crFlexCard'))return;
   const pay=document.querySelector('#passengerArea.fast-client-rebuild .cr-payment');if(!pay)return;
@@ -75,7 +94,7 @@ async function captureCardBooking(e){
 
 function bindExtras(){
   if(!window.FAST_CLIENT_REBUILD_ACTIVE)return;
-  ensureFlexUi();wrapApiForFlexiblePrice();
+  injectExtrasStyle();ensureFlexUi();wrapApiForFlexiblePrice();
   const b=x('crBookBtn');if(b&&!b.dataset.extrasBound){b.dataset.extrasBound='1';b.addEventListener('click',captureCardBooking,true)}
   const sel=x('crPaymentMethod');if(sel&&!sel.dataset.extrasBound){sel.dataset.extrasBound='1';sel.addEventListener('change',updateFlexUi)}
   syncCardProfile();
