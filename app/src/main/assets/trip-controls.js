@@ -14,9 +14,21 @@ function openCancelSheet(actor){
   sheet.innerHTML=`<div style="width:min(100%,560px);max-height:88vh;overflow:auto;background:#fff;border-radius:26px;padding:20px"><h3 style="margin:0 0 6px">Pourquoi annulez-vous ?</h3><p style="margin:0 0 14px;color:#667085;font-size:12px">Le motif est obligatoire lorsqu’une course a déjà été acceptée.</p><div id="fastCancelReasons" style="display:grid;gap:8px">${reasons.map(r=>`<label style="display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #e4e7ec;border-radius:13px"><input type="radio" name="fastCancelReason" value="${tcEsc(r)}"><span>${tcEsc(r)}</span></label>`).join('')}</div><textarea id="fastCancelNote" class="input" style="margin-top:10px;min-height:72px" placeholder="Précision facultative"></textarea><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px"><button id="fastCancelBack" type="button" class="btn outline">Retour</button><button id="fastCancelConfirm" type="button" class="btn" style="background:#b42318">Confirmer l’annulation</button></div></div>`;
   document.body.appendChild(sheet);tc$('fastCancelBack').onclick=()=>sheet.remove();sheet.onclick=e=>{if(e.target===sheet)sheet.remove()};tc$('fastCancelConfirm').onclick=()=>submitCancel(actor)
 }
+function resetClientAfterCancel(){
+  tc$('ridePanel')?.classList.add('hidden');tc$('bookingState')?.classList.add('hidden');tc$('driverTrip')?.classList.add('hidden');
+  document.body.classList.remove('fast-client-searching','fast-client-active-ride','fast-client-route-ready');
+  try{destination=null}catch(e){}try{currentRoute=null}catch(e){}
+  const dest=tc$('destinationInput');if(dest)dest.value='';const pick=tc$('pickupInput');if(pick&&!pick.value.trim())pick.value='Ma position';
+  const price=tc$('priceText');if(price)price.textContent='—';const distance=tc$('distanceText');if(distance)distance.textContent='Choisissez une destination';
+  try{if(typeof setPickupMode==='function')setPickupMode('current')}catch(e){}
+  try{if(typeof getLocation==='function')getLocation()}catch(e){}
+  try{if(typeof drawRoute==='function')drawRoute(null)}catch(e){}
+  try{if(typeof showPage==='function')showPage('homePage')}catch(e){}
+  setTimeout(()=>{try{if(typeof map!=='undefined'&&map)map.resize()}catch(e){}},120);
+}
 async function submitCancel(actor){
   const reason=document.querySelector('input[name="fastCancelReason"]:checked')?.value||'';if(!reason)return toast('Choisissez un motif d’annulation');const note=(tc$('fastCancelNote')?.value||'').trim(),id=currentRideId,btn=tc$('fastCancelConfirm');if(btn){btn.disabled=true;btn.textContent='Annulation…'}
-  try{const d=await control('/rides/'+id+'/cancel',{method:'POST',body:JSON.stringify({reason,note})});tc$('fastCancelReasonSheet')?.remove();currentRideId=null;clearInterval(ridePoll);ridePoll=null;clearInterval(tripPayTimer);tripPayTimer=null;tc$('ridePanel')?.classList.add('hidden');tc$('bookingState')?.classList.add('hidden');tc$('driverTrip')?.classList.add('hidden');window.dispatchEvent(new CustomEvent('fast:ride-cancelled',{detail:{rideId:id,reason,actor}}));toast(d?.ride?.payment_state==='refund_pending'?'Course annulée • remboursement à traiter':'Course annulée');setTimeout(()=>location.reload(),650)}catch(e){toast(e.message==='cancellation_reason_required'?'Un motif est obligatoire':e.message);if(btn){btn.disabled=false;btn.textContent='Confirmer l’annulation'}}
+  try{const d=await control('/rides/'+id+'/cancel',{method:'POST',body:JSON.stringify({reason,note})});tc$('fastCancelReasonSheet')?.remove();currentRideId=null;clearInterval(ridePoll);ridePoll=null;clearInterval(tripPayTimer);tripPayTimer=null;resetClientAfterCancel();window.dispatchEvent(new CustomEvent('fast:ride-cancelled',{detail:{rideId:id,reason,actor}}));toast(d?.ride?.payment_state==='refund_pending'?'Course annulée • remboursement à traiter':'Course annulée')}catch(e){toast(e.message==='cancellation_reason_required'?'Un motif est obligatoire':e.message);if(btn){btn.disabled=false;btn.textContent='Confirmer l’annulation'}}
 }
 async function getPayment(){if(!currentRideId)return null;try{const d=await control('/rides/'+currentRideId+'/payment');lastTripPayment=d.payment||null;return lastTripPayment}catch(e){return null}}
 function bankDetailsHtml(p){
