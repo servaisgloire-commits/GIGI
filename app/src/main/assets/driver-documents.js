@@ -1,5 +1,6 @@
 (()=>{
 'use strict';
+if(!document.querySelector('script[data-fast-vehicle-profile]')){const s=document.createElement('script');s.src='vehicle-profile.js';s.dataset.fastVehicleProfile='1';document.head.appendChild(s)}
 const $=id=>document.getElementById(id);
 const DOCS=[
   ['identity','Pièce d’identité','Carte nationale, passeport ou titre reconnu'],
