@@ -8,5 +8,5 @@
   "sourceApkUrl": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-11-09-2026/FAST-N1-11-09-2026-ANDROID.apk",
   "fileName": "FAST-N1-11-09-2026-ANDROID.apk",
   "platform": "Android",
-  "notes": "FAST N°1 — nouvelle identité visuelle validée, installation Android, connexions Supabase/API, adresses favorites, sécurité renforcée et recherche du chauffeur le plus proche dans le même pays."
+  "notes": "FAST N°1 — sélection d’adresse par double-tap, suivi chauffeur sur grande carte, ETA et distance en temps réel, raccourci Suivi du chauffeur, menu chauffeur dédié, interface passager simplifiée et contrôles backend renforcés."
 }
