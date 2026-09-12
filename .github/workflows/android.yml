@@ -132,7 +132,7 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_7
-          disable-animations: true
+          disable-animations: false
           script: |
             adb install app/build/outputs/apk/directInstall/app-directInstall.apk
             adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.install11092026'
