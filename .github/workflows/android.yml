@@ -114,11 +114,17 @@ jobs:
         run: |
           set -euo pipefail
           sed -i -E 's/applicationId = "[^"]+"/applicationId = "cg.fast.n1"/' app/build.gradle.kts
+          sed -i '/applicationIdSuffix = ".debug"/d' app/build.gradle.kts
+          sed -i '/versionNameSuffix = "-debug"/d' app/build.gradle.kts
           sed -i -E '/applicationIdSuffix = "\.install[0-9]+"/d' app/build.gradle.kts
           sed -i '/versionNameSuffix = "-android"/d' app/build.gradle.kts
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          if grep -q 'applicationIdSuffix = ".install' app/build.gradle.kts; then
-            echo "::error::A version-specific package suffix is still present."
+          if grep -q 'applicationIdSuffix =' app/build.gradle.kts; then
+            echo "::error::An Android package suffix is still present."
+            exit 1
+          fi
+          if grep -q 'versionNameSuffix =' app/build.gradle.kts; then
+            echo "::error::A version name suffix is still present."
             exit 1
           fi
 
