@@ -10,7 +10,7 @@ const DOCS=[
   ['address_proof','Justificatif de domicile','Document récent indiquant l’adresse']
 ];
 const STATUS={pending:['En contrôle','pending'],approved:['Validé','approved'],rejected:['Refusé','rejected']};
-let latestByType=new Map(),busy=false;
+let latestByType=new Map(),busy=false,started=false,lastRefresh=0,watchTimer=null;
 
 function isDriver(){try{return typeof role!=='undefined'&&role==='driver'}catch{return false}}
 function userId(){try{return profile?.id||''}catch{return ''}}
@@ -68,13 +68,13 @@ function render(){
 }
 
 async function list(){
-  const uid=userId();if(!uid||!token||!SUPABASE_URL)return;
+  const uid=userId();if(!isDriver()||!uid||!token||!SUPABASE_URL)return;
   try{
     const q=new URLSearchParams({select:'id,driver_id,document_type,storage_path,file_name,status,rejection_reason,country_code,mime_type,file_size_bytes,expires_at,created_at,reviewed_at',driver_id:`eq.${uid}`,order:'created_at.desc',limit:'200'});
     const r=await fetch(`${SUPABASE_URL}/rest/v1/driver_documents?${q}`,{headers:authHeaders(false),cache:'no-store'});
     if(!r.ok)throw new Error('Lecture des documents impossible');
     const rows=await r.json();latestByType=new Map();for(const row of rows||[])if(!latestByType.has(row.document_type))latestByType.set(row.document_type,row);
-    ensure();
+    lastRefresh=Date.now();ensure();
   }catch(e){console.warn('FAST driver documents',e)}
 }
 
@@ -87,6 +87,7 @@ async function upload(type,file){
   if(file.size>12*1024*1024)return toastSafe('Le fichier dépasse 12 Mo');
   busy=true;const box=ensure();let overlay=null;
   try{
+    if(!box)throw new Error('Profil chauffeur indisponible');
     overlay=document.createElement('div');overlay.className='fast-doc-overlay';overlay.textContent='Envoi sécurisé…';box.style.position='relative';box.appendChild(overlay);
     const path=`${uid}/${type}/${Date.now()}-${safeName(file.name)}`;
     const up=await fetch(`${SUPABASE_URL}/storage/v1/object/driver-documents/${path.split('/').map(encodeURIComponent).join('/')}`,{method:'POST',headers:{...authHeaders(false),'Content-Type':file.type,'x-upsert':'false'},body:file});
@@ -100,8 +101,17 @@ async function upload(type,file){
   finally{busy=false;overlay?.remove()}
 }
 
-function boot(){if(!isDriver())return;ensure();list();setInterval(()=>{if(isDriver()&&!document.hidden)list()},30000)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,900));else setTimeout(boot,900);
-window.addEventListener('load',()=>setTimeout(boot,1500));
+function start(){
+  if(started||!isDriver()||!userId()||!token)return;
+  started=true;ensure();list();
+}
+function watch(){
+  if(isDriver()&&userId()&&token){start();if(Date.now()-lastRefresh>30000&&!busy&&!document.hidden)list()}
+  else if(started){started=false;latestByType=new Map();lastRefresh=0;$('fastDriverDocuments')?.remove()}
+}
+function boot(){clearInterval(watchTimer);watchTimer=setInterval(watch,1600);watch()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,500));else setTimeout(boot,500);
+window.addEventListener('load',()=>setTimeout(boot,900));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')watch()});
 window.FASTDriverDocuments={refresh:list};
 })();
