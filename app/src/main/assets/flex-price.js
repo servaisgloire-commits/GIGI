@@ -80,6 +80,7 @@ function setMode(mode){
   updateProposalPreview();
 }
 function refreshCard(){
+  if(window.FAST_CLIENT_REBUILD_ACTIVE)return;
   const card=ensureCard();if(!card)return;
   const s=standardPrice(),c=currency();
   if(fp$('flexStandardText'))fp$('flexStandardText').textContent=s>0?`Prix FAST ${money(s,c)}`:'Prix FAST en calcul…';
@@ -146,6 +147,7 @@ if(typeof loadOffer==='function'){
 
 async function watchSearchingRide(){
   try{
+    if(window.FAST_CLIENT_REBUILD_ACTIVE)return;
     if(!token||role!=='client'||!currentRideId)return;
     const id=currentRideId,d=await api('/v1/rides/'+id),r=d?.ride;
     if(!r||r.status!=='searching')return;
