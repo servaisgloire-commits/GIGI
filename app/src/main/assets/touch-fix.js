@@ -8,6 +8,7 @@ function notify(message){try{if(typeof toast==='function')toast(message)}catch(e
 function clientRole(){try{return typeof role!=='undefined'&&role==='client'}catch(e){return false}}
 function activeRide(){try{return typeof currentRideId!=='undefined'&&!!currentRideId}catch(e){return false}}
 function searching(){const el=tf$('bookingState');return !!el&&!el.classList.contains('hidden')}
+function authHeader(){try{return typeof token!=='undefined'&&token?{'Authorization':'Bearer '+token}:{}}catch(e){return{}}}
 
 function installTouchCss(){
   if(tf$('fast-touch-fix-style'))return;
@@ -20,7 +21,7 @@ function installTouchCss(){
     body.client-mode .fast-pickup-choice{position:relative;z-index:5;pointer-events:auto!important}
     body.client-mode .fast-pickup-choice button{pointer-events:auto!important;touch-action:manipulation!important}
     body.client-mode .suggestions{position:absolute!important;left:0!important;right:0!important;z-index:190000!important;pointer-events:auto!important;max-height:min(330px,48vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;background:#fff!important;box-shadow:0 18px 36px rgba(6,20,33,.18)!important;overscroll-behavior:contain!important;touch-action:pan-y!important}
-    body.client-mode .suggestion{pointer-events:auto!important;touch-action:pan-y!important;cursor:pointer!important;position:relative;z-index:190001;user-select:none!important;-webkit-user-select:none!important;padding-right:12px!important}
+    body.client-mode .suggestion{pointer-events:auto!important;touch-action:manipulation!important;cursor:pointer!important;position:relative;z-index:190001;user-select:none!important;-webkit-user-select:none!important;padding-right:12px!important}
     body.client-mode.fast-client-destination-ready #passengerArea>.booking-panel{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;transform:translateY(0)!important}
     body.client-mode.fast-client-destination-ready #bookBtn{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:100%!important;min-height:50px!important}
   `;document.head.appendChild(s);
@@ -56,22 +57,31 @@ function clearFieldState(type,input){
   window.dispatchEvent(new CustomEvent('fast:address-confirmed',{detail:{type,location:null}}));
 }
 
-async function nominatimFallback(label){
-  const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q='+encodeURIComponent(label);
-  const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Adresse introuvable');
-  const rows=await r.json(),x=rows?.[0];if(!x)throw new Error('Adresse introuvable');
-  return{label:x.display_name||label,lat:Number(x.lat),lng:Number(x.lon),provider:'osm'};
+async function responseJson(r){let d={};try{d=await r.json()}catch(e){}if(!r.ok)throw new Error(d.detail||d.message||d.error||('HTTP '+r.status));return d}
+async function pythonApi(path){
+  if(typeof API==='undefined'||!API)throw new Error('API FAST indisponible');
+  return responseJson(await fetch(API+path,{headers:{...authHeader(),'Content-Type':'application/json'}}));
 }
-
+async function nominatimSearch(query,limit=6){
+  const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit='+limit+'&addressdetails=1&q='+encodeURIComponent(query);
+  const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Adresse introuvable');
+  const rows=await r.json();return(rows||[]).map(x=>({id:String(x.place_id||''),label:x.display_name||query,lat:Number(x.lat),lng:Number(x.lon),provider:'osm'})).filter(validLoc);
+}
+async function fetchSuggestions(query){
+  const path='/v1/places/autocomplete?q='+encodeURIComponent(query);
+  try{if(typeof api==='function'){const d=await api(path);if(Array.isArray(d?.items))return d.items}}catch(e){}
+  try{const d=await pythonApi(path);if(Array.isArray(d?.items))return d.items}catch(e){}
+  return nominatimSearch(query,6);
+}
 async function resolvePlace(item){
   if(validLoc(item))return item;
   if(item?.id){
-    try{
-      const p=await api('/v1/places/details?place_id='+encodeURIComponent(item.id));
-      if(validLoc(p))return p;
-    }catch(e){}
+    const path='/v1/places/details?place_id='+encodeURIComponent(item.id);
+    try{if(typeof api==='function'){const p=await api(path);if(validLoc(p))return p}}catch(e){}
+    try{const p=await pythonApi(path);if(validLoc(p))return p}catch(e){}
   }
-  return nominatimFallback(item?.label||'');
+  const rows=await nominatimSearch(item?.label||'',1);if(rows[0])return rows[0];
+  throw new Error('Coordonnées indisponibles');
 }
 
 async function choosePlace(type,input,list,item){
@@ -80,7 +90,7 @@ async function choosePlace(type,input,list,item){
     const p=await resolvePlace(item),loc={label:p.label||item.label,lat:Number(p.lat),lng:Number(p.lng)};
     if(!validLoc(loc))throw new Error('Coordonnées indisponibles');
     if(type==='pickup')pickup=loc;else destination=loc;
-    input.value=loc.label;list.classList.add('hidden');input.blur();
+    input.value=loc.label;list.innerHTML='';list.classList.add('hidden');input.blur();
     window.dispatchEvent(new CustomEvent('fast:address-confirmed',{detail:{type,location:loc}}));
     syncBookButton();
     try{if(typeof refreshRoute==='function')await refreshRoute()}catch(e){
@@ -92,7 +102,7 @@ async function choosePlace(type,input,list,item){
     syncBookButton();
   }catch(e){
     list.classList.remove('hidden');
-    notify('Impossible de sélectionner cette adresse. Essayez une autre proposition.');
+    notify('Impossible de sélectionner cette adresse. Réessayez.');
   }
 }
 
@@ -101,29 +111,29 @@ function renderSuggestions(type,input,list,items){
   (items||[]).slice(0,8).forEach(item=>{
     const row=document.createElement('div');row.className='suggestion';row.setAttribute('role','button');row.tabIndex=0;row.textContent=item.label||'';
     row.setAttribute('aria-label',(item.label||'Adresse')+'. Appuyez une fois pour sélectionner.');
-    let selecting=false,startX=0,startY=0,moved=false;
+    let selecting=false;
     const select=e=>{
       if(selecting)return;selecting=true;e?.preventDefault?.();e?.stopPropagation?.();
-      Promise.resolve(choosePlace(type,input,list,item)).finally(()=>setTimeout(()=>{selecting=false},350));
+      Promise.resolve(choosePlace(type,input,list,item)).finally(()=>setTimeout(()=>{selecting=false},320));
     };
-    row.addEventListener('pointerdown',e=>{startX=Number(e.clientX||0);startY=Number(e.clientY||0);moved=false},{passive:true});
-    row.addEventListener('pointermove',e=>{if(Math.abs(Number(e.clientX||0)-startX)>8||Math.abs(Number(e.clientY||0)-startY)>8)moved=true},{passive:true});
-    row.addEventListener('pointercancel',()=>{moved=true},{passive:true});
-    row.addEventListener('pointerup',e=>{if(e.pointerType==='mouse'||moved)return;select(e)});
-    row.addEventListener('click',e=>{if(selecting)return;select(e)});
+    row.addEventListener('pointerup',select);
+    row.addEventListener('touchend',select,{passive:false});
+    row.addEventListener('click',select);
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(e)}});
     list.appendChild(row);
   });
   list.classList.toggle('hidden',!list.children.length);
 }
 
-function bindRobustAutocomplete(inputId,listId,type){
-  const old=tf$(inputId),list=tf$(listId);if(!old||!list||old.dataset.fastTouchBound==='1')return;
+function bindRobustAutocomplete(inputId,listId,type,force=false){
+  const old=tf$(inputId),list=tf$(listId);if(!old||!list)return;
+  if(!force&&old.dataset.fastTouchBound==='1')return;
   const value=old.value;
   const input=old.cloneNode(true);
   input.value=value;
   input.dataset.fastTouchBound='1';
   input.dataset.fastFlowRepair='1';
+  input.dataset.fastAddressOwner='touch-v3';
   old.replaceWith(input);
 
   input.addEventListener('input',()=>{
@@ -132,8 +142,8 @@ function bindRobustAutocomplete(inputId,listId,type){
     if(q.length<2){list.innerHTML='';list.classList.add('hidden');return}
     s.timer=setTimeout(async()=>{
       try{
-        const d=await api('/v1/places/autocomplete?q='+encodeURIComponent(q));if(seq!==s.seq)return;
-        const items=d?.items||[];renderSuggestions(type,input,list,items);
+        const items=await fetchSuggestions(q);if(seq!==s.seq)return;
+        renderSuggestions(type,input,list,items);
         if(!items.length)notify('Aucune adresse trouvée. Précisez votre recherche.');
       }catch(e){
         if(seq!==s.seq)return;
@@ -155,16 +165,16 @@ function rebindPickupButtons(){
   }
 }
 
-function bootTouchFix(){
+function bootTouchFix(force=false){
   installTouchCss();
-  bindRobustAutocomplete('pickupInput','pickupSuggestions','pickup');
-  bindRobustAutocomplete('destinationInput','destinationSuggestions','destination');
+  bindRobustAutocomplete('pickupInput','pickupSuggestions','pickup',force);
+  bindRobustAutocomplete('destinationInput','destinationSuggestions','destination',force);
   rebindPickupButtons();syncBookButton();
 }
 
-bootTouchFix();
-window.addEventListener('load',()=>{bootTouchFix();setTimeout(bootTouchFix,300)});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(bootTouchFix,80)});
+installTouchCss();
+window.addEventListener('load',()=>setTimeout(()=>bootTouchFix(true),0));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>bootTouchFix(false),80)});
 window.addEventListener('fast:ride-cancelled',()=>setTimeout(syncBookButton,120));
 window.addEventListener('fast:ride-completed',()=>setTimeout(syncBookButton,120));
 setInterval(syncBookButton,700);
