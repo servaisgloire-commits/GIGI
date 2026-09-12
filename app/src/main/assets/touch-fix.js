@@ -14,9 +14,9 @@ function installTouchCss(){
     body.client-mode .fast-pickup-choice{position:relative;z-index:5;pointer-events:auto!important}
     body.client-mode .fast-pickup-choice button{pointer-events:auto!important;touch-action:manipulation}
     body.client-mode .suggestions{position:absolute!important;left:0!important;right:0!important;z-index:99999!important;pointer-events:auto!important;max-height:min(320px,46vh)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;background:#fff!important;box-shadow:0 18px 36px rgba(6,20,33,.18)!important;overscroll-behavior:contain!important;touch-action:pan-y!important}
-    body.client-mode .suggestion{pointer-events:auto!important;touch-action:pan-y!important;cursor:pointer;position:relative;z-index:100000;user-select:none;-webkit-user-select:none;transition:background .12s ease,box-shadow .12s ease}
+    body.client-mode .suggestion{pointer-events:auto!important;touch-action:pan-y!important;cursor:pointer;position:relative;z-index:100000;user-select:none;-webkit-user-select:none;transition:background .12s ease,box-shadow .12s ease;padding-right:12px!important}
     body.client-mode .suggestion.fast-await-double{background:#eef6ff!important;box-shadow:inset 3px 0 0 #1677ff!important}
-    body.client-mode .suggestion.fast-await-double::after{content:'Touchez encore pour sélectionner';display:block;margin-top:4px;color:#0b69ed;font-size:9px;font-weight:800}
+    body.client-mode .suggestion.fast-await-double::after{content:'Touchez une 2e fois pour sélectionner';display:block;margin-top:4px;color:#0b69ed;font-size:9px;font-weight:800}
   `;document.head.appendChild(s);
 }
 
@@ -51,48 +51,65 @@ async function choosePlace(type,input,list,item){
     if(typeof toast==='function')toast('Impossible de sélectionner cette adresse. Essayez une autre proposition.');
   }
 }
+
 function renderSuggestions(type,input,list,items){
   list.innerHTML='';
+  let armedRow=null,armedAt=0,clearTimer=null;
+  const clearArmed=()=>{
+    armedRow=null;armedAt=0;clearTimeout(clearTimer);
+    list.querySelectorAll('.suggestion.fast-await-double').forEach(el=>el.classList.remove('fast-await-double'));
+  };
+  const arm=row=>{
+    clearArmed();armedRow=row;armedAt=Date.now();row.classList.add('fast-await-double');
+    clearTimer=setTimeout(clearArmed,700);
+  };
+  list.onscroll=clearArmed;
+
   (items||[]).slice(0,7).forEach(item=>{
     const row=document.createElement('div');row.className='suggestion';row.setAttribute('role','button');row.tabIndex=0;row.textContent=item.label||'';
-    row.setAttribute('aria-label',(item.label||'Adresse')+'. Double-cliquez ou touchez deux fois pour sélectionner.');
-    let selecting=false,lastTapAt=0,downX=0,downY=0,moved=false,clearHintTimer=null;
-    const clearHint=()=>{row.classList.remove('fast-await-double');lastTapAt=0;clearTimeout(clearHintTimer)};
+    row.setAttribute('aria-label',(item.label||'Adresse')+'. Double-cliquez ou touchez deux fois précisément pour sélectionner.');
+    let selecting=false,startX=0,startY=0,startScroll=0,startAt=0,moved=false;
     const select=e=>{
       if(selecting)return;
-      selecting=true;clearHint();
+      selecting=true;clearArmed();
       e?.preventDefault?.();e?.stopPropagation?.();
-      Promise.resolve(choosePlace(type,input,list,item)).finally(()=>{setTimeout(()=>{selecting=false},250)});
-    };
-    const firstTap=()=>{
-      list.querySelectorAll('.suggestion.fast-await-double').forEach(el=>{if(el!==row)el.classList.remove('fast-await-double')});
-      row.classList.add('fast-await-double');
-      clearTimeout(clearHintTimer);clearHintTimer=setTimeout(clearHint,850);
+      Promise.resolve(choosePlace(type,input,list,item)).finally(()=>setTimeout(()=>{selecting=false},500));
     };
     row.addEventListener('pointerdown',e=>{
-      downX=Number(e.clientX||0);downY=Number(e.clientY||0);moved=false;
+      startX=Number(e.clientX||0);startY=Number(e.clientY||0);startScroll=list.scrollTop;startAt=Date.now();moved=false;
+      if(armedRow&&armedRow!==row)clearArmed();
     },{passive:true});
     row.addEventListener('pointermove',e=>{
-      if(Math.abs(Number(e.clientX||0)-downX)>10||Math.abs(Number(e.clientY||0)-downY)>10)moved=true;
+      if(Math.abs(Number(e.clientX||0)-startX)>6||Math.abs(Number(e.clientY||0)-startY)>6)moved=true;
     },{passive:true});
-    row.addEventListener('pointercancel',()=>{moved=true;clearHint()},{passive:true});
+    row.addEventListener('pointercancel',()=>{moved=true;clearArmed()},{passive:true});
     row.addEventListener('pointerup',e=>{
-      if(moved)return;
+      /* La souris se valide uniquement via l'événement dblclick natif. */
+      if(e.pointerType==='mouse')return;
+      const stationary=!moved&&Math.abs(list.scrollTop-startScroll)<=2&&(Date.now()-startAt)<=450;
+      if(!stationary){clearArmed();return}
       const now=Date.now();
-      if(lastTapAt&&now-lastTapAt<=650){
+      if(armedRow===row&&armedAt&&now-armedAt>=70&&now-armedAt<=600){
         e.preventDefault();e.stopPropagation();select(e);return;
       }
-      lastTapAt=now;firstTap();
+      e.preventDefault();e.stopPropagation();arm(row);
     });
-    /* Un clic simple est volontairement neutralisé. Il ne doit jamais valider
-       une adresse, notamment après un scroll tactile qui produit un click synthétique. */
-    row.addEventListener('click',e=>{e.preventDefault();e.stopPropagation()});
+    /* Un clic simple ne valide JAMAIS une adresse. */
+    row.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();
+      if(e.detail===1&&e.pointerType!=='touch')arm(row);
+    });
     row.addEventListener('dblclick',e=>select(e));
-    row.addEventListener('keydown',e=>{if(e.key==='Enter'){select(e)}});
+    row.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();select(e)}});
     list.appendChild(row);
   });
   list.classList.toggle('hidden',!list.children.length);
+
+  /* Toucher ailleurs ou commencer un nouveau geste annule toute pré-sélection. */
+  const outside=e=>{if(!list.contains(e.target))clearArmed()};
+  document.addEventListener('pointerdown',outside,{capture:true,once:true});
 }
+
 function bindRobustAutocomplete(inputId,listId,type){
   const old=tf$(inputId),list=tf$(listId);if(!old||!list||old.dataset.fastTouchBound==='1')return;
   const input=old.cloneNode(true);input.dataset.fastTouchBound='1';old.replaceWith(input);
