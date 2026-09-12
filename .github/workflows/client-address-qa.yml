@@ -84,9 +84,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           script: |
-            set -e
-            APK='app/build/outputs/apk/debug/app-debug.apk'
-            adb install -r "$APK"
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell pm list packages | grep 'package:cg.fast.n1.v11092026.debug'
             adb shell am start -W -n cg.fast.n1.v11092026.debug/cg.fast.n1.MainActivity
             sleep 5
