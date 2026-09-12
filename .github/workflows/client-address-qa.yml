@@ -1,0 +1,37 @@
+name: FAST Client Address QA
+
+on:
+  push:
+    branches: [ 'fix/client-address-v3' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  address-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check application JavaScript
+        run: |
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+      - name: Install DOM test dependency
+        run: npm install --no-save jsdom@24
+      - name: Test single client address controller
+        run: node tests/client-address-smoke.mjs
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build Android APK
+        run: gradle assembleDirectInstall
+      - name: Verify APK exists
+        run: test -s app/build/outputs/apk/directInstall/app-directInstall.apk
