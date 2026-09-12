@@ -58,9 +58,7 @@ async function resolvePlace(item){
   }
   throw new Error('Coordonnées de destination indisponibles');
 }
-async function fetchSuggestions(query){
-  return resilientApi('/v1/places/autocomplete?q='+encodeURIComponent(query));
-}
+async function fetchSuggestions(query){return resilientApi('/v1/places/autocomplete?q='+encodeURIComponent(query))}
 async function refreshRouteReliable(){
   if(typeof pickup==='undefined'||typeof destination==='undefined'||!validLoc(pickup)||!validLoc(destination)){setDestinationReady(false);return null}
   setDestinationReady(true);
@@ -131,7 +129,7 @@ async function repairedBookRide(){
     if(dispatch?.matched){if(rf('bookingMessage'))rf('bookingMessage').textContent='Chauffeur trouvé';try{if(typeof pollRide==='function')pollRide()}catch(e){}}
     else{if(rf('bookingMessage'))rf('bookingMessage').textContent='Recherche élargie en cours…';setTimeout(()=>{try{if(typeof retryDispatch==='function')retryDispatch()}catch(e){}},5000)}
   }catch(e){
-    try{currentRideId=null}catch(x){}clientLastRideId=null;lastClientStatus='';rf('bookingState')?.classList.add('hidden');document.body.classList.remove('fast-client-searching');bookingBusy=false;if(b){b.disabled=false;b.textContent='Commander un FAST'};setDestinationReady(validLoc(destination));try{if(typeof startNearbyPolling==='function')startNearbyPolling()}catch(x){}safeToast(e?.message||'Impossible de commander pour le moment');return;
+    try{currentRideId=null}catch(x){}clientLastRideId=null;lastClientStatus='';rf('bookingState')?.classList.add('hidden');document.body.classList.remove('fast-client-searching');bookingBusy=false;if(b){b.disabled=false;b.textContent='Commander un FAST'};setDestinationReady(validLoc(typeof destination!=='undefined'?destination:null));try{if(typeof startNearbyPolling==='function')startNearbyPolling()}catch(x){}safeToast(e?.message||'Impossible de commander pour le moment');return;
   }
 }
 function wireBookButton(){const b=rf('bookBtn');if(!b)return;b.onclick=()=>repairedBookRide();if(validLoc(typeof destination!=='undefined'?destination:null))setDestinationReady(true)}
@@ -152,10 +150,10 @@ async function openPinSheet(){
 function injectPinShortcut(){
   if(!isClient())return;const list=document.querySelector('.fast-shortcut-sheet .fast-shortcut-list');if(!list)return;
   const id=rideId()||clientLastRideId,pin=(()=>{try{return id?localStorage.getItem('fast_pin_'+id):''}catch(e){return ''}})();
-  const should=!!id&&['accepted','driver_arriving','searching',''].includes(lastClientStatus)&&!!pin;
+  const should=!!id&&['accepted','driver_arriving'].includes(lastClientStatus)&&!!pin;
   let b=list.querySelector('[data-fast-role-shortcut="pin"]');if(!should){b?.remove();return}if(b)return;
   b=document.createElement('button');b.type='button';b.className='fast-shortcut-item primary';b.dataset.fastRoleShortcut='pin';b.innerHTML='<span>🔐</span><span><b>Code PIN</b><small>Afficher le code à donner au chauffeur</small></span><span class="arrow">›</span>';b.onclick=()=>{document.querySelector('.fast-shortcut-sheet')?.remove();openPinSheet()};
-  const tracking=list.querySelector('[data-fast-role-shortcut="tracking"]');tracking?.insertAdjacentElement('afterend',b)||list.prepend(b);
+  const tracking=list.querySelector('[data-fast-role-shortcut="tracking"]');if(tracking)tracking.insertAdjacentElement('afterend',b);else list.prepend(b);
 }
 
 function clearClientAfterEnd(kind,id){
@@ -181,7 +179,7 @@ async function syncClientLifecycle(){
   try{
     const id=rideId()||clientLastRideId;if(!id)return;if(rideId())clientLastRideId=rideId();
     const snap=await resilientApi('/v1/rides/'+id),ride=snap?.ride;if(!ride)return;lastClientStatus=ride.status||'';
-    if(['accepted','driver_arriving'].includes(ride.status)){clientLastRideId=id;setTimeout(injectPinShortcut,50);await getPin(id)}
+    if(['accepted','driver_arriving'].includes(ride.status)){clientLastRideId=id;await getPin(id);setTimeout(injectPinShortcut,50)}
     if(ride.status==='cancelled'){clearClientAfterEnd('cancelled',id);return}
     if(ride.status==='completed'){clearClientAfterEnd('completed',id);setTimeout(()=>showRatingSheet(ride),250);return}
   }catch(e){}finally{lifecycleBusy=false}
@@ -192,13 +190,10 @@ async function syncDriverArrival(){
   try{const snap=await resilientApi('/v1/rides/'+id),status=snap?.ride?.status;if(status!=='in_progress'){driverArrivalHits=0;return}const nav=await resilientApi('/v1/rides/'+id+'/navigation'),km=Number(nav?.distance_km);if(nav?.active&&Number.isFinite(km)&&km<=0.06){driverArrivalHits++}else driverArrivalHits=0;if(driverArrivalHits<3)return;lastAutoCompletedRide=id;driverArrivalHits=0;if(typeof setRideStatus==='function')await setRideStatus('completed');else await resilientApi('/v1/rides/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:'completed'})});safeToast('Destination atteinte • course terminée automatiquement')}catch(e){if(lastAutoCompletedRide===id)lastAutoCompletedRide=null}
 }
 
-function boot(){
-  installRepairCss();bindDestinationOnce();wireBookButton();if(validLoc(typeof destination!=='undefined'?destination:null))setDestinationReady(true);injectPinShortcut();
-}
+function boot(){installRepairCss();bindDestinationOnce();wireBookButton();if(validLoc(typeof destination!=='undefined'?destination:null))setDestinationReady(true);injectPinShortcut()}
 const menuObserver=new MutationObserver(()=>injectPinShortcut());menuObserver.observe(document.documentElement,{childList:true,subtree:true});
 if(typeof refreshRoute==='function')refreshRoute=refreshRouteReliable;
 window.addEventListener('load',()=>{setTimeout(boot,2200);setTimeout(boot,3200)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(boot,120)});
-window.addEventListener('fast:ride-cancelled',()=>setTimeout(()=>clearClientAfterEnd('cancelled',clientLastRideId||rideId()),60));
 setInterval(()=>{boot();syncClientLifecycle();syncDriverArrival()},2200);
 })();
