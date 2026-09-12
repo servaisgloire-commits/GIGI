@@ -64,6 +64,23 @@ jobs:
             exit 1
           fi
 
+      - name: Read FAST version metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -1)"
+          VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode = ([0-9]+).*/\1/p' app/build.gradle.kts | head -1)"
+          test -n "$VERSION_NAME"
+          test -n "$VERSION_CODE"
+          VERSION_SLUG="$(printf '%s' "$VERSION_NAME" | tr '.' '-' | tr -cd '[:alnum:]-')"
+          APK_NAME="FAST-N1-${VERSION_SLUG}-ANDROID.apk"
+          RELEASE_TAG="fast-n1-${VERSION_SLUG}"
+          echo "FAST_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "FAST_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "FAST_VERSION_SLUG=$VERSION_SLUG" >> "$GITHUB_ENV"
+          echo "FAST_APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+          echo "FAST_RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+
       - name: Check application JavaScript
         run: |
           for f in app/src/main/assets/*.js; do node --check "$f"; done
@@ -81,7 +98,8 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
           grep -q "package: name='cg.fast.n1'" /tmp/fast-badging.txt
-          grep -q "versionCode='11092026'" /tmp/fast-badging.txt
+          grep -q "versionCode='${FAST_VERSION_CODE}'" /tmp/fast-badging.txt
+          grep -q "versionName='${FAST_VERSION_NAME}'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
           if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then
@@ -91,17 +109,19 @@ jobs:
           grep 'Signer: certificate SHA-256 digest' /tmp/fast-signature.txt
 
       - name: Prepare FAST APK
+        shell: bash
         run: |
-          cp app/build/outputs/apk/directInstall/app-directInstall.apk FAST-N1-11-09-2026-ANDROID.apk
-          sha256sum FAST-N1-11-09-2026-ANDROID.apk > FAST-N1-11-09-2026-ANDROID.sha256
+          set -euo pipefail
+          cp app/build/outputs/apk/directInstall/app-directInstall.apk "$FAST_APK_NAME"
+          sha256sum "$FAST_APK_NAME" > "${FAST_APK_NAME}.sha256"
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: FAST-N1-stable-android
           path: |
-            FAST-N1-11-09-2026-ANDROID.apk
-            FAST-N1-11-09-2026-ANDROID.sha256
+            ${{ env.FAST_APK_NAME }}
+            ${{ env.FAST_APK_NAME }}.sha256
           retention-days: 30
 
       - name: Publish official FAST download
@@ -111,15 +131,45 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG='fast-n1-11-09-2026'
-          APK='FAST-N1-11-09-2026-ANDROID.apk'
-          SUM='FAST-N1-11-09-2026-ANDROID.sha256'
-          NOTES='FAST N°1 Android utilise désormais le package permanent cg.fast.n1 et une clé de signature de production stable. Toutes les futures mises à jour doivent conserver les deux.'
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$APK" "$SUM" --clobber
-            gh release edit "$TAG" --notes "$NOTES"
+          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Package permanent cg.fast.n1 et signature de production stable."
+          if gh release view "$FAST_RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --clobber
+            gh release edit "$FAST_RELEASE_TAG" --notes "$NOTES"
           else
-            gh release create "$TAG" "$APK" "$SUM" --title 'FAST N°1 Android — 11/09/2026' --notes "$NOTES"
+            gh release create "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --title "FAST N°1 Android — ${FAST_VERSION_NAME}" --notes "$NOTES"
+          fi
+
+      - name: Point official FAST site to this APK automatically
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export FAST_SOURCE_APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${FAST_RELEASE_TAG}/${FAST_APK_NAME}"
+          python3 - <<'PY'
+          import json, os
+          path = 'updates/latest.json'
+          with open(path, 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          data['version'] = os.environ['FAST_VERSION_NAME']
+          data['build'] = int(os.environ['FAST_VERSION_CODE'])
+          data['sourceApkUrl'] = os.environ['FAST_SOURCE_APK_URL']
+          data['fileName'] = os.environ['FAST_APK_NAME']
+          data['platform'] = 'Android'
+          data['url'] = 'https://fast-n1-officiel.vercel.app/#download'
+          data['apkUrl'] = 'https://fast-n1-officiel.vercel.app/api/download'
+          data['notes'] = f"FAST N°1 {os.environ['FAST_VERSION_NAME']} — dernière version Android validée et signée automatiquement."
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+              f.write('\n')
+          PY
+          git config user.name 'FAST Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add updates/latest.json
+          if git diff --cached --quiet; then
+            echo 'Official download manifest already points to this APK.'
+          else
+            git commit -m "Update official FAST APK to ${FAST_VERSION_NAME}"
+            git push origin HEAD:main
           fi
 
       - name: Install and launch on Android emulator
@@ -129,7 +179,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           script: |
-            adb install FAST-N1-11-09-2026-ANDROID.apk
+            adb install "$FAST_APK_NAME"
             adb shell pm list packages | grep 'package:cg.fast.n1'
             adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
             sleep 5
