@@ -1,1 +1,1 @@
-FAST N1 preproduction audit trigger: registration-to-completed-ride + driver GPS + controlled 10k read-only load.
+FAST N1 preproduction audit trigger v2: registration-to-completed-ride + restart PIN recovery + app-close search cancellation + driver GPS + multi-client/multi-driver guards + controlled 10k read-only load.
