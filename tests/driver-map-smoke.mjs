@@ -3,6 +3,7 @@ import {JSDOM} from 'jsdom';
 
 const dom=new JSDOM(`<!doctype html><html><body class="driver-mode"><section id="mainApp"><div id="passengerArea"><div id="sharedMapWrap"><div id="map"><div class="stale-hidden-map"></div></div></div></div><div id="driverArea"><div id="driverGpsMapHost"></div></div></section></body></html>`,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://appassets.androidplatform.net/assets/index.html'});
 const {window}=dom;
+Object.defineProperty(window.navigator,'onLine',{configurable:true,value:true});
 window.role='driver';
 let initCalls=0;
 let resizeCalls=0;
@@ -14,7 +15,7 @@ window.initMap=()=>{initCalls++;window.map={gmap:{getCenter(){return null}},resi
 const source=fs.readFileSync(new URL('../app/src/main/assets/driver-map-recovery.js',import.meta.url),'utf8');
 window.eval(source);
 window.dispatchEvent(new window.Event('load'));
-await new Promise(r=>setTimeout(r,250));
+await new Promise(r=>setTimeout(r,300));
 
 const host=window.document.getElementById('driverGpsMapHost');
 const wrap=window.document.getElementById('sharedMapWrap');
