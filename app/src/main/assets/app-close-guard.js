@@ -24,16 +24,25 @@ async function refreshStatus(){
   }catch(e){return null}
 }
 
-function locallySearching(id){
-  if(!id)return false;
-  if(lastRideId===id&&lastStatus===SEARCHING)return true;
-  try{return localStorage.getItem('fast_client_active_status')===SEARCHING&&localStorage.getItem('fast_client_active_ride')===id}catch(e){return false}
+async function fallbackServerCheckedCancel(id){
+  const t=authToken();if(!t)return false;
+  try{
+    const check=await fetch(`${API}/v1/rides/${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},cache:'no-store',keepalive:true});
+    let snapshot={};try{snapshot=await check.json()}catch(e){}
+    if(!check.ok||String(snapshot?.ride?.status||'')!==SEARCHING)return false;
+    const r=await fetch(`${API}/v1/rides/${encodeURIComponent(id)}/status`,{
+      method:'PATCH',keepalive:true,
+      headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},
+      body:JSON.stringify({status:'cancelled',cancellation_reason:'client_app_closed',cancellation_note:'Recherche annulée automatiquement à la fermeture de l’application'})
+    });
+    return r.ok;
+  }catch(e){return false}
 }
 
 function closeNow(){
   if(!isClient())return false;
   const id=rideId()||(()=>{try{return localStorage.getItem('fast_client_active_ride')}catch(e){return null}})();
-  if(!id||!locallySearching(id)||closeSentFor===id)return false;
+  if(!id||closeSentFor===id)return false;
   closeSentFor=id;
   try{
     if(window.FASTNative?.cancelSearchingRideOnClose){
@@ -41,15 +50,8 @@ function closeNow(){
       return true;
     }
   }catch(e){}
-  try{
-    const t=authToken();if(!t)return false;
-    fetch(`${API}/v1/rides/${encodeURIComponent(id)}/status`,{
-      method:'PATCH',keepalive:true,
-      headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},
-      body:JSON.stringify({status:'cancelled',cancellation_reason:'client_app_closed',cancellation_note:'Recherche annulée automatiquement à la fermeture de l’application'})
-    }).catch(()=>{});
-    return true;
-  }catch(e){return false}
+  fallbackServerCheckedCancel(id);
+  return true;
 }
 
 function clearStatus(){lastRideId=null;lastStatus=null;closeSentFor=null;try{localStorage.removeItem('fast_client_active_status')}catch(e){}}
