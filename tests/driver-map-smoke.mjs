@@ -28,6 +28,8 @@ if(mapNode.querySelector('.stale-hidden-map'))throw new Error('stale hidden map 
 if(!audit.driver||!audit.mapObject||!audit.googleMap)throw new Error('driver map audit reports map unavailable');
 if(audit.hostHeight===0&&host.style.height!=='61vh')throw new Error('driver map host has no enforced visible height');
 
+await import('./driver-restart-pin-smoke.mjs');
+
 console.log(JSON.stringify({ok:true,initCalls,resizeCalls,parent:wrap.parentElement.id,audit},null,2));
 window.close();
 process.exit(0);
