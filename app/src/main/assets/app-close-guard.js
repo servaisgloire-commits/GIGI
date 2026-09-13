@@ -27,14 +27,12 @@ async function refreshStatus(){
 async function fallbackServerCheckedCancel(id){
   const t=authToken();if(!t)return false;
   try{
-    const check=await fetch(`${API}/v1/rides/${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},cache:'no-store',keepalive:true});
-    let snapshot={};try{snapshot=await check.json()}catch(e){}
-    if(!check.ok||String(snapshot?.ride?.status||'')!==SEARCHING)return false;
     const r=await fetch(`${API}/v1/rides/${encodeURIComponent(id)}/status`,{
       method:'PATCH',keepalive:true,
       headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},
-      body:JSON.stringify({status:'cancelled',cancellation_reason:'client_app_closed',cancellation_note:'Recherche annulée automatiquement à la fermeture de l’application'})
+      body:JSON.stringify({status:'cancelled',expected_current_status:SEARCHING,cancellation_reason:'client_app_closed',cancellation_note:'Recherche annulée automatiquement à la fermeture de l’application'})
     });
+    if(r.status===409)return false;
     return r.ok;
   }catch(e){return false}
 }
