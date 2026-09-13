@@ -5,12 +5,12 @@ let seenRideId=null;
 let transitionBusy=false;
 let cancelBusy=false;
 let mapRepairTimer=null;
+let repairQueued=false;
 
 function isDriver(){try{return typeof role!=='undefined'&&role==='driver'}catch(e){return false}}
 function rideId(){try{return typeof currentRideId!=='undefined'?currentRideId:null}catch(e){return null}}
 function authToken(){try{return (typeof token!=='undefined'&&token)||localStorage.getItem('fast_access_token')||''}catch(e){return ''}}
 function notify(message){try{if(typeof toast==='function')toast(message)}catch(e){}}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 
 function installCss(){
   if(fx('fast-driver-critical-style'))return;
@@ -34,38 +34,30 @@ function ensureDriverMap(){
   if(!host||!wrap)return;
   if(wrap.parentElement!==host)host.appendChild(wrap);
   host.classList.remove('hidden');wrap.classList.remove('hidden');fx('map')?.classList.remove('hidden');
-  try{
-    if((typeof map==='undefined'||!map)&&typeof initMap==='function')initMap();
-  }catch(e){console.warn('FAST driver map init',e)}
-  try{
-    const st=window.FASTGoogleMaps?.status?.();
-    if(st&&!st.ready&&!st.loading&&navigator.onLine)window.FASTGoogleMaps?.retry?.();
-  }catch(e){}
-  [60,260,700].forEach(ms=>setTimeout(()=>{try{if(typeof map!=='undefined'&&map)map.resize()}catch(e){}},ms));
+  try{if((typeof map==='undefined'||!map)&&typeof initMap==='function')initMap()}catch(e){console.warn('FAST driver map init',e)}
+  try{const st=window.FASTGoogleMaps?.status?.();if(st&&!st.ready&&!st.loading&&navigator.onLine)window.FASTGoogleMaps?.retry?.()}catch(e){}
+  [50,220,650].forEach(ms=>setTimeout(()=>{try{if(typeof map!=='undefined'&&map)map.resize()}catch(e){}},ms));
 }
 
 async function fetchJson(path,opts={},timeout=7000){
   const t=authToken();
   if(!t)throw new Error('Session chauffeur expirée. Reconnectez-vous.');
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),timeout);
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
   try{
     const headers={...(opts.headers||{}),'Content-Type':'application/json',Authorization:'Bearer '+t};
     const r=await fetch(API+path,{...opts,headers,signal:opts.signal||controller.signal});
     let data={};try{data=await r.json()}catch(e){}
     if(!r.ok){const err=new Error(data.detail||data.message||data.error||`HTTP ${r.status}`);err.status=r.status;throw err}
     return data;
-  }catch(e){
-    if(e?.name==='AbortError')throw new Error('FAST met trop de temps à répondre. Réessayez.');
-    throw e;
-  }finally{clearTimeout(timer)}
+  }catch(e){if(e?.name==='AbortError')throw new Error('FAST met trop de temps à répondre. Réessayez.');throw e}
+  finally{clearTimeout(timer)}
 }
 
 async function rpc(name,body,timeout=6500){
   const t=authToken();if(!t)throw new Error('Session chauffeur expirée. Reconnectez-vous.');
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify(body||{}),signal:controller.signal});
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify(body||{}),signal:controller.signal});
     let data={};try{data=await r.json()}catch(e){}
     if(!r.ok)throw new Error(data.message||data.error||data.hint||`HTTP ${r.status}`);
     return Array.isArray(data)?data[0]:data;
@@ -115,11 +107,9 @@ function bindPinButton(){
   if(btn&&!btn.dataset.fastCriticalPin){btn.dataset.fastCriticalPin='1';btn.onclick=verifyPinFast}
 }
 
-async function statusIs(id,target){
-  try{return (await fetchJson('/v1/rides/'+id,{},4500))?.ride?.status===target}catch(e){return false}
-}
+async function statusIs(id,target){try{return (await fetchJson('/v1/rides/'+id,{},4500))?.ride?.status===target}catch(e){return false}}
 
-function cleanupEndedRide(id,message){
+function cleanupEndedRide(id,message,kind='cancelled'){
   try{if(typeof currentRideId!=='undefined'&&currentRideId===id)currentRideId=null}catch(e){}
   try{localStorage.removeItem('fast_pin_'+id)}catch(e){}
   seenRideId=null;resetPinUi(true);
@@ -128,7 +118,7 @@ function cleanupEndedRide(id,message){
   fx('fastDriverCheckpoint')?.classList.remove('on');
   fx('driverCancelSheet')?.remove();
   try{if(typeof stopDriverNavigationPolling==='function')stopDriverNavigationPolling()}catch(e){}
-  window.dispatchEvent(new CustomEvent('fast:ride-cancelled',{detail:{rideId:id,source:'driver'}}));
+  try{window.dispatchEvent(new CustomEvent(kind==='completed'?'fast:ride-completed':'fast:ride-cancelled',{detail:{rideId:id,source:'driver'}}))}catch(e){}
   setTimeout(()=>{try{if(fx('driverToggleInput')?.checked&&typeof startOfferPolling==='function')startOfferPolling()}catch(e){}},120);
   if(message)notify(message);
 }
@@ -138,16 +128,12 @@ async function cancelRideFast(){
   cancelBusy=true;const btn=fx('driverCancelConfirm');
   if(btn){btn.disabled=true;btn.textContent='Annulation…'}
   let ok=false;
-  try{
-    await fetchJson('/v1/rides/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:'cancelled'})},7000);ok=true;
-  }catch(e){
+  try{await fetchJson('/v1/rides/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:'cancelled'})},7000);ok=true}
+  catch(e){
     ok=await statusIs(id,'cancelled');
-    if(!ok){
-      const m=String(e?.message||'');
-      notify(/Failed to fetch|NetworkError|Load failed|trop de temps/i.test(m)?'FAST n’a pas confirmé l’annulation. Réessayez.':m);
-    }
+    if(!ok){const m=String(e?.message||'');notify(/Failed to fetch|NetworkError|Load failed|trop de temps/i.test(m)?'FAST n’a pas confirmé l’annulation. Réessayez.':m)}
   }
-  if(ok)cleanupEndedRide(id,'Course annulée');
+  if(ok)cleanupEndedRide(id,'Course annulée','cancelled');
   else if(btn){btn.disabled=false;btn.textContent='Annuler la course'}
   cancelBusy=false;
 }
@@ -178,9 +164,7 @@ async function fastTransition(target,button){
     }else if(target==='in_progress'){
       if(button){button.textContent='Course démarrée';button.disabled=true}
       document.body.classList.add('fast-driver-trip-active');ensureDriverMap();notify('Course démarrée');
-    }else if(target==='completed'){
-      cleanupEndedRide(id,'Course terminée');
-    }
+    }else if(target==='completed')cleanupEndedRide(id,'Course terminée','completed');
   }catch(e){
     const m=String(e?.message||'');
     notify(/Failed to fetch|NetworkError|Load failed/i.test(m)?'FAST n’a pas reçu la confirmation. Réessayez.':m);
@@ -198,22 +182,23 @@ function captureCriticalActions(e){
   }
 }
 
-function repair(){
-  if(!isDriver())return;
-  ensureDriverMap();bindPinButton();
+function repair(){if(!isDriver())return;ensureDriverMap();bindPinButton()}
+function scheduleRepair(delay=100){
+  if(repairQueued)return;repairQueued=true;
+  setTimeout(()=>{repairQueued=false;repair()},delay);
 }
 
 function boot(){
   installCss();
   document.addEventListener('click',captureCriticalActions,true);
-  const observer=new MutationObserver(()=>{if(isDriver()){bindPinButton();ensureDriverMap()}});
+  const observer=new MutationObserver(()=>{if(isDriver())scheduleRepair(120)});
   observer.observe(document.documentElement,{subtree:true,childList:true});
-  clearInterval(mapRepairTimer);mapRepairTimer=setInterval(repair,2500);
+  clearInterval(mapRepairTimer);mapRepairTimer=setInterval(repair,3500);
   repair();
 }
 
-window.addEventListener('fast:ride-restored',()=>{seenRideId=null;setTimeout(repair,80)});
-window.addEventListener('online',()=>setTimeout(repair,80));
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(repair,80)});
+window.addEventListener('fast:ride-restored',()=>{seenRideId=null;scheduleRepair(60)});
+window.addEventListener('online',()=>scheduleRepair(60));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleRepair(60)});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,350),{once:true});else setTimeout(boot,350);
 })();
