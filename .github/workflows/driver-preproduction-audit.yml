@@ -1,0 +1,61 @@
+name: FAST Driver Preproduction Audit
+
+on:
+  push:
+    branches: [ audit-driver-flow-concurrency-20260913 ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  driver-flow-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+      - name: Compile backend
+        run: python -m compileall -q backend/app
+      - name: Run backend tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: python -m pytest -q backend/tests
+      - name: Audit multi-client and multi-driver guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'dispatch_one_active_offer_per_driver_idx' supabase/migrations/*.sql
+          grep -q 'dispatch_one_active_offer_per_ride_idx' supabase/migrations/*.sql
+          grep -q 'rides_one_active_per_client_idx' supabase/migrations/*.sql
+          grep -q 'rides_one_active_per_driver_idx' supabase/migrations/*.sql
+          grep -q 'drivers_claimed_by_concurrent_requests' backend/app/flex_main.py
+          grep -q 'existing_atomic_offer' backend/app/flex_main.py
+          grep -q '_is_unique_conflict' backend/app/flex_main.py
+          grep -q 'nearest_same_country_atomic_claim' backend/app/flex_main.py
+          grep -q 'user.id != offer\["driver_id"\]' backend/app/main.py
+          grep -q 'pickup_confirmed' backend/app/vehicle_main.py
+          grep -q 'destination_confirmed' backend/app/vehicle_main.py
+          grep -q 'cancellation_reason' backend/app/vehicle_main.py
+      - name: Install JS audit dependencies
+        run: npm install --no-save --ignore-scripts jsdom@26.1.0
+      - name: Validate all application JavaScript
+        run: |
+          set -euo pipefail
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+      - name: Test driver map visible rebuild
+        run: node tests/driver-map-smoke.mjs
+      - name: Test passenger regression
+        run: node tests/client-rebuild-smoke.mjs
+      - name: Verify driver recovery loader
+        run: |
+          grep -q 'driver-map-recovery.js' app/src/main/assets/signup-ui-cleanup.js
+          grep -q 'FASTDriverMapAudit' app/src/main/assets/driver-map-recovery.js
