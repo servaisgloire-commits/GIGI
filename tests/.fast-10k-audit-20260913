@@ -1,1 +1,1 @@
-FAST N1 preproduction audit trigger v2: registration-to-completed-ride + restart PIN recovery + app-close search cancellation + driver GPS + multi-client/multi-driver guards + controlled 10k read-only load.
+FAST N1 preproduction audit trigger v3: all functional gates green; now validate corrected registration-to-completed-ride, restart PIN recovery, atomic app-close search cancellation, driver GPS, multi-client/multi-driver guards and controlled 10k read-only load.
