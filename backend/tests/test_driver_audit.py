@@ -1,5 +1,10 @@
 from app.main import AuthUser
-from app.vehicle_main import RideStatusRequest, _default_cancellation_reason, _ride_has_complete_addresses
+from app.vehicle_main import (
+    RideStatusRequest,
+    _default_cancellation_reason,
+    _ride_final_price,
+    _ride_has_complete_addresses,
+)
 
 
 def test_driver_start_accepts_complete_selected_addresses():
@@ -31,3 +36,19 @@ def test_cancellation_contract_has_reason():
     assert parsed.cancellation_reason == "driver_emergency"
     assert _default_cancellation_reason(AuthUser(id="driver-a", role="driver")) == "driver_cancelled"
     assert _default_cancellation_reason(AuthUser(id="client-a", role="client")) == "client_cancelled"
+
+
+def test_final_price_prefers_agreed_price_then_proposal_then_estimate():
+    assert _ride_final_price({"agreed_price": 4500, "customer_proposed_price": 4000, "estimated_price": 5000}) == 4500
+    assert _ride_final_price({"agreed_price": None, "customer_proposed_price": 4000, "estimated_price": 5000}) == 4000
+    assert _ride_final_price({"agreed_price": None, "customer_proposed_price": None, "estimated_price": 5000}) == 5000
+
+
+def test_cash_completion_fields_are_present_in_production_endpoint_source():
+    import inspect
+    from app.vehicle_main import update_ride_status_resilient
+
+    source = inspect.getsource(update_ride_status_resilient)
+    assert 'changes["payment_state"] = "cash_received"' in source
+    assert 'changes["payment_confirmed_at"]' in source
+    assert 'changes["completed_at"]' in source
