@@ -32,6 +32,8 @@
     }
   }
 
+  window.FASTAuthProxyRequest = fastAuthFetch;
+
   window.login = async function(){
     const email = $('loginEmail').value.trim();
     const password = $('loginPassword').value;
@@ -52,7 +54,7 @@
 
   window.signup = async function(){
     try{
-      await fastAuthFetch('/v1/auth/signup', {
+      const data = await fastAuthFetch('/v1/auth/signup', {
         email: $('signupEmail').value.trim(),
         password: $('signupPassword').value,
         role: $('signupRole').value,
@@ -60,6 +62,15 @@
         last_name: $('lastName').value.trim(),
         phone: $('phone').value.trim()
       });
+      if(data.access_token){
+        token = data.access_token;
+        localStorage.setItem('fast_access_token', token);
+        try{ FASTNative.setAccessToken(token); }catch(_e){}
+        await loadMe();
+        showApp();
+        toast('Compte créé. Bienvenue sur FAST.');
+        return;
+      }
       toast('Compte créé. Vérifiez votre e-mail.');
     }catch(error){
       toast(error.message || 'Création du compte impossible');
@@ -70,8 +81,9 @@
     const email = $('loginEmail').value.trim();
     if(!email) return toast('Entrez votre e-mail');
     try{
-      await fastAuthFetch('/v1/auth/recover', {email:email});
-      toast('Lien envoyé');
+      const data = await fastAuthFetch('/v1/auth/recover-password', {email:email});
+      if(data && data.ok === false) throw new Error(data.message || 'Réessayez dans quelques instants.');
+      toast((data && data.message) || 'Lien envoyé');
     }catch(error){
       toast(error.message || 'Envoi impossible');
     }
