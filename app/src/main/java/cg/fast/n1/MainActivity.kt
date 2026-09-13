@@ -257,24 +257,8 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val base = BuildConfig.PYTHON_API_URL.trimEnd('/')
             val encodedRide = Uri.encode(rideId)
-            var getConn: HttpURLConnection? = null
             var patchConn: HttpURLConnection? = null
             try {
-                getConn = (URL("$base/v1/rides/$encodedRide").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 5000
-                    readTimeout = 5000
-                    setRequestProperty("Authorization", "Bearer $token")
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Cache-Control", "no-store")
-                }
-                if (getConn.responseCode !in 200..299) return@Thread
-                val body = getConn.inputStream.bufferedReader().use { it.readText() }
-                val status = runCatching {
-                    JSONObject(body).optJSONObject("ride")?.optString("status")
-                }.getOrNull()
-                if (status != "searching") return@Thread
-
                 patchConn = (URL("$base/v1/rides/$encodedRide/status").openConnection() as HttpURLConnection).apply {
                     requestMethod = "PATCH"
                     doOutput = true
@@ -285,6 +269,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 val payload = JSONObject().apply {
                     put("status", "cancelled")
+                    put("expected_current_status", "searching")
                     put("cancellation_reason", "client_app_closed")
                     put("cancellation_note", "Recherche annulée automatiquement à la fermeture de l’application")
                 }.toString()
@@ -292,7 +277,6 @@ class MainActivity : AppCompatActivity() {
                 patchConn.responseCode
             } catch (_: Exception) {
             } finally {
-                getConn?.disconnect()
                 patchConn?.disconnect()
             }
         }.start()
