@@ -1,0 +1,136 @@
+name: FAST Internal Audit 10000
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flow-and-driver-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate application JavaScript
+        run: |
+          set -euo pipefail
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+      - name: Run internal full-flow and multi-account audit
+        run: node tests/internal-flow-audit.mjs
+      - name: Verify driver reliability wiring
+        run: |
+          grep -q 'driver-runtime-reliability.js' app/src/main/assets/signup-ui-cleanup.js
+          grep -q "rpc('get_ride_security_state'" app/src/main/assets/driver-runtime-reliability.js
+          grep -q 'host.appendChild(wrap)' app/src/main/assets/driver-runtime-reliability.js
+          grep -q 'dispatch_resilience' backend/app/vehicle_main.py
+          grep -q 'race_recovered' backend/app/dispatch_resilience.py
+
+  backend-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+      - name: Compile backend
+        run: python -m compileall -q backend/app
+      - name: Run backend tests
+        run: python -m pytest -q backend/tests
+      - name: Verify one production dispatch route
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          from app.vehicle_main import app
+          routes=[r for r in app.routes if getattr(r,'path',None)=='/v1/rides/{ride_id}/dispatch' and 'POST' in (getattr(r,'methods',set()) or set())]
+          assert len(routes)==1, [(r.path,getattr(r,'endpoint',None).__name__) for r in routes]
+          assert routes[0].endpoint.__name__=='dispatch_resilient', routes[0].endpoint.__name__
+          print({'dispatch_route':'dispatch_resilient','count':len(routes),'status':'PASS'})
+          PY
+
+  readonly-load-10000:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install HTTP client
+        run: pip install 'httpx==0.28.1'
+      - name: 10000-request staged read-only audit
+        env:
+          FAST_API: https://fast-n1-python-api.vercel.app
+        run: |
+          python - <<'PY'
+          import asyncio, json, os, statistics, time
+          import httpx
+
+          BASE=os.environ['FAST_API'].rstrip('/')
+          stages=[(1000,50),(3000,100),(6000,150)]
+          all_lat=[]
+          errors=[]
+          success=0
+          started=time.perf_counter()
+
+          async def run_stage(total, concurrency):
+              sem=asyncio.Semaphore(concurrency)
+              limits=httpx.Limits(max_connections=concurrency,max_keepalive_connections=concurrency)
+              timeout=httpx.Timeout(12.0,connect=8.0)
+              async with httpx.AsyncClient(limits=limits,timeout=timeout,headers={'User-Agent':'FAST-internal-audit/2.0','Cache-Control':'no-cache'}) as client:
+                  async def hit(i):
+                      path='/v1/config' if i % 10 == 0 else '/health'
+                      t=time.perf_counter()
+                      try:
+                          async with sem:
+                              r=await client.get(BASE+path)
+                          latency=time.perf_counter()-t
+                          return 200 <= r.status_code < 300, r.status_code, latency, r.text[:100]
+                      except Exception as exc:
+                          return False,0,time.perf_counter()-t,str(exc)[:100]
+                  return await asyncio.gather(*(hit(i) for i in range(total)))
+
+          async def main():
+              global success
+              for total,concurrency in stages:
+                  stage_start=time.perf_counter()
+                  results=await run_stage(total,concurrency)
+                  stage_ok=sum(1 for r in results if r[0])
+                  success += stage_ok
+                  all_lat.extend(r[2] for r in results)
+                  errors.extend(r for r in results if not r[0])
+                  print(json.dumps({'stage_requests':total,'parallel':concurrency,'success':stage_ok,'errors':total-stage_ok,'elapsed_s':round(time.perf_counter()-stage_start,2)},ensure_ascii=False))
+
+          asyncio.run(main())
+          elapsed=time.perf_counter()-started
+          total=sum(x[0] for x in stages)
+          lat=sorted(all_lat)
+          def pct(p): return lat[max(0,min(len(lat)-1,int(len(lat)*p)-1))]
+          report={
+              'requests':total,
+              'max_parallel_requests':max(x[1] for x in stages),
+              'success':success,
+              'errors':len(errors),
+              'success_rate':round(success/total*100,3),
+              'elapsed_s':round(elapsed,2),
+              'requests_per_second':round(total/elapsed,2),
+              'p50_s':round(statistics.median(lat),3),
+              'p95_s':round(pct(.95),3),
+              'p99_s':round(pct(.99),3),
+              'sample_errors':[{'status':x[1],'detail':x[3]} for x in errors[:10]],
+          }
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if report['success_rate'] < 99.0:
+              raise SystemExit('FAST 10000-request audit failed: success rate below 99%')
+          if report['p95_s'] > 5.0:
+              raise SystemExit('FAST 10000-request audit failed: p95 above 5 seconds')
+          PY

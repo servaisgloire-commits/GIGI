@@ -52,10 +52,14 @@ function loadDriverCriticalFix(){
   if(document.querySelector('script[data-fast-driver-critical]'))return;
   const s=document.createElement('script');s.src='driver-critical-fixes.js';s.dataset.fastDriverCritical='1';s.async=false;document.body.appendChild(s);
 }
+function loadDriverRuntimeReliability(){
+  if(document.querySelector('script[data-fast-driver-runtime-reliability]'))return;
+  const s=document.createElement('script');s.src='driver-runtime-reliability.js';s.dataset.fastDriverRuntimeReliability='1';s.async=false;document.body.appendChild(s);
+}
 
 window.addEventListener('load',()=>{
-  cleanSignupUi();watchMessages();installImmediateSignup();loadDriverCriticalFix();
-  setTimeout(()=>{cleanSignupUi();watchMessages();installImmediateSignup();},900);
+  cleanSignupUi();watchMessages();installImmediateSignup();loadDriverCriticalFix();loadDriverRuntimeReliability();
+  setTimeout(()=>{cleanSignupUi();watchMessages();installImmediateSignup();loadDriverRuntimeReliability();},900);
 });
 setInterval(cleanSignupUi,3500);
 })();
