@@ -11,7 +11,7 @@ function cleanSignupUi(){
   const help=document.querySelector('#auth .auth-card .help');
   if(help&&/confirmation par e-mail/i.test(help.textContent||''))help.innerHTML='Assistance : <span id="authSupportEmail">contact@gloire-group.com</span>';
   const toastEl=q('toast');
-  if(toastEl&&/vérifiez votre e-mail/i.test(toastEl.textContent||''))toastEl.textContent='Compte créé. Connexion en cours…';
+  if(toastEl&&/vérifiez votre e-mail/i.test(toastEl.textContent||''))toastEl.textContent='Compte créé. Vérifiez votre e-mail si FAST le demande.';
   if(toastEl&&/confirmez votre adresse e-mail/i.test(toastEl.textContent||''))toastEl.textContent='Ce compte ancien n’est pas encore actif.';
 }
 
@@ -26,6 +26,11 @@ function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'').tr
 async function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 async function loadProfileWithRetry(){let lastError=null;for(let i=0;i<4;i++){try{return await loadMe()}catch(e){lastError=e;await wait(350*(i+1))}}throw lastError||new Error('Profil FAST indisponible')}
 
+async function backendSignup(payload){
+  if(typeof window.FASTAuthProxyRequest==='function')return window.FASTAuthProxyRequest('/v1/auth/signup',payload);
+  return api('/v1/auth/signup',{method:'POST',body:JSON.stringify(payload)});
+}
+
 async function immediateSignup(){
   if(signupBusy)return toast('Création du compte déjà en cours…');
   const first=q('firstName')?.value.trim()||'',last=q('lastName')?.value.trim()||'',phone=q('phone')?.value.trim()||'',email=q('signupEmail')?.value.trim()||'',password=q('signupPassword')?.value||'',signupRole=q('signupRole')?.value||'client',btn=q('signupBtn');
@@ -35,14 +40,15 @@ async function immediateSignup(){
   if(!['client','driver'].includes(signupRole))return toast('Type de compte invalide');
   signupBusy=true;const oldText=btn?.textContent||'';if(btn){btn.disabled=true;btn.textContent='Création…'}
   try{
-    const data=await supa('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password,data:{role:signupRole,first_name:first,last_name:last,phone}})});
-    if(!data?.access_token){toast('Supabase demande encore une confirmation e-mail. Vérifiez le réglage « Confirm email ».');return}
+    const data=await backendSignup({email,password,role:signupRole,first_name:first,last_name:last,phone});
+    if(!data?.access_token){toast('Compte créé. Vérifiez votre e-mail si FAST vous demande de le confirmer.');return}
     token=data.access_token;localStorage.setItem('fast_access_token',token);try{FASTNative.setAccessToken(token)}catch(e){}
     await loadProfileWithRetry();showApp();toast(signupRole==='driver'?'Compte chauffeur créé. Bienvenue sur FAST.':'Compte passager créé. Bienvenue sur FAST.');
   }catch(e){
     const msg=String(e?.message||e||'Erreur lors de la création du compte');
     if(/already registered|already been registered|user already exists/i.test(msg))toast('Cette adresse e-mail possède déjà un compte FAST.');
     else if(/rate limit|429|security purposes/i.test(msg))toast('Trop de demandes rapprochées. Réessayez dans quelques instants.');
+    else if(/Failed to fetch|NetworkError|Load failed/i.test(msg))toast('Connexion FAST indisponible. Vérifiez Internet puis réessayez.');
     else toast(msg);
   }finally{signupBusy=false;if(btn){btn.disabled=false;btn.textContent=oldText||'Créer mon compte FAST'}}
 }
