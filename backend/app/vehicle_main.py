@@ -7,9 +7,6 @@ from pydantic import BaseModel
 from .flex_main import AuthUser, app, current_user, db
 from .main import DriverAvailability, SUPABASE_URL, db_retry, require_role
 
-# FAST vehicle-complete entrypoint.
-# The flexible/global routing stack remains intact; only the ride detail,
-# availability and ride-status endpoints are replaced here.
 _REPLACED = {
     ("/v1/rides/{ride_id}", "GET"),
     ("/v1/driver/availability", "POST"),
@@ -42,6 +39,14 @@ def _signed_vehicle_photo(photo_path: str | None) -> str | None:
     except Exception:
         return None
     return None
+
+
+def _optional_data(factory, default=None):
+    try:
+        response = db_retry(factory)
+        return response.data if response is not None else default
+    except Exception:
+        return default
 
 
 @app.post("/v1/driver/availability")
@@ -112,14 +117,6 @@ def update_ride_status_resilient(
     body: RideStatusRequest,
     user: AuthUser = Depends(current_user),
 ):
-    """Idempotent ride transition used by the Android driver flow.
-
-    A client confirms both route addresses by creating the booking. Older rides
-    created before this rule may still have the confirmation flags set to false;
-    when their addresses are complete, the start transition repairs those flags
-    atomically in the same database update. The database PIN/payment state
-    machine remains the final authority.
-    """
     ride = db_retry(lambda: db().table("rides").select("*").eq("id", ride_id).single()).data
     if not ride:
         raise HTTPException(404, "Ride not found")
@@ -140,9 +137,6 @@ def update_ride_status_resilient(
     if body.status == "in_progress":
         if not _ride_has_complete_addresses(ride):
             raise HTTPException(409, "addresses_not_ready")
-        # Creating the booking with both selected addresses is the passenger's
-        # confirmation. Repair legacy false flags in the same transition so the
-        # DB state-machine can validate PIN/payment without a second network hop.
         changes["pickup_confirmed"] = True
         changes["destination_confirmed"] = True
         changes["started_at"] = ride.get("started_at") or now
@@ -152,9 +146,6 @@ def update_ride_status_resilient(
             raise HTTPException(409, "invalid_ride_transition")
         changes["completed_at"] = now
         changes["final_price"] = _ride_final_price(ride)
-        # The current Android driver button confirms both passenger drop-off and
-        # cash settlement. Mark cash received in the SAME database update so the
-        # payment guard can validate the completion instead of rejecting it.
         if str(ride.get("payment_method") or "").lower() == "cash" and str(ride.get("payment_state") or "") not in {"cash_received", "paid"}:
             changes["payment_state"] = "cash_received"
             changes["payment_confirmed_at"] = ride.get("payment_confirmed_at") or now
@@ -167,8 +158,6 @@ def update_ride_status_resilient(
         if body.cancellation_note:
             changes["cancellation_note"] = body.cancellation_note.strip()[:500]
 
-    # This write defines success. The database trigger still enforces legal
-    # status transitions, verified PIN and payment requirements.
     try:
         db_retry(lambda: db().table("rides").update(changes).eq("id", ride_id))
     except HTTPException:
@@ -187,8 +176,6 @@ def update_ride_status_resilient(
             raise HTTPException(409, "cash_payment_not_confirmed") from exc
         raise
 
-    # Event logging is important but secondary. A temporary audit-table failure
-    # must not make the phone think that the ride transition itself failed.
     event_recorded = True
     try:
         db_retry(
@@ -223,17 +210,19 @@ async def get_ride_with_vehicle_photo(ride_id: str, user: AuthUser = Depends(cur
 
     extra = {}
     if ride.get("driver_id"):
-        loc = db_retry(
-            lambda: db().table("driver_locations").select("*").eq("driver_id", ride["driver_id"]).single()
-        ).data
+        loc = _optional_data(
+            lambda: db().table("driver_locations").select("*").eq("driver_id", ride["driver_id"]).single(),
+            None,
+        )
         vehicle = (
-            db_retry(
+            _optional_data(
                 lambda: db()
                 .table("vehicles")
                 .select("id,make,model,color,plate_number,seats,vehicle_type,photo_path")
                 .eq("id", ride["vehicle_id"])
-                .single()
-            ).data
+                .single(),
+                None,
+            )
             if ride.get("vehicle_id")
             else None
         )
@@ -241,12 +230,14 @@ async def get_ride_with_vehicle_photo(ride_id: str, user: AuthUser = Depends(cur
             vehicle = dict(vehicle)
             vehicle["photo_url"] = _signed_vehicle_photo(vehicle.get("photo_path"))
 
-        driver = db_retry(
-            lambda: db().table("drivers").select("rating,total_rides").eq("user_id", ride["driver_id"]).single()
-        ).data
-        prof = db_retry(
-            lambda: db().table("profiles").select("first_name,last_name,avatar_url").eq("id", ride["driver_id"]).single()
-        ).data
-        extra = {"driver_location": loc, "vehicle": vehicle, "driver": {**(driver or {}), **(prof or {})}}
+        driver = _optional_data(
+            lambda: db().table("drivers").select("rating,total_rides").eq("user_id", ride["driver_id"]).single(),
+            {},
+        ) or {}
+        prof = _optional_data(
+            lambda: db().table("profiles").select("first_name,last_name,avatar_url").eq("id", ride["driver_id"]).single(),
+            {},
+        ) or {}
+        extra = {"driver_location": loc, "vehicle": vehicle, "driver": {**driver, **prof}}
 
     return {"ride": ride, **extra}
