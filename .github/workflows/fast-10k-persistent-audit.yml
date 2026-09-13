@@ -1,0 +1,101 @@
+name: FAST 10K Persistent Capacity Audit
+
+on:
+  push:
+    branches: [ audit-driver-flow-concurrency-20260913 ]
+
+concurrency:
+  group: fast-10k-persistent-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  persistent-10k-load:
+    if: contains(github.event.head_commit.message, '[10k-persistent]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run 10000 requests over 100 persistent HTTPS connections
+        env:
+          FAST_API: https://fast-n1-python-api.vercel.app
+        run: |
+          python - <<'PY'
+          import concurrent.futures, http.client, json, os, statistics, time
+          from urllib.parse import urlparse
+
+          parsed=urlparse(os.environ['FAST_API'].rstrip('/'))
+          host=parsed.hostname
+          port=parsed.port or 443
+          prefix=parsed.path.rstrip('/')
+          total=10000
+          workers=100
+          per_worker=total//workers
+          remainder=total%workers
+
+          def worker(worker_id,count):
+              results=[]
+              conn=None
+              def connect():
+                  return http.client.HTTPSConnection(host,port,timeout=15)
+              for j in range(count):
+                  global_index=worker_id*per_worker+j
+                  path=prefix+('/v1/config' if global_index%5==0 else '/health')
+                  start=time.perf_counter()
+                  try:
+                      if conn is None:
+                          conn=connect()
+                      conn.request('GET',path,headers={
+                          'User-Agent':'FAST-preproduction-load-audit/2.0',
+                          'Cache-Control':'no-cache',
+                          'Connection':'keep-alive'
+                      })
+                      r=conn.getresponse()
+                      r.read(256)
+                      results.append((200<=r.status<300,r.status,time.perf_counter()-start,''))
+                      if r.will_close:
+                          conn.close();conn=None
+                  except Exception as e:
+                      results.append((False,0,time.perf_counter()-start,str(e)[:160]))
+                      try:
+                          if conn: conn.close()
+                      except Exception:
+                          pass
+                      conn=None
+              try:
+                  if conn: conn.close()
+              except Exception:
+                  pass
+              return results
+
+          started=time.perf_counter()
+          counts=[per_worker+(1 if i<remainder else 0) for i in range(workers)]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+              chunks=list(ex.map(lambda pair: worker(*pair),enumerate(counts)))
+          results=[r for chunk in chunks for r in chunk]
+          elapsed=time.perf_counter()-started
+          ok=[r for r in results if r[0]]
+          bad=[r for r in results if not r[0]]
+          lat=sorted(r[2] for r in results)
+          def pct(p):
+              return lat[max(0,min(len(lat)-1,int(len(lat)*p)-1))]
+          report={
+              'requests':len(results),
+              'max_parallel_connections':workers,
+              'connection_model':'100 persistent HTTPS connections',
+              'success':len(ok),
+              'errors':len(bad),
+              'success_rate':round(len(ok)/len(results)*100,2),
+              'elapsed_s':round(elapsed,2),
+              'requests_per_second':round(len(results)/elapsed,2),
+              'p50_s':round(statistics.median(lat),3),
+              'p95_s':round(pct(.95),3),
+              'p99_s':round(pct(.99),3),
+              'sample_errors':[{'status':r[1],'detail':r[3]} for r in bad[:10]],
+          }
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if report['success_rate'] < 99.0:
+              raise SystemExit('FAST persistent 10k audit failed: success rate below 99%')
+          if report['p95_s'] > 5:
+              raise SystemExit('FAST persistent 10k audit failed: p95 above 5 seconds')
+          PY
