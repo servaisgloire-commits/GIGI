@@ -48,9 +48,13 @@ async function immediateSignup(){
 }
 
 function installImmediateSignup(){window.signup=immediateSignup;try{signup=immediateSignup}catch(e){}const btn=q('signupBtn');if(btn)btn.onclick=immediateSignup}
+function loadAppCloseGuard(){
+  if(document.querySelector('script[data-fast-app-close-guard]'))return;
+  const g=document.createElement('script');g.src='app-close-guard.js';g.dataset.fastAppCloseGuard='1';g.async=false;document.body.appendChild(g);
+}
 function loadDriverRestartRecovery(){
-  if(document.querySelector('script[data-fast-driver-restart-recovery]'))return;
-  const r=document.createElement('script');r.src='driver-restart-state.js';r.dataset.fastDriverRestartRecovery='1';r.async=false;document.body.appendChild(r);
+  if(document.querySelector('script[data-fast-driver-restart-recovery]')){loadAppCloseGuard();return}
+  const r=document.createElement('script');r.src='driver-restart-state.js';r.dataset.fastDriverRestartRecovery='1';r.async=false;r.onload=loadAppCloseGuard;document.body.appendChild(r);
 }
 function loadDriverMapRecovery(){
   if(document.querySelector('script[data-fast-driver-map-recovery]')){loadDriverRestartRecovery();return}
