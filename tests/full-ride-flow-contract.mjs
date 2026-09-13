@@ -53,13 +53,16 @@ requireText(restart,"/v1/rides/",'restart re-reads ride status');
 requireText(restart,"Démarrer la course",'restart unlocks start after verified PIN');
 requireText(signup,'driver-restart-state.js','restart recovery loader');
 
-// 7. Closing the client app while searching cancels only a still-searching ride
+// 7. Closing the client app while searching cancels only if searching is still true at write time
 requireText(closeGuard,'cancelSearchingRideOnClose','native close cancellation bridge');
+requireText(closeGuard,"expected_current_status:SEARCHING",'web atomic close cancellation');
 requireText(closeGuard,"cancellation_reason:'client_app_closed'",'explicit app-close reason');
-requireText(closeGuard,"!==SEARCHING",'race guard preserves already accepted ride');
+requireText(backend,'expected_current_status','backend expected-state contract');
+requireText(backend,'query.eq("status", body.expected_current_status)','atomic status predicate');
+requireText(backend,'stale_ride_state','accepted ride race protection');
 requireText(android,'override fun onStop()','Android lifecycle close hook');
 requireText(android,'cancelSearchingRideNative','Android native cancellation worker');
-requireText(android,'if (status != "searching") return@Thread','Android preserves accepted/in-progress ride');
+requireText(android,'put("expected_current_status", "searching")','Android atomic close cancellation');
 requireText(signup,'app-close-guard.js','close guard loader');
 
 console.log(JSON.stringify({
@@ -67,6 +70,6 @@ console.log(JSON.stringify({
   audited:[
     'signup','login','profile','ride_creation','dispatch','multi_client_driver_claims',
     'pin_issue','pin_verify','driver_arrival','trip_start','cash_completion','cancellation',
-    'verified_pin_restart_recovery','app_close_search_cancel','accepted_ride_close_preserved'
+    'verified_pin_restart_recovery','app_close_search_cancel','accepted_ride_close_preserved','atomic_close_accept_race'
   ]
 },null,2));
