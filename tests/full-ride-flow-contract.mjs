@@ -10,6 +10,9 @@ const security=read('app/src/main/assets/fast-security.js');
 const driver=read('app/src/main/assets/driver-operations.js');
 const backend=read('backend/app/vehicle_main.py');
 const flex=read('backend/app/flex_main.py');
+const restart=read('app/src/main/assets/driver-restart-state.js');
+const closeGuard=read('app/src/main/assets/app-close-guard.js');
+const android=read('app/src/main/java/cg/fast/n1/MainActivity.kt');
 
 // 1. Registration / login
 requireText(signup,"/auth/v1/signup",'signup');
@@ -43,10 +46,27 @@ requireText(backend,'changes["payment_state"] = "cash_received"','cash completio
 requireText(backend,'changes["completed_at"] = now','completed ride timestamp');
 requireText(backend,'changes["cancellation_reason"]','valid cancellation contract');
 
+// 6. Restart recovery must use server truth, never a stale local PIN state
+requireText(restart,'get_ride_security_state','restart re-reads PIN state');
+requireText(restart,"pin_verified",'restart restores verified PIN');
+requireText(restart,"/v1/rides/",'restart re-reads ride status');
+requireText(restart,"Démarrer la course",'restart unlocks start after verified PIN');
+requireText(signup,'driver-restart-state.js','restart recovery loader');
+
+// 7. Closing the client app while searching cancels only a still-searching ride
+requireText(closeGuard,'cancelSearchingRideOnClose','native close cancellation bridge');
+requireText(closeGuard,"cancellation_reason:'client_app_closed'",'explicit app-close reason');
+requireText(closeGuard,"!==SEARCHING",'race guard preserves already accepted ride');
+requireText(android,'override fun onStop()','Android lifecycle close hook');
+requireText(android,'cancelSearchingRideNative','Android native cancellation worker');
+requireText(android,'if (status != "searching") return@Thread','Android preserves accepted/in-progress ride');
+requireText(signup,'app-close-guard.js','close guard loader');
+
 console.log(JSON.stringify({
   ok:true,
   audited:[
     'signup','login','profile','ride_creation','dispatch','multi_client_driver_claims',
-    'pin_issue','pin_verify','driver_arrival','trip_start','cash_completion','cancellation'
+    'pin_issue','pin_verify','driver_arrival','trip_start','cash_completion','cancellation',
+    'verified_pin_restart_recovery','app_close_search_cancel','accepted_ride_close_preserved'
   ]
 },null,2));
