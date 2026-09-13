@@ -19,7 +19,13 @@ function makeDom({role='client',withNative=false,serverStatus='searching'}={}){
       const u=String(url),method=String(opts.method||'GET').toUpperCase();
       calls.push({u,method,body:opts.body||null});
       if(u.endsWith('/v1/rides/ride-close-1')&&method==='GET')return {ok:true,status:200,json:async()=>({ride:{id:'ride-close-1',status:serverStatus}})};
-      if(u.endsWith('/v1/rides/ride-close-1/status')&&method==='PATCH')return {ok:true,status:200,json:async()=>({status:'cancelled'})};
+      if(u.endsWith('/v1/rides/ride-close-1/status')&&method==='PATCH'){
+        const body=JSON.parse(opts.body||'{}');
+        const stillExpected=body.expected_current_status===serverStatus;
+        return stillExpected
+          ? {ok:true,status:200,json:async()=>({status:'cancelled'})}
+          : {ok:false,status:409,json:async()=>({detail:'stale_ride_state'})};
+      }
       throw new Error(`Unexpected fetch ${method} ${u}`);
     }
   });
@@ -39,7 +45,7 @@ function makeDom({role='client',withNative=false,serverStatus='searching'}={}){
   x.dom.window.close();
 }
 
-// 2. Web fallback: searching ride is cancelled with an explicit reason.
+// 2. Web fallback: cancellation is conditional on server state at write time.
 {
   const x=makeDom({withNative:false,serverStatus:'searching'});
   assert.equal(x.window.FASTAppCloseGuard.closeNow(),true);
@@ -48,16 +54,20 @@ function makeDom({role='client',withNative=false,serverStatus='searching'}={}){
   assert.ok(patch,'searching ride must be cancelled on close');
   const body=JSON.parse(patch.body);
   assert.equal(body.status,'cancelled');
+  assert.equal(body.expected_current_status,'searching');
   assert.equal(body.cancellation_reason,'client_app_closed');
   x.dom.window.close();
 }
 
-// 3. Race protection: if a driver accepted before close, do not cancel.
+// 3. Race protection: a driver acceptance wins over the close cancellation.
 {
   const x=makeDom({withNative:false,serverStatus:'accepted'});
   assert.equal(x.window.FASTAppCloseGuard.closeNow(),true);
   await wait(40);
-  assert.equal(x.calls.some(c=>c.method==='PATCH'),false,'accepted ride must survive app close');
+  const patch=x.calls.find(c=>c.method==='PATCH');
+  assert.ok(patch,'client may attempt conditional close cancellation');
+  assert.equal(JSON.parse(patch.body).expected_current_status,'searching');
+  // Mock backend returns 409 because current status is already accepted.
   x.dom.window.close();
 }
 
@@ -70,4 +80,4 @@ function makeDom({role='client',withNative=false,serverStatus='searching'}={}){
   x.dom.window.close();
 }
 
-console.log(JSON.stringify({ok:true,cases:['native-once','searching-cancelled','accepted-preserved','driver-no-cancel']}));
+console.log(JSON.stringify({ok:true,cases:['native-once','searching-cancelled-atomically','accepted-wins-race','driver-no-cancel']}));
