@@ -4,7 +4,6 @@ import {JSDOM} from 'jsdom';
 const dom=new JSDOM(`<!doctype html><html><body class="driver-mode"><section id="mainApp"><div id="passengerArea"><div id="sharedMapWrap"><div id="map"><div class="stale-hidden-map"></div></div></div></div><div id="driverArea"><div id="driverGpsMapHost"></div></div></section></body></html>`,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://appassets.androidplatform.net/assets/index.html'});
 const {window}=dom;
 window.role='driver';
-window.navigator.onLine=true;
 let initCalls=0;
 let resizeCalls=0;
 window.map={gmap:{},resize(){resizeCalls++}};
