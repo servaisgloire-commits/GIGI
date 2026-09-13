@@ -181,6 +181,21 @@ jobs:
           cp app/build/outputs/apk/directInstall/app-directInstall.apk "$FAST_APK_NAME"
           sha256sum "$FAST_APK_NAME" > "${FAST_APK_NAME}.sha256"
 
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7
+          script: |
+            set -euo pipefail
+            adb install "$FAST_APK_NAME"
+            adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
+            sleep 5
+            adb shell pidof cg.fast.n1
+            adb shell dumpsys activity activities | grep 'cg.fast.n1'
+
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -237,16 +252,3 @@ jobs:
             git commit -m "Update official FAST APK to ${FAST_VERSION_NAME}"
             git push origin HEAD:main
           fi
-
-      - name: Install and launch on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_7
-          script: |
-            adb install "$FAST_APK_NAME"
-            adb shell pm list packages | grep 'package:cg.fast.n1'
-            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
-            sleep 5
-            adb shell dumpsys activity activities | grep 'cg.fast.n1'
