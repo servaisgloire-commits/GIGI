@@ -2,22 +2,34 @@ import fs from 'node:fs';
 
 function read(path){return fs.readFileSync(new URL('../'+path,import.meta.url),'utf8')}
 function requireText(source,needle,label){if(!source.includes(needle))throw new Error(`${label}: missing ${needle}`)}
+function rejectText(source,needle,label){if(source.includes(needle))throw new Error(`${label}: forbidden ${needle}`)}
 
 const app=read('app/src/main/assets/app.js');
+const authProxy=read('app/src/main/assets/auth-proxy-fix.js');
 const signup=read('app/src/main/assets/signup-ui-cleanup.js');
+const index=read('app/src/main/assets/index.html');
 const client=read('app/src/main/assets/client-rebuild.js');
 const security=read('app/src/main/assets/fast-security.js');
 const driver=read('app/src/main/assets/driver-operations.js');
 const backend=read('backend/app/vehicle_main.py');
+const backendAuth=read('backend/app/auth_proxy.py');
 const flex=read('backend/app/flex_main.py');
 const restart=read('app/src/main/assets/driver-restart-state.js');
 const closeGuard=read('app/src/main/assets/app-close-guard.js');
 const android=read('app/src/main/java/cg/fast/n1/MainActivity.kt');
 
-// 1. Registration / login
-requireText(signup,"/auth/v1/signup",'signup');
-requireText(signup,"access_token",'signup immediate session');
-requireText(app,"/auth/v1/token?grant_type=password",'login');
+// 1. Registration / login: Android WebView must use FAST API, not direct Supabase auth.
+requireText(index,'auth-proxy-fix.js','FAST auth proxy loader');
+requireText(authProxy,"/v1/auth/password",'login through FAST backend');
+requireText(authProxy,"/v1/auth/signup",'signup through FAST backend');
+requireText(authProxy,"/v1/auth/recover-password",'password recovery through FAST backend');
+requireText(authProxy,'access_token','login session handoff');
+requireText(signup,"/v1/auth/signup",'immediate signup through FAST backend');
+requireText(signup,'access_token','signup immediate session');
+rejectText(signup,"supa('/auth/v1/signup'",'no direct Supabase signup from WebView');
+requireText(backendAuth,'/auth/v1/token?grant_type=password','backend Supabase login proxy');
+requireText(backendAuth,'@router.post("/password")','FAST login endpoint');
+requireText(backendAuth,'@router.post("/signup")','FAST signup endpoint');
 requireText(app,"/v1/me",'profile load');
 
 // 2. Passenger creates one ride then starts dispatch
@@ -68,7 +80,7 @@ requireText(signup,'app-close-guard.js','close guard loader');
 console.log(JSON.stringify({
   ok:true,
   audited:[
-    'signup','login','profile','ride_creation','dispatch','multi_client_driver_claims',
+    'auth_proxy_login','auth_proxy_signup','auth_proxy_recovery','profile','ride_creation','dispatch','multi_client_driver_claims',
     'pin_issue','pin_verify','driver_arrival','trip_start','cash_completion','cancellation',
     'verified_pin_restart_recovery','app_close_search_cancel','accepted_ride_close_preserved','atomic_close_accept_race'
   ]
