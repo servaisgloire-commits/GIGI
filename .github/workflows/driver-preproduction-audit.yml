@@ -48,6 +48,7 @@ jobs:
           grep -q 'cash_received' backend/app/vehicle_main.py
           grep -q '_optional_data' backend/app/vehicle_main.py
           grep -q 'Driver action required' backend/app/vehicle_main.py
+          grep -q 'expected_current_status' backend/app/vehicle_main.py
       - name: Install JS audit dependencies
         run: npm install --no-save --ignore-scripts jsdom@26.1.0
       - name: Validate all application JavaScript
@@ -60,10 +61,19 @@ jobs:
         run: node tests/driver-map-smoke.mjs
       - name: Test passenger regression
         run: node tests/client-rebuild-smoke.mjs
-      - name: Verify driver recovery loader
+      - name: Test driver restart after verified PIN
+        run: node tests/driver-restart-pin-smoke.mjs
+      - name: Test app close cancels searching ride safely
+        run: node tests/app-close-search-smoke.mjs
+      - name: Verify recovery loaders
         run: |
           grep -q 'driver-map-recovery.js' app/src/main/assets/signup-ui-cleanup.js
+          grep -q 'driver-restart-state.js' app/src/main/assets/signup-ui-cleanup.js
+          grep -q 'app-close-guard.js' app/src/main/assets/signup-ui-cleanup.js
           grep -q 'FASTDriverMapAudit' app/src/main/assets/driver-map-recovery.js
+          grep -q 'FASTRestartRecovery' app/src/main/assets/driver-restart-state.js
+          grep -q 'FASTAppCloseGuard' app/src/main/assets/app-close-guard.js
+          grep -q 'cancelSearchingRideOnClose' app/src/main/java/cg/fast/n1/MainActivity.kt
 
   controlled-10k-production-load-audit:
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[10k-load]')
