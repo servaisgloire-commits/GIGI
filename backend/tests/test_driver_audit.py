@@ -39,6 +39,23 @@ def test_cancellation_contract_has_reason():
     assert _default_cancellation_reason(AuthUser(id="client-a", role="client")) == "client_cancelled"
 
 
+def test_app_close_cancellation_can_require_searching_state_atomically():
+    parsed = RideStatusRequest(
+        status="cancelled",
+        expected_current_status="searching",
+        cancellation_reason="client_app_closed",
+    )
+    assert parsed.expected_current_status == "searching"
+    assert parsed.cancellation_reason == "client_app_closed"
+
+    import inspect
+    from app.vehicle_main import update_ride_status_resilient
+
+    source = inspect.getsource(update_ride_status_resilient)
+    assert 'query.eq("status", body.expected_current_status)' in source
+    assert 'HTTPException(409, "stale_ride_state")' in source
+
+
 def test_final_price_prefers_agreed_price_then_proposal_then_estimate():
     assert _ride_final_price({"agreed_price": 4500, "customer_proposed_price": 4000, "estimated_price": 5000}) == 4500
     assert _ride_final_price({"agreed_price": None, "customer_proposed_price": 4000, "estimated_price": 5000}) == 4000
