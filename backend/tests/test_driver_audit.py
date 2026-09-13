@@ -2,6 +2,7 @@ from app.main import AuthUser
 from app.vehicle_main import (
     RideStatusRequest,
     _default_cancellation_reason,
+    _optional_data,
     _ride_final_price,
     _ride_has_complete_addresses,
 )
@@ -52,3 +53,10 @@ def test_cash_completion_fields_are_present_in_production_endpoint_source():
     assert 'changes["payment_state"] = "cash_received"' in source
     assert 'changes["payment_confirmed_at"]' in source
     assert 'changes["completed_at"]' in source
+
+
+def test_optional_ride_enrichment_returns_default_on_timeout_like_error():
+    def fails():
+        raise RuntimeError("504 Gateway Timeout")
+
+    assert _optional_data(fails, {}) == {}
