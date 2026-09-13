@@ -1,11 +1,38 @@
 (()=>{
 'use strict';
 const x=id=>document.getElementById(id);
-let flexMode='standard',flexValue='',apiWrapped=false,cardBypass=false,cardMarketAllowed=false,syncTimer=null;
+let flexMode='standard',flexValue='',apiWrapped=false,cardBypass=false,cardMarketAllowed=false,syncTimer=null,mapGuardTimer=null;
 const num=v=>{const n=Number(String(v??'').trim().replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:0};
 const currency=()=>String(window.fastActiveMarket?.currency||x('crCurrency')?.textContent||'XAF').trim()||'XAF';
 const cashMoney=v=>{try{return new Intl.NumberFormat('fr-FR',{style:'currency',currency:currency(),maximumFractionDigits:['XAF','XOF','JPY'].includes(currency())?0:2}).format(Number(v||0))}catch(e){return `${Number(v||0).toLocaleString('fr-FR')} ${currency()}`}};
 const notify=m=>{try{if(typeof toast==='function')toast(m)}catch(e){}};
+const setMapManual=v=>{window.FAST_CLIENT_MAP_MANUAL=!!v};
+
+function removeClientHeading(){
+  document.querySelector('#passengerArea.fast-client-rebuild .cr-heading')?.remove();
+}
+function installClientMapGuard(){
+  if(!window.FAST_CLIENT_REBUILD_ACTIVE)return;
+  removeClientHeading();
+  const host=x('map');
+  if(host&&!host.dataset.fastManualMapGuard){
+    host.dataset.fastManualMapGuard='1';
+    let down=false,sx=0,sy=0;
+    host.addEventListener('pointerdown',e=>{down=true;sx=Number(e.clientX)||0;sy=Number(e.clientY)||0},{capture:true,passive:true});
+    host.addEventListener('pointermove',e=>{if(!down)return;const dx=(Number(e.clientX)||0)-sx,dy=(Number(e.clientY)||0)-sy;if(Math.hypot(dx,dy)>8)setMapManual(true)},{capture:true,passive:true});
+    host.addEventListener('pointerup',()=>{down=false},{capture:true,passive:true});
+    host.addEventListener('pointercancel',()=>{down=false},{capture:true,passive:true});
+    host.addEventListener('wheel',()=>setMapManual(true),{capture:true,passive:true});
+  }
+  try{
+    if(typeof map==='undefined'||!map||map.__fastPassengerManualGuard)return;
+    const baseEase=typeof map.easeTo==='function'?map.easeTo.bind(map):null;
+    const baseFit=typeof map.fitBounds==='function'?map.fitBounds.bind(map):null;
+    if(baseEase)map.easeTo=function(opts){if(window.FAST_CLIENT_MAP_MANUAL)return this;return baseEase(opts)};
+    if(baseFit)map.fitBounds=function(bounds,opts){if(window.FAST_CLIENT_MAP_MANUAL)return this;return baseFit(bounds,opts)};
+    map.__fastPassengerManualGuard=true;
+  }catch(e){}
+}
 
 function injectExtrasStyle(){
   if(x('crExtrasStyle'))return;const s=document.createElement('style');s.id='crExtrasStyle';s.textContent=`
@@ -94,16 +121,20 @@ async function captureCardBooking(e){
 
 function bindExtras(){
   if(!window.FAST_CLIENT_REBUILD_ACTIVE)return;
-  injectExtrasStyle();ensureFlexUi();wrapApiForFlexiblePrice();
+  setMapManual(false);injectExtrasStyle();ensureFlexUi();wrapApiForFlexiblePrice();installClientMapGuard();
+  if(!mapGuardTimer)mapGuardTimer=setInterval(installClientMapGuard,500);
   const b=x('crBookBtn');if(b&&!b.dataset.extrasBound){b.dataset.extrasBound='1';b.addEventListener('click',captureCardBooking,true)}
   const sel=x('crPaymentMethod');if(sel&&!sel.dataset.extrasBound){sel.dataset.extrasBound='1';sel.addEventListener('change',updateFlexUi)}
   syncCardProfile();
-  const observer=new MutationObserver(()=>{sanitizeCardOption();updateFlexUi()});
+  const observer=new MutationObserver(()=>{sanitizeCardOption();updateFlexUi();removeClientHeading()});
   if(sel)observer.observe(sel,{childList:true});
-  setInterval(()=>{sanitizeCardOption();updateFlexUi()},1200);
+  setInterval(()=>{sanitizeCardOption();updateFlexUi();removeClientHeading()},1200);
 }
 window.addEventListener('load',()=>{setTimeout(bindExtras,160);setTimeout(syncCardProfile,900)});
-document.addEventListener('click',e=>{if(e.target?.closest?.('[data-page="homePage"]'))setTimeout(syncCardProfile,160)},true);
+document.addEventListener('click',e=>{
+  if(e.target?.closest?.('#crLocateBtn,#crPickupGps,.cr-suggestion'))setMapManual(false);
+  if(e.target?.closest?.('[data-page="homePage"]'))setTimeout(syncCardProfile,160)
+},true);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(syncCardProfile,200)});
 window.addEventListener('fast:ride-cancelled',()=>setFlexMode('standard'));
 window.addEventListener('fast:ride-completed',()=>setFlexMode('standard'));
