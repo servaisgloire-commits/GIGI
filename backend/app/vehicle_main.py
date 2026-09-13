@@ -106,6 +106,12 @@ def update_ride_status_resilient(
         changes["final_price"] = ride.get("estimated_price")
     if body.status == "cancelled":
         changes["cancelled_at"] = now
+        changes["cancellation_reason"] = (
+            "driver_cancelled" if user.role == "driver"
+            else "client_cancelled" if user.role == "client"
+            else "admin_cancelled"
+        )
+        changes["cancellation_note"] = "Cancellation confirmed from FAST application"
 
     db_retry(lambda: db().table("rides").update(changes).eq("id", ride_id))
 
