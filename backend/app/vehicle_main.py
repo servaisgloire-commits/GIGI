@@ -30,6 +30,7 @@ class RideStatusRequest(BaseModel):
     status: Literal["driver_arriving", "in_progress", "completed", "cancelled"]
     cancellation_reason: str | None = None
     cancellation_note: str | None = None
+    expected_current_status: Literal["searching", "accepted", "driver_arriving", "in_progress"] | None = None
 
 
 def _signed_vehicle_photo(photo_path: str | None) -> str | None:
@@ -133,6 +134,8 @@ def update_ride_status_resilient(
         raise HTTPException(403, "Driver action required")
 
     current_status = str(ride.get("status") or "")
+    if body.expected_current_status and current_status != body.expected_current_status:
+        raise HTTPException(409, "stale_ride_state")
     if current_status == body.status:
         return {"ok": True, "status": body.status, "idempotent": True}
     if current_status in {"completed", "cancelled"}:
@@ -166,7 +169,15 @@ def update_ride_status_resilient(
             changes["cancellation_note"] = body.cancellation_note.strip()[:500]
 
     try:
-        db_retry(lambda: db().table("rides").update(changes).eq("id", ride_id))
+        def persist_status_change():
+            query = db().table("rides").update(changes).eq("id", ride_id)
+            if body.expected_current_status:
+                query = query.eq("status", body.expected_current_status)
+            return query
+
+        result = db_retry(persist_status_change)
+        if body.expected_current_status and not (getattr(result, "data", None) or []):
+            raise HTTPException(409, "stale_ride_state")
     except HTTPException:
         raise
     except Exception as exc:
