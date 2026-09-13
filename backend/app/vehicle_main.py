@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import Depends, HTTPException
+from pydantic import BaseModel
 
 from .flex_main import AuthUser, app, current_user, db
-from .main import DriverAvailability, RideStatusUpdate, SUPABASE_URL, db_retry, require_role
+from .main import DriverAvailability, SUPABASE_URL, db_retry, require_role
 
 # FAST vehicle-complete entrypoint.
 # The flexible/global routing stack remains intact; only the ride detail,
@@ -18,6 +20,12 @@ app.router.routes = [
     for r in app.router.routes
     if not any((getattr(r, "path", None), method) in _REPLACED for method in (getattr(r, "methods", None) or set()))
 ]
+
+
+class RideStatusRequest(BaseModel):
+    status: Literal["driver_arriving", "in_progress", "completed", "cancelled"]
+    cancellation_reason: str | None = None
+    cancellation_note: str | None = None
 
 
 def _signed_vehicle_photo(photo_path: str | None) -> str | None:
@@ -73,17 +81,40 @@ def driver_availability_vehicle_required(
     return {"status": status}
 
 
+def _ride_has_complete_addresses(ride: dict) -> bool:
+    return all(
+        [
+            str(ride.get("pickup_address") or "").strip(),
+            str(ride.get("destination_address") or "").strip(),
+            ride.get("pickup_lat") is not None,
+            ride.get("pickup_lng") is not None,
+            ride.get("destination_lat") is not None,
+            ride.get("destination_lng") is not None,
+        ]
+    )
+
+
+def _default_cancellation_reason(user: AuthUser) -> str:
+    if user.role == "driver":
+        return "driver_cancelled"
+    if user.role == "client":
+        return "client_cancelled"
+    return "admin_cancelled"
+
+
 @app.patch("/v1/rides/{ride_id}/status")
 def update_ride_status_resilient(
     ride_id: str,
-    body: RideStatusUpdate,
+    body: RideStatusRequest,
     user: AuthUser = Depends(current_user),
 ):
     """Idempotent ride transition used by the Android driver flow.
 
-    The ride update is the source of truth. Secondary audit/event writes are
-    retried but cannot turn a successful status transition into a false mobile
-    "connection unstable" failure.
+    A client confirms both route addresses by creating the booking. Older rides
+    created before this rule may still have the confirmation flags set to false;
+    when their addresses are complete, the start transition repairs those flags
+    atomically in the same database update. The database PIN/payment state
+    machine remains the final authority.
     """
     ride = db_retry(lambda: db().table("rides").select("*").eq("id", ride_id).single()).data
     if not ride:
@@ -100,20 +131,49 @@ def update_ride_status_resilient(
         raise HTTPException(409, "invalid_ride_transition")
 
     now = datetime.now(timezone.utc).isoformat()
-    changes = {"status": body.status}
+    changes: dict[str, object] = {"status": body.status}
+
     if body.status == "in_progress":
+        if not _ride_has_complete_addresses(ride):
+            raise HTTPException(409, "addresses_not_ready")
+        # Creating the booking with both selected addresses is the passenger's
+        # confirmation. Repair legacy false flags in the same transition so the
+        # DB state-machine can validate PIN/payment without a second network hop.
+        changes["pickup_confirmed"] = True
+        changes["destination_confirmed"] = True
         changes["started_at"] = ride.get("started_at") or now
+
     if body.status == "completed":
         if current_status != "in_progress":
             raise HTTPException(409, "invalid_ride_transition")
         changes["completed_at"] = now
         changes["final_price"] = ride.get("estimated_price")
+
     if body.status == "cancelled":
         changes["cancelled_at"] = now
+        changes["cancellation_reason"] = (body.cancellation_reason or _default_cancellation_reason(user)).strip()[:120]
+        changes["cancelled_by"] = user.id
+        changes["cancelled_by_role"] = user.role
+        if body.cancellation_note:
+            changes["cancellation_note"] = body.cancellation_note.strip()[:500]
 
-    # This write defines success. db_retry rebuilds the PostgREST request on
-    # transient gateway errors instead of reusing a consumed builder.
-    db_retry(lambda: db().table("rides").update(changes).eq("id", ride_id))
+    # This write defines success. The database trigger still enforces legal
+    # status transitions, verified PIN and payment requirements.
+    try:
+        db_retry(lambda: db().table("rides").update(changes).eq("id", ride_id))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        message = str(exc)
+        if "ride_pin_not_verified" in message:
+            raise HTTPException(409, "ride_pin_not_verified") from exc
+        if "ride_payment_required" in message:
+            raise HTTPException(409, "ride_payment_required") from exc
+        if "addresses_not_confirmed" in message:
+            raise HTTPException(409, "addresses_not_confirmed") from exc
+        if "cancellation_reason_required" in message:
+            raise HTTPException(409, "cancellation_reason_required") from exc
+        raise
 
     # Event logging is important but secondary. A temporary audit-table failure
     # must not make the phone think that the ride transition itself failed.
