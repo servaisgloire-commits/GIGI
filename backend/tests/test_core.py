@@ -35,6 +35,20 @@ def test_history_route_precedes_dynamic_ride_route():
     assert paths.index("/v1/rides/history") < paths.index("/v1/rides/{ride_id}")
 
 
+def test_final_entrypoint_has_one_resilient_status_route():
+    # Import the production entrypoint, which replaces legacy vehicle/status routes.
+    from app.vehicle_main import app as final_app
+
+    matches = [
+        route
+        for route in final_app.routes
+        if getattr(route, "path", None) == "/v1/rides/{ride_id}/status"
+        and "PATCH" in (getattr(route, "methods", set()) or set())
+    ]
+    assert len(matches) == 1
+    assert matches[0].endpoint.__name__ == "update_ride_status_resilient"
+
+
 def test_legacy_account_without_admin_control_remains_allowed():
     assert is_blocked(None) == (False, None)
 
