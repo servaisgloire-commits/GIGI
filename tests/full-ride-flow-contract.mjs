@@ -18,13 +18,20 @@ const restart=read('app/src/main/assets/driver-restart-state.js');
 const closeGuard=read('app/src/main/assets/app-close-guard.js');
 const android=read('app/src/main/java/cg/fast/n1/MainActivity.kt');
 
-// 1. Registration / login: Android WebView must use FAST API, not direct Supabase auth.
+// 1. Registration / login: Android WebView uses the live FAST Edge auth proxy,
+// while the Python proxy remains available for later backend deployment.
 requireText(index,'auth-proxy-fix.js','FAST auth proxy loader');
-requireText(authProxy,"/v1/auth/password",'login through FAST backend');
-requireText(authProxy,"/v1/auth/signup",'signup through FAST backend');
-requireText(authProxy,"/v1/auth/recover-password",'password recovery through FAST backend');
+requireText(authProxy,'https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-auth-proxy','live Edge auth endpoint');
+requireText(authProxy,"return 'password'",'login Edge action');
+requireText(authProxy,"return 'signup'",'signup Edge action');
+requireText(authProxy,"return 'recover'",'recovery Edge action');
+requireText(authProxy,"/v1/auth/password",'login route mapping');
+requireText(authProxy,"/v1/auth/signup",'signup route mapping');
+requireText(authProxy,"/v1/auth/recover-password",'password recovery route mapping');
+requireText(authProxy,"'apikey': SUPABASE_PUBLIC_KEY",'Edge API key header');
+rejectText(authProxy,'fetch(API + path','no stale Python auth route from Android');
 requireText(authProxy,'access_token','login session handoff');
-requireText(signup,"/v1/auth/signup",'immediate signup through FAST backend');
+requireText(signup,"/v1/auth/signup",'immediate signup through FAST auth helper');
 requireText(signup,'access_token','signup immediate session');
 rejectText(signup,"supa('/auth/v1/signup'",'no direct Supabase signup from WebView');
 requireText(backendAuth,'/auth/v1/token?grant_type=password','backend Supabase login proxy');
@@ -80,7 +87,7 @@ requireText(signup,'app-close-guard.js','close guard loader');
 console.log(JSON.stringify({
   ok:true,
   audited:[
-    'auth_proxy_login','auth_proxy_signup','auth_proxy_recovery','profile','ride_creation','dispatch','multi_client_driver_claims',
+    'edge_auth_login','edge_auth_signup','edge_auth_recovery','profile','ride_creation','dispatch','multi_client_driver_claims',
     'pin_issue','pin_verify','driver_arrival','trip_start','cash_completion','cancellation',
     'verified_pin_restart_recovery','app_close_search_cancel','accepted_ride_close_preserved','atomic_close_accept_race'
   ]
