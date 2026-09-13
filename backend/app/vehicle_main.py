@@ -102,6 +102,10 @@ def _default_cancellation_reason(user: AuthUser) -> str:
     return "admin_cancelled"
 
 
+def _ride_final_price(ride: dict):
+    return ride.get("agreed_price") or ride.get("customer_proposed_price") or ride.get("estimated_price")
+
+
 @app.patch("/v1/rides/{ride_id}/status")
 def update_ride_status_resilient(
     ride_id: str,
@@ -147,7 +151,13 @@ def update_ride_status_resilient(
         if current_status != "in_progress":
             raise HTTPException(409, "invalid_ride_transition")
         changes["completed_at"] = now
-        changes["final_price"] = ride.get("estimated_price")
+        changes["final_price"] = _ride_final_price(ride)
+        # The current Android driver button confirms both passenger drop-off and
+        # cash settlement. Mark cash received in the SAME database update so the
+        # payment guard can validate the completion instead of rejecting it.
+        if str(ride.get("payment_method") or "").lower() == "cash" and str(ride.get("payment_state") or "") not in {"cash_received", "paid"}:
+            changes["payment_state"] = "cash_received"
+            changes["payment_confirmed_at"] = ride.get("payment_confirmed_at") or now
 
     if body.status == "cancelled":
         changes["cancelled_at"] = now
@@ -173,6 +183,8 @@ def update_ride_status_resilient(
             raise HTTPException(409, "addresses_not_confirmed") from exc
         if "cancellation_reason_required" in message:
             raise HTTPException(409, "cancellation_reason_required") from exc
+        if "cash_payment_not_confirmed" in message:
+            raise HTTPException(409, "cash_payment_not_confirmed") from exc
         raise
 
     # Event logging is important but secondary. A temporary audit-table failure
