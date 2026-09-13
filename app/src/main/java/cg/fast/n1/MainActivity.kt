@@ -26,6 +26,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
@@ -203,10 +206,24 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    override fun onStop() {
+        if (::web.isInitialized) {
+            web.evaluateJavascript(
+                "try{window.FASTAppCloseGuard&&window.FASTAppCloseGuard.closeNow&&window.FASTAppCloseGuard.closeNow()}catch(e){};",
+                null
+            )
+        }
+        super.onStop()
+    }
+
     override fun onDestroy() {
         pendingFileCallback?.onReceiveValue(null)
         pendingFileCallback = null
         if (::web.isInitialized) {
+            web.evaluateJavascript(
+                "try{window.FASTAppCloseGuard&&window.FASTAppCloseGuard.closeNow&&window.FASTAppCloseGuard.closeNow()}catch(e){};",
+                null
+            )
             web.removeJavascriptInterface("FASTNative")
             web.stopLoading()
             web.loadUrl("about:blank")
@@ -232,6 +249,37 @@ class MainActivity : AppCompatActivity() {
         if (uri.scheme != "https") return false
         val host = (uri.host ?: "").lowercase()
         return host == "github.com" || host.endsWith(".githubusercontent.com") || host.endsWith(".github.com")
+    }
+
+    private fun cancelSearchingRideNative(rideId: String) {
+        if (rideId.isBlank()) return
+        val token = getSharedPreferences("fast", MODE_PRIVATE).getString("access_token", null) ?: return
+        Thread {
+            val base = BuildConfig.PYTHON_API_URL.trimEnd('/')
+            val encodedRide = Uri.encode(rideId)
+            var patchConn: HttpURLConnection? = null
+            try {
+                patchConn = (URL("$base/v1/rides/$encodedRide/status").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "PATCH"
+                    doOutput = true
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                }
+                val payload = JSONObject().apply {
+                    put("status", "cancelled")
+                    put("expected_current_status", "searching")
+                    put("cancellation_reason", "client_app_closed")
+                    put("cancellation_note", "Recherche annulée automatiquement à la fermeture de l’application")
+                }.toString()
+                patchConn.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+                patchConn.responseCode
+            } catch (_: Exception) {
+            } finally {
+                patchConn?.disconnect()
+            }
+        }.start()
     }
 
     inner class FastBridge {
@@ -265,6 +313,11 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface
         fun setAccessToken(token: String) {
             getSharedPreferences("fast", MODE_PRIVATE).edit().putString("access_token", token).apply()
+        }
+
+        @android.webkit.JavascriptInterface
+        fun cancelSearchingRideOnClose(rideId: String) {
+            cancelSearchingRideNative(rideId)
         }
 
         @android.webkit.JavascriptInterface

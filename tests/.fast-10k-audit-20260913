@@ -1,0 +1,1 @@
+FAST N1 persistent-load audit trigger v4: 100 persistent HTTPS connections, 10000 read-only requests, strict >=99% success and p95 <=5s.

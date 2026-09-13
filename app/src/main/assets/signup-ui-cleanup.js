@@ -48,9 +48,22 @@ async function immediateSignup(){
 }
 
 function installImmediateSignup(){window.signup=immediateSignup;try{signup=immediateSignup}catch(e){}const btn=q('signupBtn');if(btn)btn.onclick=immediateSignup}
+function loadAppCloseGuard(){
+  if(document.querySelector('script[data-fast-app-close-guard]'))return;
+  const g=document.createElement('script');g.src='app-close-guard.js';g.dataset.fastAppCloseGuard='1';g.async=false;document.body.appendChild(g);
+}
+function loadDriverRestartRecovery(){
+  if(document.querySelector('script[data-fast-driver-restart-recovery]')){loadAppCloseGuard();return}
+  const r=document.createElement('script');r.src='driver-restart-state.js';r.dataset.fastDriverRestartRecovery='1';r.async=false;r.onload=loadAppCloseGuard;document.body.appendChild(r);
+}
+function loadDriverMapRecovery(){
+  if(document.querySelector('script[data-fast-driver-map-recovery]')){loadDriverRestartRecovery();return}
+  const m=document.createElement('script');m.src='driver-map-recovery.js';m.dataset.fastDriverMapRecovery='1';m.async=false;m.onload=loadDriverRestartRecovery;document.body.appendChild(m);
+}
 function loadDriverCriticalFix(){
-  if(document.querySelector('script[data-fast-driver-critical]'))return;
-  const s=document.createElement('script');s.src='driver-critical-fixes.js';s.dataset.fastDriverCritical='1';s.async=false;document.body.appendChild(s);
+  const existing=document.querySelector('script[data-fast-driver-critical]');
+  if(existing){loadDriverMapRecovery();return}
+  const s=document.createElement('script');s.src='driver-critical-fixes.js';s.dataset.fastDriverCritical='1';s.async=false;s.onload=loadDriverMapRecovery;document.body.appendChild(s);
 }
 
 window.addEventListener('load',()=>{
