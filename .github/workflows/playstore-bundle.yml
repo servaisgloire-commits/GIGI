@@ -32,8 +32,12 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'applicationId = "cg.fast.n1.v11092026"' app/build.gradle.kts
-          grep -q 'versionName = "11.09.2026"' app/build.gradle.kts
-          grep -q 'versionCode = 11092026' app/build.gradle.kts
+          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -1)"
+          VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode = ([0-9]+).*/\1/p' app/build.gradle.kts | head -1)"
+          test -n "$VERSION_NAME"
+          test "$VERSION_CODE" -gt 0
+          echo "FAST_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "FAST_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           test -s app/src/main/assets/fast-logo.svg
           grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
@@ -44,6 +48,6 @@ jobs:
       - name: Upload unsigned AAB
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-11-09-2026-build11092026-unsigned-aab
+          name: FAST-N1-${{ env.FAST_VERSION_NAME }}-build${{ env.FAST_VERSION_CODE }}-unsigned-aab
           path: app/build/outputs/bundle/release/app-release.aab
           retention-days: 14

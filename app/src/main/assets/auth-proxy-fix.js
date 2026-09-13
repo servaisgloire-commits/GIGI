@@ -1,15 +1,27 @@
 (function(){
   'use strict';
 
+  const AUTH_EDGE = 'https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-auth-proxy';
+  const SUPABASE_PUBLIC_KEY = 'sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38';
+
+  function authAction(path){
+    if(path === '/v1/auth/password') return 'password';
+    if(path === '/v1/auth/signup') return 'signup';
+    if(path === '/v1/auth/recover-password' || path === '/v1/auth/recover') return 'recover';
+    throw new Error('Route d’authentification FAST inconnue');
+  }
+
   async function fastAuthFetch(path, payload){
-    if(!API) throw new Error('Service FAST indisponible');
     const controller = new AbortController();
     const timeout = setTimeout(function(){ controller.abort(); }, 15000);
     try{
-      const response = await fetch(API + path, {
+      const response = await fetch(AUTH_EDGE, {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload || {}),
+        headers: {
+          'Content-Type':'application/json',
+          'apikey': SUPABASE_PUBLIC_KEY
+        },
+        body: JSON.stringify(Object.assign({action:authAction(path)}, payload || {})),
         cache: 'no-store',
         signal: controller.signal
       });
@@ -90,7 +102,7 @@
   };
 
   window.FASTAuthProxyAudit = {
-    backend: function(){ return API || ''; },
+    backend: function(){ return AUTH_EDGE; },
     active: function(){ return typeof window.login === 'function' && typeof window.signup === 'function'; }
   };
 })();

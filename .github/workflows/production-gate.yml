@@ -73,10 +73,20 @@ jobs:
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1.v11092026"' app/build.gradle.kts
-          grep -q 'versionName = "12.09.2026"' app/build.gradle.kts
-          grep -q 'versionCode = 12092026' app/build.gradle.kts
+          grep -q 'versionName = "13.09.2026"' app/build.gradle.kts
+          grep -q 'versionCode = 13092026' app/build.gradle.kts
           grep -q 'applicationIdSuffix = ".install11092026"' app/build.gradle.kts
-          grep -q '"build": 12092026' updates/latest.json
+          python - <<'PYTHON'
+          import json, re
+          from pathlib import Path
+          source = Path('app/build.gradle.kts').read_text()
+          build = int(re.search(r'versionCode = (\d+)', source).group(1))
+          version = re.search(r'versionName = "([^"]+)"', source).group(1)
+          published = json.loads(Path('updates/latest.json').read_text())
+          assert build >= published['build'], 'Android versionCode must not roll back'
+          if version != published['version']:
+              assert build > published['build'], 'A new version requires a higher versionCode'
+          PYTHON
           grep -q 'https://fast-n1-officiel.vercel.app/#download' updates/latest.json
           test -s app/src/main/assets/fast-logo.svg
           test -s app/src/main/assets/client-rebuild.js
@@ -138,7 +148,7 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
           grep -q "package: name='cg.fast.n1.v11092026.install11092026'" /tmp/fast-badging.txt
-          grep -q "versionCode='12092026'" /tmp/fast-badging.txt
+          grep -q "versionCode='13092026'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
       - name: Install and launch rebuilt client on Android 35 emulator
@@ -156,7 +166,7 @@ jobs:
       - name: Upload production-gate APK
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-production-gate-12-09-2026-client-rebuild
+          name: FAST-production-gate-13-09-2026-auth-fix
           path: app/build/outputs/apk/directInstall/app-directInstall.apk
           retention-days: 14
 

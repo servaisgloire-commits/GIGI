@@ -11,8 +11,8 @@ android {
         applicationId = "cg.fast.n1.v11092026"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12092026
-        versionName = "12.09.2026"
+        versionCode = 13092026
+        versionName = "13.09.2026"
 
         val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY")?.takeIf { it.isNotBlank() }
             ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
