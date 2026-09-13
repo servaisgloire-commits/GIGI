@@ -5,9 +5,10 @@ from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 
 from .flex_main import AuthUser, app, current_user, db
-from .main import DriverAvailability, SUPABASE_URL, db_retry, require_role
+from .main import APP_VERSION, DriverAvailability, SUPABASE_URL, db_retry, require_role
 
 _REPLACED = {
+    ("/health", "GET"),
     ("/v1/rides/{ride_id}", "GET"),
     ("/v1/driver/availability", "POST"),
     ("/v1/rides/{ride_id}/status", "PATCH"),
@@ -17,6 +18,12 @@ app.router.routes = [
     for r in app.router.routes
     if not any((getattr(r, "path", None), method) in _REPLACED for method in (getattr(r, "methods", None) or set()))
 ]
+
+
+@app.get("/health")
+async def health_async():
+    """Tiny non-blocking health endpoint for burst traffic and platform probes."""
+    return {"ok": True, "service": "fast-n1", "version": APP_VERSION}
 
 
 class RideStatusRequest(BaseModel):
