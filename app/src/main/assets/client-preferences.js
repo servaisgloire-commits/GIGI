@@ -302,6 +302,8 @@ async function boot(){
   syncTimer=setInterval(syncBookingUi,500);
 }
 
+injectStyle();
+wrapApi();
 window.addEventListener('load',()=>setTimeout(boot,220));
 document.addEventListener('click',e=>{
   if(e.target?.closest?.('[data-page="profilePage"]'))setTimeout(()=>{ensureProfilePreference();renderPreferenceUi()},120);
