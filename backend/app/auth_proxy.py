@@ -21,7 +21,7 @@ class PasswordLoginRequest(BaseModel):
 
 class SignupRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
-    password: str = Field(min_length=8, max_length=1024)
+    password: str = Field(min_length=12, max_length=1024)
     role: str = "client"
     first_name: str = ""
     last_name: str = ""
@@ -106,6 +106,10 @@ async def signup(body: SignupRequest):
         "ok": True,
         "user": data.get("user"),
         "session": bool(data.get("access_token")),
+        "access_token": data.get("access_token"),
+        "refresh_token": data.get("refresh_token"),
+        "expires_in": data.get("expires_in"),
+        "token_type": data.get("token_type") or "bearer" if data.get("access_token") else None,
     }
 
 
