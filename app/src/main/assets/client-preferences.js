@@ -45,6 +45,9 @@ function injectStyle(){
   #clientPaymentPreferenceSelect{width:100%;height:48px;border:1px solid #cbdcf0;border-radius:13px;background:#f8fbff;padding:0 12px;color:#17314e;font-size:13px;font-weight:850;outline:none}
   #clientPaymentPreferenceStatus{display:block;margin-top:8px;color:#657a92;font-size:10px;line-height:1.4}
   body.driver-mode #passengerArea,body.driver-mode #clientNav{display:none!important}
+  body.driver-mode #fastDriverPinBox{display:none!important}
+  body.driver-mode .fast-driver-checkpoint #fastDriverCpPinHost #fastDriverPinBox{display:block!important}
+  body.driver-mode.fast-driver-trip-active #fastDriverPinBox{display:none!important}
   `;document.head.appendChild(s);
 }
 
