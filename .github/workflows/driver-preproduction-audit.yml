@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: fast-driver-preproduction-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -42,6 +46,7 @@ jobs:
           grep -q 'destination_confirmed' backend/app/vehicle_main.py
           grep -q 'cancellation_reason' backend/app/vehicle_main.py
           grep -q 'cash_received' backend/app/vehicle_main.py
+          grep -q '_optional_data' backend/app/vehicle_main.py
           grep -q 'Driver action required' backend/app/vehicle_main.py
       - name: Install JS audit dependencies
         run: npm install --no-save --ignore-scripts jsdom@26.1.0
