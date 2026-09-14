@@ -12,6 +12,7 @@ const driverIdentityCss=fs.readFileSync('app/src/main/assets/driver-identity.css
 const native=fs.readFileSync('app/src/main/java/cg/fast/n1/MainActivity.kt','utf8');
 const driverMapActivity=fs.readFileSync('app/src/main/java/cg/fast/n1/DriverMapActivity.kt','utf8');
 const backendVehicle=fs.readFileSync('backend/app/vehicle_main.py','utf8');
+const rideIdentityEdge=fs.readFileSync('supabase/functions/fast-ride-identity/index.ts','utf8');
 const gradle=fs.readFileSync('app/build.gradle.kts','utf8');
 const manifest=fs.readFileSync('app/src/main/AndroidManifest.xml','utf8');
 const workflow=fs.readFileSync('.github/workflows/android.yml','utf8');
@@ -112,6 +113,9 @@ requireText(driverIdentity,'vehicle.photo_url','vehicle photo rendered for clien
 requireText(driverIdentity,'driver.photo_url','driver photo rendered for client');
 requireText(driverIdentity,'window.FastNative?.notifyRideOffer','native ride offer notification bridge call');
 requireText(driverIdentity,'lastNotifiedOfferId','duplicate ride offer notifications suppressed');
+requireText(driverIdentity,'/functions/v1/fast-ride-identity','authenticated client identity fallback');
+requireText(driverIdentity,'rideIdentityCache','ride identity request deduplication');
+requireText(driverIdentity,"state.role !== 'client'",'identity fallback limited to client display');
 requireText(driverIdentityCss,'.driver-vehicle-photo','vehicle identity photo styling');
 requireText(driverIdentityCss,'.driver-avatar img','driver identity photo styling');
 requireText(native,'fun notifyRideOffer(','Android notification bridge');
@@ -121,8 +125,15 @@ requireText(manifest,'android.permission.POST_NOTIFICATIONS','Android notificati
 requireText(driverPhotoMigration,"'driver-photos'",'private driver photo bucket');
 requireText(driverPhotoMigration,'driver_photos_storage_insert_own','driver photo own-folder insert policy');
 requireText(backendVehicle,'def _signed_driver_photo','signed driver photo helper');
-requireText(backendVehicle,'prof["photo_url"] = _signed_driver_photo','driver signed photo returned to client');
+requireText(backendVehicle,'prof["photo_url"] = _signed_driver_photo','driver signed photo returned to client when backend is deployed');
 requireText(backendVehicle,'result["photo_url"] = _signed_vehicle_photo','vehicle signed photo preserved');
+
+// The edge fallback exposes identity only to the client or driver of that exact ride.
+requireText(rideIdentityEdge,'admin.auth.getUser(token)','ride identity bearer validation');
+requireText(rideIdentityEdge,'user.id!==ride.client_id&&user.id!==ride.driver_id','ride identity ownership guard');
+requireText(rideIdentityEdge,'signed("driver-photos"','private driver photo signed URL');
+requireText(rideIdentityEdge,'signed("vehicle-photos"','private vehicle photo signed URL');
+requireText(rideIdentityEdge,'select("id,client_id,driver_id,vehicle_id")','minimal ride authorization lookup');
 
 // After ride start, navigation changes only to the requested large-car mode.
 requireText(driverMapActivity,'val tripNavigation = phase == "to_destination"','post-start car navigation phase');
@@ -139,4 +150,4 @@ if(all.includes("setRideStatus('started')")) throw new Error('Legacy started sta
 if(all.includes('/v1/places/autocomplete?input=')) throw new Error('Legacy autocomplete input= contract still used');
 if(workflow.includes('fast_google_maps_api_key')) throw new Error('Server Maps key must not be used by Android build');
 
-console.log(`FAST mobile smoke OK: existing ride flow preserved + native notifications + driver/vehicle identity photos + post-start car navigation validated`);
+console.log(`FAST mobile smoke OK: existing ride flow preserved + native notifications + driver/vehicle identity photos + protected identity fallback + post-start car navigation validated`);
