@@ -4,6 +4,15 @@ function fastCompatFallback(error){
   return [404,502,503].includes(Number(error?.status||0));
 }
 
+function fastPasswordProblem(password){
+  if(password.length<12)return 'Le mot de passe doit contenir au moins 12 caractères.';
+  if(!/[a-z]/.test(password))return 'Ajoutez au moins une lettre minuscule au mot de passe.';
+  if(!/[A-Z]/.test(password))return 'Ajoutez au moins une lettre majuscule au mot de passe.';
+  if(!/[0-9]/.test(password))return 'Ajoutez au moins un chiffre au mot de passe.';
+  if(!/[^A-Za-z0-9]/.test(password))return 'Ajoutez au moins un symbole au mot de passe.';
+  return '';
+}
+
 async function supabaseAuth(path,body){
   if(!KEY)throw new Error('Authentification FAST indisponible.');
   const res=await fetch(`${SUPA}/auth/v1/${path}`,{
@@ -18,6 +27,7 @@ login=async function(e){
   e.preventDefault();
   const email=$('loginEmail').value.trim();
   const password=$('loginPassword').value;
+  if(!email||!password)return toast('Saisissez votre e-mail et votre mot de passe.');
   try{
     let r;
     try{
@@ -34,12 +44,15 @@ login=async function(e){
 
 signup=async function(e){
   e.preventDefault();
+  const email=$('signupEmail').value.trim();
   const password=$('signupPassword').value;
-  if(password.length<12)return toast('Le mot de passe doit contenir au moins 12 caractères.');
-  const body={
-    email:$('signupEmail').value.trim(),password,role:$('role').value,
-    first_name:$('firstName').value.trim(),last_name:$('lastName').value.trim(),phone:$('phone').value.trim()
-  };
+  const firstName=$('firstName').value.trim();
+  const lastName=$('lastName').value.trim();
+  const phone=$('phone').value.trim();
+  if(!firstName||!lastName||!phone||!email)return toast('Complétez tous les champs du compte FAST.');
+  const passwordProblem=fastPasswordProblem(password);
+  if(passwordProblem)return toast(passwordProblem);
+  const body={email,password,role:$('role').value,first_name:firstName,last_name:lastName,phone};
   try{
     let r;
     try{
@@ -48,12 +61,18 @@ signup=async function(e){
       if(!fastCompatFallback(error))throw error;
       const raw=await supabaseAuth('signup',{
         email:body.email,password:body.password,
-        data:{role:body.role,first_name:body.first_name,last_name:body.last_name,phone:body.phone}
+        data:{role:body.role,first_name:body.first_name,last_name:body.last_name,phone:body.phone,country_code:'CG'}
       });
       r={...raw,session:!!raw.access_token};
     }
-    if(r?.access_token){saveSession(r);await enter()}
-    else{toast('Compte créé. Vérifiez votre e-mail puis connectez-vous.');authMode('login')}
+    if(r?.access_token){
+      saveSession(r);
+      toast('Compte FAST créé.');
+      await enter();
+    }else{
+      toast('Compte créé. Vérifiez votre e-mail puis connectez-vous.');
+      authMode('login');
+    }
   }catch(error){toast(error.message)}
 };
 
