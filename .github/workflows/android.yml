@@ -137,7 +137,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          target: google_apis_playstore
           arch: x86_64
           profile: pixel_7
           disable-animations: true
@@ -152,12 +152,13 @@ jobs:
             gradle :app:connectedDirectInstallAndroidTest
             sleep 2
             adb logcat -d > /tmp/fast-native-map-logcat.txt
+            grep -E 'FAST_NATIVE_MAP|Google Maps Android API|Authorization failure|API key|not authorized' /tmp/fast-native-map-logcat.txt || true
             grep -q 'FAST_NATIVE_MAP.*map_ready' /tmp/fast-native-map-logcat.txt
-            grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-native-map-logcat.txt
             if grep -Eqi 'Authorization failure|API key[^[:cntrl:]]*(invalid|rejected|not authorized)|not authorized to use this service' /tmp/fast-native-map-logcat.txt; then
               echo 'Google Maps authorization error detected' >&2
               exit 1
             fi
+            grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-native-map-logcat.txt
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4

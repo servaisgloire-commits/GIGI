@@ -27,7 +27,7 @@ class DriverMapRuntimeTest {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         ActivityScenario.launch<DriverMapActivity>(intent).use {
-            Thread.sleep(12000)
+            Thread.sleep(30000)
         }
     }
 }
