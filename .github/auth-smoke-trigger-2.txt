@@ -1,0 +1,1 @@
+FAST auth smoke after fresh database rebuild.
