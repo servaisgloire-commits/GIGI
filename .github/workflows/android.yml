@@ -142,7 +142,7 @@ jobs:
           profile: pixel_7
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             adb install -r "$FAST_APK_NAME"
             adb shell pm list packages | grep 'package:cg.fast.n1'
             adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
