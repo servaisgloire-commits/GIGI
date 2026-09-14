@@ -1,0 +1,56 @@
+name: FAST Auth Live Smoke
+
+on:
+  push:
+    branches: [ auth-smoke-20260914 ]
+
+permissions:
+  contents: read
+
+jobs:
+  auth-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Supabase signup contract
+        shell: bash
+        env:
+          SUPABASE_URL: https://hmwxwzfcpdvgzjgxruup.supabase.co
+          SUPABASE_KEY: sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38
+        run: |
+          set -euo pipefail
+          EMAIL="fast.smoke.${GITHUB_RUN_ID}@example.com"
+          PASSWORD="FastSmoke!2026-${GITHUB_RUN_ID}Aa"
+          export EMAIL PASSWORD
+          python - <<'PY' > /tmp/payload.json
+          import json, os
+          print(json.dumps({
+            "email": os.environ["EMAIL"],
+            "password": os.environ["PASSWORD"],
+            "data": {
+              "role": "client",
+              "first_name": "FAST",
+              "last_name": "Smoke",
+              "phone": "+242060000000"
+            }
+          }))
+          PY
+          STATUS=$(curl -sS -o /tmp/signup.json -w '%{http_code}' \
+            -X POST "$SUPABASE_URL/auth/v1/signup" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/payload.json)
+          echo "TEST_EMAIL=$EMAIL"
+          echo "SIGNUP_HTTP_STATUS=$STATUS"
+          python - <<'PY'
+          import json
+          try:
+            d=json.load(open('/tmp/signup.json'))
+          except Exception:
+            print('SIGNUP_RESPONSE=non-json')
+          else:
+            print('SIGNUP_CODE=' + str(d.get('code') or d.get('error_code') or ''))
+            print('SIGNUP_MSG=' + str(d.get('msg') or d.get('message') or d.get('error_description') or d.get('error') or ''))
+            print('SIGNUP_HAS_USER=' + str(bool(d.get('user'))).lower())
+            print('SIGNUP_HAS_ACCESS_TOKEN=' + str(bool(d.get('access_token'))).lower())
+          PY
+          if [ "$STATUS" -ge 500 ]; then exit 1; fi
