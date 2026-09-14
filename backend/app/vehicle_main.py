@@ -2,16 +2,33 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from .auth_proxy import router as auth_proxy_router
 from .flex_main import AuthUser, app, current_user, db
 from .main import APP_VERSION, DriverAvailability, SUPABASE_URL, db_retry, require_role
+
+
+def _route_exists(path: str, method: str) -> bool:
+    wanted = method.upper()
+    return any(
+        getattr(route, "path", None) == path and wanted in (getattr(route, "methods", None) or set())
+        for route in app.router.routes
+    )
+
+
+# The Vercel entrypoint imports vehicle_main directly. Attach the mobile auth
+# proxy here as well, so login/signup/recovery are guaranteed to exist in the
+# production OpenAPI even if package bootstrap order changes.
+if not _route_exists("/v1/auth/password", "POST"):
+    app.include_router(auth_proxy_router)
 
 _REPLACED = {
     ("/health", "GET"),
     ("/v1/rides/{ride_id}", "GET"),
     ("/v1/driver/availability", "POST"),
     ("/v1/rides/{ride_id}/status", "PATCH"),
+    ("/v1/driver/offers/current", "GET"),
 }
 app.router.routes = [
     r
@@ -22,7 +39,6 @@ app.router.routes = [
 
 @app.get("/health")
 async def health_async():
-    """Tiny non-blocking health endpoint for burst traffic and platform probes."""
     return {"ok": True, "service": "fast-n1", "version": APP_VERSION}
 
 
@@ -31,6 +47,16 @@ class RideStatusRequest(BaseModel):
     cancellation_reason: str | None = None
     cancellation_note: str | None = None
     expected_current_status: Literal["searching", "accepted", "driver_arriving", "in_progress"] | None = None
+
+
+class VehicleUpsertRequest(BaseModel):
+    make: str = Field(default="", max_length=80)
+    model: str = Field(default="", max_length=80)
+    color: str = Field(default="", max_length=60)
+    plate_number: str = Field(min_length=2, max_length=40)
+    vehicle_type: Literal["standard", "comfort", "xl", "moto"] = "standard"
+    seats: int = Field(default=4, ge=1, le=12)
+    photo_path: str | None = Field(default=None, max_length=500)
 
 
 def _signed_vehicle_photo(photo_path: str | None) -> str | None:
@@ -55,6 +81,104 @@ def _optional_data(factory, default=None):
         return response.data if response is not None else default
     except Exception:
         return default
+
+
+def _decorate_vehicle(vehicle: dict | None) -> dict | None:
+    if not vehicle:
+        return None
+    result = dict(vehicle)
+    result["photo_url"] = _signed_vehicle_photo(result.get("photo_path"))
+    return result
+
+
+@app.get("/v1/driver/vehicle")
+def driver_vehicle(user: AuthUser = Depends(require_role("driver", "admin"))):
+    rows = (
+        db_retry(
+            lambda: db()
+            .table("vehicles")
+            .select("id,driver_id,make,model,color,plate_number,seats,vehicle_type,photo_path,is_active")
+            .eq("driver_id", user.id)
+            .eq("is_active", True)
+            .limit(1)
+        ).data
+        or []
+    )
+    return {"vehicle": _decorate_vehicle(rows[0] if rows else None)}
+
+
+@app.put("/v1/driver/vehicle")
+def upsert_driver_vehicle(
+    body: VehicleUpsertRequest,
+    user: AuthUser = Depends(require_role("driver", "admin")),
+):
+    existing_rows = (
+        db_retry(
+            lambda: db()
+            .table("vehicles")
+            .select("id")
+            .eq("driver_id", user.id)
+            .eq("is_active", True)
+            .limit(1)
+        ).data
+        or []
+    )
+    payload = {
+        "driver_id": user.id,
+        "make": body.make.strip(),
+        "model": body.model.strip(),
+        "color": body.color.strip(),
+        "plate_number": body.plate_number.strip().upper(),
+        "vehicle_type": body.vehicle_type,
+        "seats": body.seats,
+        "photo_path": (body.photo_path or "").strip() or None,
+        "is_active": True,
+    }
+    if existing_rows:
+        response = db_retry(lambda: db().table("vehicles").update(payload).eq("id", existing_rows[0]["id"]))
+    else:
+        response = db_retry(lambda: db().table("vehicles").insert(payload))
+    rows = response.data or []
+    vehicle = rows[0] if rows else _optional_data(
+        lambda: db().table("vehicles").select("*").eq("driver_id", user.id).eq("is_active", True).limit(1),
+        [],
+    )
+    if isinstance(vehicle, list):
+        vehicle = vehicle[0] if vehicle else None
+    return {"vehicle": _decorate_vehicle(vehicle)}
+
+
+@app.get("/v1/driver/offers/current")
+def driver_current_offer_enriched(user: AuthUser = Depends(require_role("driver", "admin"))):
+    now = datetime.now(timezone.utc).isoformat()
+    rows = (
+        db_retry(
+            lambda: db()
+            .table("dispatch_offers")
+            .select("*")
+            .eq("driver_id", user.id)
+            .eq("status", "offered")
+            .gt("expires_at", now)
+            .order("offered_at", desc=True)
+            .limit(1)
+        ).data
+        or []
+    )
+    if not rows:
+        return {"offer": None, "ride": None}
+    offer = rows[0]
+    ride = _optional_data(
+        lambda: db()
+        .table("rides")
+        .select(
+            "id,status,pickup_address,destination_address,estimated_distance_km,estimated_duration_min,"
+            "estimated_price,standard_price,customer_proposed_price,currency,payment_method,requested_vehicle_type"
+        )
+        .eq("id", offer["ride_id"])
+        .single(),
+        None,
+    )
+    return {"offer": offer, "ride": ride}
 
 
 @app.post("/v1/driver/availability")
@@ -244,9 +368,7 @@ async def get_ride_with_vehicle_photo(ride_id: str, user: AuthUser = Depends(cur
             if ride.get("vehicle_id")
             else None
         )
-        if vehicle:
-            vehicle = dict(vehicle)
-            vehicle["photo_url"] = _signed_vehicle_photo(vehicle.get("photo_path"))
+        vehicle = _decorate_vehicle(vehicle)
 
         driver = _optional_data(
             lambda: db().table("drivers").select("rating,total_rides").eq("user_id", ride["driver_id"]).single(),
