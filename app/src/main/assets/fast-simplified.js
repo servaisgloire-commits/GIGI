@@ -5,6 +5,8 @@
   let driverNavTimer = null;
   let driverNavRideId = null;
   let driverNavLaunchedForRide = null;
+  let driverPanX = 0;
+  let driverPanY = 0;
 
   const point = value => value && Number.isFinite(Number(value.lat)) && Number.isFinite(Number(value.lng))
     ? {lat:Number(value.lat), lng:Number(value.lng)} : null;
@@ -14,6 +16,8 @@
     const lng = Number(ride?.[`${prefix}_lng`]);
     return Number.isFinite(lat) && Number.isFinite(lng) ? {lat,lng} : null;
   };
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
   function googleMapsUrl() {
     const ride = state.ride || {};
@@ -49,6 +53,110 @@
     if (fastMapFrame.dataset.src === src) return;
     fastMapFrame.dataset.src = src;
     fastMapFrame.src = src;
+  }
+
+  function setClientRouteDismissed(dismissed) {
+    const root = $('app');
+    if (!root) return;
+    root.classList.toggle('client-route-dismissed', !!dismissed);
+  }
+
+  async function syncClientPinState() {
+    if (state.role !== 'client' || !state.ride?.id) {
+      setClientRouteDismissed(false);
+      return false;
+    }
+    try {
+      const r = await rpc('get_ride_security_state',{p_ride_id:state.ride.id});
+      const verified = !!(r?.verified || r?.pin_verified || r?.[0]?.verified || r?.[0]?.pin_verified);
+      setClientRouteDismissed(verified);
+      return verified;
+    } catch {
+      return false;
+    }
+  }
+
+  function applyDriverMapPan() {
+    const host = $('map');
+    if (!host) return;
+    host.style.setProperty('--fast-driver-pan-x', `${driverPanX}px`);
+    host.style.setProperty('--fast-driver-pan-y', `${driverPanY}px`);
+  }
+
+  function resetDriverMapPan() {
+    driverPanX = 0;
+    driverPanY = 0;
+    const host = $('map');
+    host?.style.removeProperty('--fast-driver-pan-x');
+    host?.style.removeProperty('--fast-driver-pan-y');
+  }
+
+  function ensureDriverOneFingerSurface() {
+    const host = $('map');
+    if (!host) return null;
+    let surface = document.getElementById('driverMapTouchSurface');
+    if (surface) return surface;
+
+    surface = document.createElement('div');
+    surface.id = 'driverMapTouchSurface';
+    surface.className = 'driver-map-touch-surface hidden';
+    surface.setAttribute('aria-label', 'Carte chauffeur manipulable à un doigt');
+    host.appendChild(surface);
+
+    let dragging = false;
+    let activePointer = null;
+    let lastX = 0;
+    let lastY = 0;
+
+    const finishDrag = event => {
+      if (!dragging || (event && activePointer !== null && event.pointerId !== activePointer)) return;
+      dragging = false;
+      surface.classList.remove('dragging');
+      if (activePointer !== null) {
+        try { surface.releasePointerCapture(activePointer); } catch {}
+      }
+      activePointer = null;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+    };
+
+    surface.addEventListener('pointerdown', event => {
+      if (state.role !== 'driver' || state.ride?.status !== 'in_progress') return;
+      dragging = true;
+      activePointer = event.pointerId;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      surface.classList.add('dragging');
+      try { surface.setPointerCapture(event.pointerId); } catch {}
+      event.preventDefault();
+      event.stopPropagation();
+    }, {passive:false});
+
+    surface.addEventListener('pointermove', event => {
+      if (!dragging || event.pointerId !== activePointer) return;
+      const dx = event.clientX - lastX;
+      const dy = event.clientY - lastY;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      const maxX = Math.max(28, host.clientWidth * 0.08);
+      const maxY = Math.max(42, host.clientHeight * 0.08);
+      driverPanX = clamp(driverPanX + dx, -maxX, maxX);
+      driverPanY = clamp(driverPanY + dy, -maxY, maxY);
+      applyDriverMapPan();
+      event.preventDefault();
+      event.stopPropagation();
+    }, {passive:false});
+
+    surface.addEventListener('pointerup', finishDrag, {passive:false});
+    surface.addEventListener('pointercancel', finishDrag, {passive:false});
+    return surface;
+  }
+
+  function syncDriverOneFingerSurface(active) {
+    const surface = ensureDriverOneFingerSurface();
+    if (!surface) return;
+    surface.classList.toggle('hidden', !active);
+    if (!active) resetDriverMapPan();
   }
 
   window.initMap = function initMapGoogle() {
@@ -162,6 +270,7 @@
       state.ride = r.ride;
       state.quote = r.route || state.quote;
       if (!state.ride?.id) throw new Error('Course non créée.');
+      setClientRouteDismissed(false);
       refreshGoogleMap();
       showClientRide();
       await ensurePin();
@@ -185,6 +294,7 @@
   if (typeof originalShowClientRide === 'function') {
     window.showClientRide = function showClientRideLocked(){
       originalShowClientRide();
+      setClientRouteDismissed(false);
       syncClientCancellation();
     };
   }
@@ -194,6 +304,7 @@
     window.pollClientOnce = async function pollClientOnceLocked(){
       await originalPollClientOnce();
       syncClientCancellation();
+      await syncClientPinState();
     };
   }
 
@@ -204,9 +315,40 @@
         syncClientCancellation(state.ride?.status);
         return toast('La course ne peut plus être annulée après son démarrage.');
       }
+      setClientRouteDismissed(false);
       return originalCancelRide();
     };
   }
+
+  window.verifyPin = async function verifyPinExactMatch(){
+    const id = state.ride?.id;
+    if (!id) return;
+    const input = $('pinInput');
+    const pin = input?.value.trim() || '';
+    if (!/^\d{4}$/.test(pin)) {
+      $('startRideBtn')?.classList.add('hidden');
+      $('pinCheck')?.classList.remove('hidden');
+      return toast('Le PIN doit contenir exactement 4 chiffres.');
+    }
+    try {
+      const r = await rpc('verify_ride_pin',{p_ride_id:id,p_pin:pin});
+      const verified = r?.verified === true || r?.[0]?.verified === true;
+      if (!verified) {
+        $('startRideBtn')?.classList.add('hidden');
+        $('pinCheck')?.classList.remove('hidden');
+        input?.focus();
+        input?.select?.();
+        return toast('PIN incorrect. Vérifiez le code avec le client.');
+      }
+      $('pinCheck')?.classList.add('hidden');
+      $('startRideBtn')?.classList.remove('hidden');
+      toast('PIN vérifié.');
+    } catch {
+      $('startRideBtn')?.classList.add('hidden');
+      $('pinCheck')?.classList.remove('hidden');
+      toast('PIN incorrect ou expiré.');
+    }
+  };
 
   window.renderDriverClient = function renderDriverClientGoogle(r){
     const d = r.driver || {}, v = r.vehicle || {}, ride = r.ride || state.ride || {};
@@ -260,6 +402,7 @@
     driverNavRideId = null;
     $('driverNavigationPanel')?.classList.add('hidden');
     $('map')?.classList.remove('driver-driving-map');
+    syncDriverOneFingerSurface(false);
   }
 
   async function refreshDriverNavigation() {
@@ -271,6 +414,7 @@
     const panel = ensureDriverNavigationPanel();
     panel?.classList.remove('hidden');
     $('map')?.classList.add('driver-driving-map');
+    syncDriverOneFingerSurface(true);
     try {
       const nav = await api(`/v1/rides/${ride.id}/navigation`);
       if (!nav?.active) return;
@@ -291,6 +435,7 @@
     if (!rideId || state.ride?.status !== 'in_progress') return;
     ensureDriverNavigationPanel()?.classList.remove('hidden');
     $('map')?.classList.add('driver-driving-map');
+    syncDriverOneFingerSurface(true);
     if (driverNavRideId !== rideId) {
       if (driverNavTimer) clearInterval(driverNavTimer);
       driverNavRideId = rideId;
@@ -322,6 +467,9 @@
     const cancelButton = $('cancelRideBtn');
     if (cancelButton && typeof window.cancelRide === 'function') cancelButton.onclick = window.cancelRide;
     syncClientCancellation();
+
+    const verifyButton = $('verifyPinBtn');
+    if (verifyButton) verifyButton.onclick = window.verifyPin;
 
     const startButton = $('startRideBtn');
     if (startButton) {

@@ -4,7 +4,9 @@ const html=fs.readFileSync('app/src/main/assets/index.html','utf8');
 const core=fs.readFileSync('app/src/main/assets/core.js','utf8');
 const app=fs.readFileSync('app/src/main/assets/app.js','utf8');
 const simplified=fs.readFileSync('app/src/main/assets/fast-simplified.js','utf8');
+const mapCss=fs.readFileSync('app/src/main/assets/google-map.css','utf8');
 const native=fs.readFileSync('app/src/main/java/cg/fast/n1/MainActivity.kt','utf8');
+const pinMigration=fs.readFileSync('supabase/migrations/20260914_require_verified_pin_before_start.sql','utf8');
 const all=core+'\n'+app+'\n'+simplified;
 
 function requireText(text,needle,label){
@@ -29,8 +31,19 @@ requireText(html,'fast-simplified.js','single FAST runtime layer');
 requireText(simplified,'https://www.google.com/maps?output=embed','Google Maps presentation');
 requireText(simplified,"vehicle_type: 'standard'",'single FAST service payload');
 requireText(simplified,"['in_progress','completed','cancelled'].includes(status)",'client cancellation lock only after ride start');
-requireText(simplified,"cancelRideUntilStart",'client can cancel until driver starts ride');
+requireText(simplified,'cancelRideUntilStart','client can cancel until driver starts ride');
 requireText(simplified,'La course ne peut plus être annulée après son démarrage.','client cancellation message after start');
+requireText(simplified,'verifyPinExactMatch','exact PIN verification handler');
+requireText(simplified,"r?.verified === true",'PIN RPC must explicitly confirm verified true');
+requireText(simplified,'PIN incorrect. Vérifiez le code avec le client.','wrong PIN remains rejected');
+requireText(simplified,'syncClientPinState','client security-state polling');
+requireText(simplified,'client-route-dismissed','client route hidden after verified PIN');
+requireText(simplified,'driverMapTouchSurface','one-finger driver map surface');
+requireText(simplified,"surface.addEventListener('pointermove'",'one-finger driver pan handler');
+requireText(mapCss,'touch-action:none','single-finger touch ownership');
+requireText(mapCss,'.client-route-dismissed #map','client route map dismissal');
+requireText(pinMigration,'require_verified_pin_before_start','database PIN start guard');
+requireText(pinMigration,'pin_verified_at is not null','verified PIN required before start');
 requireText(simplified,'/navigation','driver navigation polling');
 requireText(simplified,'Temps restant','driver remaining time display');
 requireText(simplified,'Agrandir le GPS','driver navigation expand control');
@@ -56,4 +69,4 @@ if(all.includes("setRideStatus('arrived')")) throw new Error('Legacy arrived sta
 if(all.includes("setRideStatus('started')")) throw new Error('Legacy started status still used');
 if(all.includes('/v1/places/autocomplete?input=')) throw new Error('Legacy autocomplete input= contract still used');
 
-console.log(`FAST mobile smoke OK: cancellation until start + driver navigation mode validated`);
+console.log(`FAST mobile smoke OK: one-finger map + exact PIN + client post-PIN view validated`);
