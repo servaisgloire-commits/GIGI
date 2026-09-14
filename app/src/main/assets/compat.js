@@ -122,6 +122,16 @@ loadVehicle=async function(){
   }
 };
 
+function fastVehicleSaveFallback(error){
+  const status=Number(error?.status||0);
+  const message=String(error?.message||'').toLowerCase();
+  return status===404||(!status&&(
+    message.includes('failed to fetch')||
+    message.includes('networkerror')||
+    message.includes('network request failed')
+  ));
+}
+
 saveVehicle=async function(){
   try{
     let photoPath=state.vehicle?.photo_path||null;
@@ -141,7 +151,7 @@ saveVehicle=async function(){
       const r=await api('/v1/driver/vehicle',{method:'PUT',body:payload});
       vehicle=r.vehicle||r;
     }catch(error){
-      if(error.status!==404)throw error;
+      if(!fastVehicleSaveFallback(error))throw error;
       let rows;
       if(state.vehicle?.id){
         rows=await rest(`vehicles?id=eq.${encodeURIComponent(state.vehicle.id)}`,{
