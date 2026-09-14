@@ -11,7 +11,9 @@ const native=fs.readFileSync('app/src/main/java/cg/fast/n1/MainActivity.kt','utf
 const driverMapActivity=fs.readFileSync('app/src/main/java/cg/fast/n1/DriverMapActivity.kt','utf8');
 const gradle=fs.readFileSync('app/build.gradle.kts','utf8');
 const manifest=fs.readFileSync('app/src/main/AndroidManifest.xml','utf8');
+const workflow=fs.readFileSync('.github/workflows/android.yml','utf8');
 const pinMigration=fs.readFileSync('supabase/migrations/20260914_require_verified_pin_before_start.sql','utf8');
+const mapsMigration=fs.readFileSync('supabase/migrations/20260914_add_android_maps_key_reader.sql','utf8');
 const all=core+'\n'+app+'\n'+simplified+'\n'+driverNative;
 
 function requireText(text,needle,label){
@@ -67,9 +69,17 @@ requireText(driverMapActivity,'isTiltGesturesEnabled = true','native tilt gestur
 requireText(driverMapActivity,'map.isTrafficEnabled = true','native traffic layer');
 requireText(driverMapActivity,'map_loaded','native map load verification hook');
 requireText(gradle,'com.google.android.gms:play-services-maps:20.0.0','Maps SDK dependency');
+requireText(gradle,'FAST_GOOGLE_MAPS_API_KEY','dedicated Android Maps build key');
 requireText(gradle,'MAPS_NATIVE_CONFIGURED','native Maps build guard');
 requireText(manifest,'com.google.android.geo.API_KEY','Google Maps Android API key metadata');
 requireText(manifest,'.DriverMapActivity','native map activity registration');
+requireText(workflow,'Acquire dedicated Android Maps key','secure Android Maps key acquisition');
+requireText(workflow,'get_maps_android_key','OIDC broker Android Maps action');
+requireText(workflow,'::add-mask::$MAPS_KEY','Android Maps key masked in CI');
+requireText(workflow,'FAST_GOOGLE_MAPS_API_KEY=$MAPS_KEY','Android Maps key injected at build only');
+requireText(mapsMigration,'get_fast_google_maps_android_key','dedicated Android Maps vault reader');
+requireText(mapsMigration,"fast_google_maps_android_api_key",'dedicated Android Maps vault secret name');
+requireText(mapsMigration,'grant execute on function public.get_fast_google_maps_android_key() to service_role','Maps key reader limited to backend service role');
 requireText(native,'google.navigation:q=','Google Maps fallback navigation');
 requireText(native,'mode=d','driving navigation fallback');
 requireText(all,'/v1/auth/password','password auth route');
@@ -91,5 +101,6 @@ if(html.toLowerCase().includes('leaflet')) throw new Error('Leaflet is still loa
 if(all.includes("setRideStatus('arrived')")) throw new Error('Legacy arrived status still used');
 if(all.includes("setRideStatus('started')")) throw new Error('Legacy started status still used');
 if(all.includes('/v1/places/autocomplete?input=')) throw new Error('Legacy autocomplete input= contract still used');
+if(workflow.includes('fast_google_maps_api_key')) throw new Error('Server Maps key must not be used by Android build');
 
-console.log(`FAST mobile smoke OK: native driver map + exact PIN + client post-PIN view validated`);
+console.log(`FAST mobile smoke OK: native driver map + secure Android Maps key pipeline + exact PIN + client post-PIN view validated`);
