@@ -22,7 +22,11 @@
       const preview = field.querySelector('#driverPhotoPreview');
       if (!file || !preview) return;
       const url = URL.createObjectURL(file);
-      preview.innerHTML = `<img src="${url}" alt="Aperçu photo chauffeur">`;
+      preview.innerHTML = '';
+      const image = document.createElement('img');
+      image.src = url;
+      image.alt = 'Aperçu photo chauffeur';
+      preview.appendChild(image);
       preview.classList.remove('hidden');
     });
     return field;
@@ -69,6 +73,11 @@
     };
   }
 
+  function bindProfileSave() {
+    const button = document.getElementById('saveProfileBtn');
+    if (button && typeof window.saveProfile === 'function') button.onclick = window.saveProfile;
+  }
+
   function ensureIdentityPhotoPair() {
     const card = document.getElementById('driverCard');
     const avatar = document.getElementById('driverAvatar');
@@ -97,8 +106,16 @@
     ensureIdentityPhotoPair();
 
     const driverPhoto = String(driver.photo_url || '').trim();
+    avatar.innerHTML = '';
     if (driverPhoto) {
-      avatar.innerHTML = `<img src="${driverPhoto.replace(/"/g, '&quot;')}" alt="Photo du chauffeur">`;
+      const image = document.createElement('img');
+      image.src = driverPhoto;
+      image.alt = 'Photo du chauffeur';
+      image.onerror = () => {
+        avatar.innerHTML = '';
+        avatar.textContent = (driver.first_name?.[0] || 'F').toUpperCase();
+      };
+      avatar.appendChild(image);
     } else {
       avatar.textContent = (driver.first_name?.[0] || 'F').toUpperCase();
     }
@@ -143,8 +160,12 @@
     };
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function bootIdentity() {
     ensureDriverPhotoField();
     syncDriverPhotoField();
-  });
+    bindProfileSave();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootIdentity);
+  else bootIdentity();
 })();
