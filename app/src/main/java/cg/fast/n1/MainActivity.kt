@@ -132,5 +132,19 @@ class MainActivity : AppCompatActivity() {
             if (!url.startsWith("https://")) return
             runOnUiThread { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
         }
+
+        @JavascriptInterface
+        fun openNavigation(lat: Double, lng: Double) {
+            runOnUiThread {
+                val navigation = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng&mode=d")).apply {
+                    setPackage("com.google.android.apps.maps")
+                }
+                val opened = runCatching { startActivity(navigation) }.isSuccess
+                if (!opened) {
+                    val fallback = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving&dir_action=navigate")
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, fallback)) }
+                }
+            }
+        }
     }
 }
