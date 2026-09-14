@@ -1,6 +1,7 @@
 /* FAST N°1 — driver identity photos + native ride-offer notifications. */
 (() => {
   let lastNotifiedOfferId = null;
+  const rideIdentityCache = new Map();
 
   function ensureDriverPhotoField() {
     const profile = document.querySelector('#profileView .overlay-card.form');
@@ -133,11 +134,51 @@
     }
   }
 
+  async function fetchRideIdentity(rideId) {
+    if (!rideId || !token()) return null;
+    if (rideIdentityCache.has(rideId)) return rideIdentityCache.get(rideId);
+    const request = (async () => {
+      const response = await fetch(`${SUPA}/functions/v1/fast-ride-identity`, {
+        method: 'POST',
+        headers: {
+          apikey: KEY,
+          Authorization: `Bearer ${token()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ride_id: rideId }),
+        cache: 'no-store',
+      });
+      if (!response.ok) return null;
+      const data = await response.json().catch(() => null);
+      return data?.ok ? data : null;
+    })().catch(() => null);
+    rideIdentityCache.set(rideId, request);
+    return request;
+  }
+
+  function hydrateIdentityIfNeeded(payload) {
+    if (state.role !== 'client') return;
+    const rideId = payload?.ride?.id || state.ride?.id;
+    if (!rideId) return;
+    const hasDriverPhoto = !!String(payload?.driver?.photo_url || '').trim();
+    const hasVehiclePhoto = !!String(payload?.vehicle?.photo_url || '').trim();
+    if (hasDriverPhoto && hasVehiclePhoto) return;
+    fetchRideIdentity(rideId).then(identity => {
+      if (!identity || state.ride?.id !== rideId) return;
+      renderIdentityPhotos({
+        ...payload,
+        driver: { ...(payload?.driver || {}), ...(identity.driver || {}) },
+        vehicle: { ...(payload?.vehicle || {}), ...(identity.vehicle || {}) },
+      });
+    });
+  }
+
   const previousRenderDriverClient = window.renderDriverClient;
   if (typeof previousRenderDriverClient === 'function') {
     window.renderDriverClient = function renderDriverClientWithPhotos(payload) {
       previousRenderDriverClient(payload);
       renderIdentityPhotos(payload);
+      hydrateIdentityIfNeeded(payload);
     };
   }
 
