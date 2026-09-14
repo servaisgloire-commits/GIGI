@@ -1,83 +1,77 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
-<meta name="theme-color" content="#0b57d0">
-<link rel="preconnect" href="https://maps.googleapis.com">
-<link rel="preconnect" href="https://hmwxwzfcpdvgzjgxruup.supabase.co" crossorigin>
-<link rel="preconnect" href="https://fast-n1-python-api.vercel.app" crossorigin>
-<link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="performance.css">
-<link rel="stylesheet" href="driver-motion.css">
-<link rel="stylesheet" href="premium-security.css">
-<link rel="stylesheet" href="competitive-235.css">
-<link rel="stylesheet" href="driver-profile.css">
-<link rel="stylesheet" href="production-ui.css">
-<link rel="stylesheet" href="app-polish.css">
-<link rel="stylesheet" href="client-rebuild.css">
-<title>FAST N°1</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b57d0">
+  <title>FAST N°1</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="app">
-<section id="auth" class="auth">
-  <div class="auth-top"><div class="fast-mark"><span></span><span></span><span></span></div><div class="fast-word">FAST</div></div>
-  <div class="auth-visual"><h1>Le déplacement,<br><em>réinventé.</em></h1><p>Rapide. Sûr. Accessible.</p></div>
-  <div class="auth-card">
-    <h2>Bienvenue sur FAST</h2>
-    <input id="loginEmail" class="input" type="email" autocomplete="email" placeholder="Adresse e-mail">
-    <input id="loginPassword" class="input" type="password" autocomplete="current-password" placeholder="Mot de passe">
-    <button id="loginBtn" class="btn">Se connecter</button>
-    <button id="forgotBtn" class="text-btn">Mot de passe oublié ?</button>
-    <div class="separator"><span></span><b>ou</b><span></span></div>
-    <h3>Créer un compte passager</h3>
-    <div class="two"><input id="firstName" class="input" autocomplete="given-name" placeholder="Prénom"><input id="lastName" class="input" autocomplete="family-name" placeholder="Nom"></div>
-    <input id="phone" class="input" inputmode="tel" autocomplete="tel" placeholder="Téléphone">
-    <input id="signupEmail" class="input" type="email" autocomplete="email" placeholder="E-mail">
-    <input id="signupPassword" class="input" type="password" autocomplete="new-password" placeholder="Mot de passe (12 caractères minimum)">
-    <select id="signupRole" class="hidden"><option value="client" selected>Passager</option></select>
-    <button id="signupBtn" class="btn outline">Créer mon compte FAST</button>
-    <p class="help">Assistance : <span id="authSupportEmail">contact@gloire-group.com</span></p>
-  </div>
+<div id="toast"></div>
+<section id="auth" class="screen active">
+  <div class="brand"><div class="logo">F</div><div><b>FAST N°1</b><small>Votre trajet, simplement.</small></div></div>
+  <div class="card hero"><h1>Bienvenue sur FAST</h1><p>Commandez ou conduisez avec une seule application.</p></div>
+  <div class="tabs"><button class="tab active" data-auth="login">Connexion</button><button class="tab" data-auth="signup">Créer un compte</button></div>
+  <form id="loginForm" class="card form">
+    <label>E-mail<input id="loginEmail" type="email" autocomplete="email" required></label>
+    <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit">Se connecter</button>
+    <button class="link" id="forgotBtn" type="button">Mot de passe oublié ?</button>
+  </form>
+  <form id="signupForm" class="card form hidden">
+    <div class="grid2"><label>Prénom<input id="firstName" required></label><label>Nom<input id="lastName" required></label></div>
+    <label>Téléphone<input id="phone" inputmode="tel" required></label>
+    <label>E-mail<input id="signupEmail" type="email" required></label>
+    <label>Mot de passe<input id="signupPassword" type="password" minlength="8" required></label>
+    <label>Je m'inscris comme<select id="role"><option value="client">Client</option><option value="driver">Chauffeur</option></select></label>
+    <button class="primary" type="submit">Créer mon compte</button>
+  </form>
 </section>
-<section id="mainApp" class="hidden">
-<header class="top" id="mainHeader"><button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button><div class="brand-center"><div class="fast-mark small"><span></span><span></span><span></span></div><div class="fast-word smallword">FAST</div></div><button class="vehicle-mode-btn hidden" id="vehicleModeBtn" aria-hidden="true"><span>🚘</span><small>Véhicule</small></button></header>
-<section id="homePage" class="pageview"><div id="passengerArea"><div class="mapwrap" id="sharedMapWrap"><div id="map"></div><div class="map-engine"><b>FAST MAP</b><small id="mapEngineText">Google Maps</small></div><button id="locateBtn" class="floating-locate" aria-label="Ma position">◎</button></div><div class="booking-panel"><div class="route-fields"><div class="route-field"><span class="route-dot blue"></span><div class="route-text"><small>Départ</small><input id="pickupInput" value="Ma position" autocomplete="off" placeholder="Votre position"></div><button class="route-action">◎</button><div id="pickupSuggestions" class="suggestions hidden"></div></div><div class="route-line"></div><div class="route-field"><span class="route-dot red"></span><div class="route-text"><small>Destination</small><input id="destinationInput" autocomplete="off" placeholder="Où allez-vous ?"></div><button class="route-action">＋</button><div id="destinationSuggestions" class="suggestions hidden"></div></div></div><div class="single-service-card"><div class="single-car"><div class="car-silhouette">🚕</div><div><small>Service FAST</small><b>FAST • Votre zone</b><span id="nearestEta">Recherche des chauffeurs disponibles…</span></div></div><div class="single-price"><small>Estimation</small><strong id="priceText">—</strong></div></div><div class="payment-card"><div><small>Paiement</small><select id="paymentMethod"><option value="cash">Espèces</option></select></div><div class="estimate"><small id="distanceText">Choisissez une destination</small></div></div><button id="bookBtn" class="btn">Commander FAST</button><div id="bookingState" class="status-card hidden"><div class="spinner"></div><b id="bookingMessage">Recherche en cours…</b></div><div id="ridePanel" class="ride-card hidden"><div class="driver-head"><div class="photo">JM</div><div><b id="rideStatus">Chauffeur confirmé</b><small>FAST Chauffeur</small></div><span class="eta" id="rideEta">—</span></div><div class="ride-meta"><span>Prix estimé</span><b id="ridePrice">—</b></div></div></div></div>
-<div id="driverArea" class="hidden driver-navigation-page"><div class="driver-nav-top"><div><small>FAST DRIVER</small><b id="driverName">Chauffeur FAST</b></div><label class="toggle"><input id="driverToggleInput" type="checkbox"><span></span></label></div><div id="driverGpsMapHost" class="driver-gps-map-host"></div><div class="driver-guidance-card" id="driverGuidanceCard"><div class="driver-turn-icon" id="driverTurnIcon">↑</div><div class="driver-guidance-main"><small id="driverRoadPhase">En attente d’une course</small><b id="driverInstruction">Mettez-vous en ligne pour recevoir une course</b><span id="driverStepDistance">—</span></div><div class="driver-eta-box"><b id="driverNavEta">—</b><small>arrivée</small></div></div><div class="driver-nav-stats"><div><small>Distance</small><b id="driverNavDistance">—</b></div><div><small>Vitesse</small><b id="driverSpeed">0 km/h</b></div><div><small>GPS</small><b id="driverGpsAccuracy">—</b></div><div><small>Étapes</small><b id="driverStepCount">0</b></div></div><div id="driverStepsPanel" class="driver-steps-panel hidden"><div class="section"><h3>Prochaines étapes</h3><span>Navigation</span></div><div id="driverStepsList"></div></div><div class="section"><h3>Demandes de course</h3><span>Temps réel</span></div><div id="offerCard" class="offer-card hidden"><div class="offer-top"><div class="countdown">25<br><small>sec</small></div><div><b>Nouvelle course</b><small id="offerDistance">—</small></div><strong id="offerEta">—</strong></div><div class="offer-actions"><button id="acceptOffer" class="btn">Accepter</button><button id="rejectOffer" class="btn ghost">Refuser</button></div></div><div id="driverTrip" class="driver-trip hidden"><div class="driver-trip-actions"><button id="arrivingBtn" class="btn outline">Je suis en approche</button><button id="startRideBtn" class="btn">Démarrer</button><button id="completeRideBtn" class="btn dark">Terminer</button></div></div><button id="requestDriverValidation" class="hidden">Validation</button><button id="backPassengerBtn" class="hidden">Retour passager</button></div></section>
-<span id="walletBalance" class="hidden" aria-hidden="true"></span>
-<section id="historyPage" class="pageview hidden page"><div class="section"><h3>Mes courses</h3><span>Historique</span></div><div id="historyList"></div></section><section id="profilePage" class="pageview hidden page"><div class="card-lite"><b>Assistance FAST</b><p>Support officiel</p><div class="support-grid"><button id="callSupport" class="btn outline">Appeler</button><button id="emailSupport" class="btn outline">E-mail</button></div><p id="supportEmail" class="help">contact@gloire-group.com</p><span id="supportPhone" class="hidden">0748413996</span></div><button id="logoutBtn" class="btn dark">Se déconnecter</button></section><nav class="nav" id="clientNav"><button class="on" data-page="homePage"><b>⌂</b>Accueil</button><button data-page="historyPage"><b>▣</b>Courses</button><button data-page="profilePage"><b>◉</b>Profil</button></nav></section><div id="toast" class="toast"></div></div>
-<script src="google-map-adapter.js"></script>
+
+<section id="app" class="screen">
+  <header><div class="brand compact"><div class="logo">F</div><b>FAST N°1</b></div><button id="profileBtn" class="avatar">F</button></header>
+  <main>
+    <section id="clientHome" class="view">
+      <div class="map" id="map"><div class="mapBadge">FAST • Position en direct</div><div id="driverDots"></div></div>
+      <div class="sheet">
+        <h2>Commander un FAST</h2>
+        <label>Départ<input id="pickup" placeholder="Ma position actuelle"></label>
+        <div id="pickupSuggestions" class="suggestions"></div>
+        <label>Destination<input id="destination" placeholder="Où allez-vous ?"></label>
+        <div id="destinationSuggestions" class="suggestions"></div>
+        <div class="row"><button id="locateBtn" class="soft">📍 Ma position</button><button id="estimateBtn" class="soft">Calculer</button></div>
+        <div id="quote" class="quote hidden"></div>
+        <div class="rideTypes">
+          <button class="rideType active" data-type="standard"><b>FAST</b><small>Standard</small></button>
+          <button class="rideType" data-type="comfort"><b>Comfort</b><small>Confort +</small></button>
+          <button class="rideType" data-type="xl"><b>XL</b><small>Jusqu'à 6</small></button>
+        </div>
+        <label>Paiement<select id="payment"><option value="cash">Espèces</option><option value="mobile_money">Mobile Money</option><option value="card">Carte</option></select></label>
+        <label class="switchLine"><input id="flexToggle" type="checkbox"> Je propose mon prix</label>
+        <label id="flexPriceWrap" class="hidden">Mon prix (FCFA)<input id="flexPrice" type="number" min="500" step="100"></label>
+        <button id="bookBtn" class="primary" disabled>Commander un FAST</button>
+      </div>
+    </section>
+
+    <section id="clientRide" class="view hidden">
+      <div class="card"><span class="pill">Course en cours</span><h2 id="clientRideTitle">Recherche d'un chauffeur…</h2><p id="clientRideInfo"></p><div id="clientPin" class="pin hidden"></div><button id="cancelRideBtn" class="danger">Annuler la course</button></div>
+    </section>
+
+    <section id="driverHome" class="view hidden">
+      <div class="card"><div class="row between"><div><h2>Mode chauffeur</h2><p id="driverStatus">Hors ligne</p></div><label class="toggle"><input id="onlineToggle" type="checkbox"><span></span></label></div></div>
+      <div id="vehicleAlert" class="alert hidden">Complétez votre véhicule avant de passer en ligne.</div>
+      <div id="offerCard" class="card hidden"><span class="pill">Nouvelle course</span><h2 id="offerTitle">Course disponible</h2><p id="offerInfo"></p><div class="row"><button id="rejectOffer" class="soft">Refuser</button><button id="acceptOffer" class="primary">Accepter</button></div></div>
+      <div id="driverRide" class="card hidden"><span class="pill">Course active</span><h2 id="driverRideTitle"></h2><p id="driverRideInfo"></p><div id="pinCheck" class="hidden"><label>PIN client<input id="pinInput" inputmode="numeric" maxlength="6"></label><button id="verifyPinBtn" class="primary">Vérifier le PIN</button></div><button id="arrivedBtn" class="primary hidden">Je suis arrivé</button><button id="startRideBtn" class="primary hidden">Démarrer la course</button><button id="finishRideBtn" class="primary hidden">Terminer la course</button></div>
+    </section>
+
+    <section id="activityView" class="view hidden"><div class="card"><h2>Activité</h2><div id="activityList" class="list"></div></div></section>
+    <section id="vehicleView" class="view hidden"><div class="card form"><h2>Mon véhicule</h2><label>Marque<input id="vehicleMake"></label><label>Modèle<input id="vehicleModel"></label><label>Immatriculation<input id="vehiclePlate"></label><label>Photo<input id="vehiclePhoto" type="file" accept="image/*"></label><button id="saveVehicleBtn" class="primary">Enregistrer</button></div></section>
+    <section id="profileView" class="view hidden"><div class="card form"><h2>Mon profil</h2><label>Prénom<input id="profileFirstName"></label><label>Nom<input id="profileLastName"></label><label>Téléphone<input id="profilePhone"></label><button id="saveProfileBtn" class="primary">Enregistrer</button><button id="logoutBtn" class="danger">Se déconnecter</button><small id="version"></small></div></section>
+  </main>
+  <nav id="bottomNav"><button data-view="home" class="active">Accueil</button><button data-view="activity">Activité</button><button id="vehicleNav" data-view="vehicle" class="hidden">Véhicule</button><button data-view="profile">Profil</button></nav>
+</section>
+<script src="core.js"></script>
 <script src="app.js"></script>
-<script src="auth-proxy-fix.js"></script>
-<script src="performance.js"></script>
-<script src="driver-gps.js"></script>
-<script src="driver-motion.js"></script>
-<script src="fast-security.js"></script>
-<script src="stability-fixes.js"></script>
-<script src="competitive-235.js"></script>
-<script src="driver-profile.js"></script>
-<script src="driver-cancel.js"></script>
-<script src="touch-fix.js"></script>
-<script src="flex-price.js"></script>
-<script src="client-payment.js"></script>
-<script src="car-marker.js"></script>
-<script src="trip-controls.js"></script>
-<script src="production-ui.js"></script>
-<script src="recovery-fix.js"></script>
-<script src="update-manager.js"></script>
-<script src="global-market.js"></script>
-<script src="global-polish.js"></script>
-<script src="app-quality.js"></script>
-<script src="final-commercial-ui.js"></script>
-<script src="passenger-live.js"></script>
-<script src="tracking-menu.js"></script>
-<script src="driver-operations.js"></script>
-<script src="signup-ui-cleanup.js"></script>
-<script src="vehicle-profile.js" data-fast-vehicle-profile="1"></script>
-<script src="vehicle-ride-photo.js"></script>
-<script src="driver-documents.js"></script>
-<script src="ride-flow-repair.js"></script>
-<script src="client-rebuild.js"></script>
-<script src="client-rebuild-extras.js"></script>
-<script src="client-preferences.js"></script>
-</body></html>
+</body>
+</html>

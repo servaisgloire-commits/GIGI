@@ -8,18 +8,14 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "cg.fast.n1.v11092026"
+        applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13092026
-        versionName = "13.09.2026"
-
-        val googleMapsKey = System.getenv("FAST_GOOGLE_MAPS_API_KEY")?.takeIf { it.isNotBlank() }
-            ?: "AIzaSyBWo0btwLFoZaRze_TkMxoWkOMWorNyIRw"
+        versionCode = 14092026
+        versionName = "14.09.2026"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
         buildConfigField("String", "PYTHON_API_URL", "\"https://fast-n1-python-api.vercel.app\"")
-        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${googleMapsKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
 
     buildFeatures { buildConfig = true }
@@ -41,17 +37,11 @@ android {
     }
 
     buildTypes {
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-        }
+        debug { }
         create("directInstall") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".install11092026"
-            versionNameSuffix = "-android"
+            initWith(getByName("release"))
             isDebuggable = false
             isJniDebuggable = false
-            // In-place Android updates require every published APK to use the same signing key.
             signingConfigs.findByName("production")?.let { signingConfig = it }
         }
         release {
@@ -62,6 +52,7 @@ android {
             signingConfigs.findByName("production")?.let { signingConfig = it }
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -74,5 +65,4 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.webkit:webkit:1.13.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
 }
