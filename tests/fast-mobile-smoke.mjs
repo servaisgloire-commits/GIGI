@@ -4,6 +4,7 @@ const html=fs.readFileSync('app/src/main/assets/index.html','utf8');
 const core=fs.readFileSync('app/src/main/assets/core.js','utf8');
 const app=fs.readFileSync('app/src/main/assets/app.js','utf8');
 const simplified=fs.readFileSync('app/src/main/assets/fast-simplified.js','utf8');
+const native=fs.readFileSync('app/src/main/java/cg/fast/n1/MainActivity.kt','utf8');
 const all=core+'\n'+app+'\n'+simplified;
 
 function requireText(text,needle,label){
@@ -13,9 +14,10 @@ function requireText(text,needle,label){
 // These three DOM bindings belong only to the retired multi-category quote UI.
 // fast-simplified.js replaces quoteAll/updateQuoteUI before user interaction.
 const retiredCategoryIds=new Set(['priceStandard','priceComfort','priceXl']);
+const dynamicIds=new Set(['driverNavigationPanel','driverNavigationEta','driverNavigationDistance','expandDriverGps']);
 const ids=[...all.matchAll(/\$\('([^']+)'\)/g)].map(m=>m[1]);
 for(const id of new Set(ids)){
-  if(retiredCategoryIds.has(id)) continue;
+  if(retiredCategoryIds.has(id) || dynamicIds.has(id)) continue;
   if(!html.includes(`id="${id}"`)) throw new Error(`DOM id referenced by JavaScript is missing: ${id}`);
 }
 
@@ -26,6 +28,12 @@ requireText(html,'id="offerPrice"','driver offer price');
 requireText(html,'fast-simplified.js','single FAST runtime layer');
 requireText(simplified,'https://www.google.com/maps?output=embed','Google Maps presentation');
 requireText(simplified,"vehicle_type: 'standard'",'single FAST service payload');
+requireText(simplified,"state.ride.status !== 'searching'",'client cancellation lock after driver acceptance');
+requireText(simplified,'/navigation','driver navigation polling');
+requireText(simplified,'Temps restant','driver remaining time display');
+requireText(simplified,'Agrandir le GPS','driver navigation expand control');
+requireText(native,'google.navigation:q=','native Google Maps driving mode');
+requireText(native,'mode=d','driving navigation mode');
 requireText(all,'/v1/auth/password','password auth route');
 requireText(all,'/v1/auth/signup','signup route');
 requireText(all,'/v1/auth/recover','recovery route');
@@ -46,4 +54,4 @@ if(all.includes("setRideStatus('arrived')")) throw new Error('Legacy arrived sta
 if(all.includes("setRideStatus('started')")) throw new Error('Legacy started status still used');
 if(all.includes('/v1/places/autocomplete?input=')) throw new Error('Legacy autocomplete input= contract still used');
 
-console.log(`FAST mobile smoke OK: single-service Google Maps UI validated`);
+console.log(`FAST mobile smoke OK: cancellation lock + driver navigation mode validated`);
