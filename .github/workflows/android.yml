@@ -63,6 +63,23 @@ jobs:
           echo "FAST_KEY_PASSWORD=$KEYPASS" >> "$GITHUB_ENV"
           echo "FAST_CERT_SHA256=$CERT_SHA256" >> "$GITHUB_ENV"
 
+      - name: Acquire dedicated Android Maps key
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=fast-signing")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
+          RESPONSE_FILE="$RUNNER_TEMP/fast-maps-android-response.json"
+          HTTP_CODE="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' -X POST "$FAST_SIGNING_BROKER_URL" -H "Authorization: Bearer $OIDC_TOKEN" -H 'Content-Type: application/json' --data '{"action":"get_maps_android_key"}')"
+          test "$HTTP_CODE" = "200"
+          MAPS_KEY="$(jq -r '.maps_api_key' "$RESPONSE_FILE")"
+          test -n "$MAPS_KEY"
+          test "$MAPS_KEY" != "null"
+          echo "::add-mask::$MAPS_KEY"
+          echo "FAST_GOOGLE_MAPS_API_KEY=$MAPS_KEY" >> "$GITHUB_ENV"
+
       - name: Read FAST version metadata
         shell: bash
         run: |
@@ -85,6 +102,8 @@ jobs:
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
           grep -q 'versionName = "14.09.2026"' app/build.gradle.kts
+          grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
+          test -n "$FAST_GOOGLE_MAPS_API_KEY"
 
       - name: Build signed installable APK
         run: gradle clean assembleDirectInstall
