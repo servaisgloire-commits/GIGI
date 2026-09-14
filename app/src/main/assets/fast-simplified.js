@@ -176,7 +176,7 @@
   function syncClientCancellation(status = state.ride?.status) {
     const button = $('cancelRideBtn');
     if (!button) return;
-    const locked = !!status && status !== 'searching';
+    const locked = ['in_progress','completed','cancelled'].includes(status);
     button.classList.toggle('hidden', locked);
     button.disabled = locked;
   }
@@ -199,10 +199,10 @@
 
   const originalCancelRide = window.cancelRide;
   if (typeof originalCancelRide === 'function') {
-    window.cancelRide = async function cancelRideBeforeAcceptanceOnly(){
-      if (state.ride?.status && state.ride.status !== 'searching') {
-        syncClientCancellation(state.ride.status);
-        return toast('La course ne peut plus être annulée après acceptation par le chauffeur.');
+    window.cancelRide = async function cancelRideUntilStart(){
+      if (['in_progress','completed','cancelled'].includes(state.ride?.status)) {
+        syncClientCancellation(state.ride?.status);
+        return toast('La course ne peut plus être annulée après son démarrage.');
       }
       return originalCancelRide();
     };
