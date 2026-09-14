@@ -13,7 +13,7 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14092029
+        versionCode = 14092030
         versionName = "14.09.2026"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
