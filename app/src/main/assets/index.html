@@ -2,75 +2,128 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#0b57d0">
   <title>FAST N°1</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="toast"></div>
-<section id="auth" class="screen active">
-  <div class="brand"><div class="logo">F</div><div><b>FAST N°1</b><small>Votre trajet, simplement.</small></div></div>
-  <div class="card hero"><h1>Bienvenue sur FAST</h1><p>Commandez ou conduisez avec une seule application.</p></div>
-  <div class="tabs"><button class="tab active" data-auth="login">Connexion</button><button class="tab" data-auth="signup">Créer un compte</button></div>
-  <form id="loginForm" class="card form">
-    <label>E-mail<input id="loginEmail" type="email" autocomplete="email" required></label>
-    <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" required></label>
-    <button class="primary" type="submit">Se connecter</button>
-    <button class="link" id="forgotBtn" type="button">Mot de passe oublié ?</button>
-  </form>
-  <form id="signupForm" class="card form hidden">
-    <div class="grid2"><label>Prénom<input id="firstName" required></label><label>Nom<input id="lastName" required></label></div>
-    <label>Téléphone<input id="phone" inputmode="tel" required></label>
-    <label>E-mail<input id="signupEmail" type="email" required></label>
-    <label>Mot de passe<input id="signupPassword" type="password" minlength="8" required></label>
-    <label>Je m'inscris comme<select id="role"><option value="client">Client</option><option value="driver">Chauffeur</option></select></label>
-    <button class="primary" type="submit">Créer mon compte</button>
-  </form>
+<section id="auth" class="screen active auth-screen">
+  <div class="auth-top">
+    <img src="fast-logo.svg" class="brand-logo" alt="FAST N°1">
+    <div><b>FAST N°1</b><small>Votre trajet. Votre prix. Votre FAST.</small></div>
+  </div>
+  <div class="auth-hero">
+    <span class="eyebrow">MOBILITÉ SIMPLE</span>
+    <h1>On vous emmène<br><span>où vous voulez.</span></h1>
+    <p>Une expérience rapide, pensée autour de la carte et du trajet.</p>
+  </div>
+  <div class="auth-panel">
+    <div class="tabs"><button class="tab active" data-auth="login">Connexion</button><button class="tab" data-auth="signup">Créer un compte</button></div>
+    <form id="loginForm" class="form">
+      <label>E-mail<input id="loginEmail" type="email" autocomplete="email" required placeholder="vous@exemple.com"></label>
+      <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••••••"></label>
+      <button class="primary tall" type="submit">Se connecter</button>
+      <button class="link" id="forgotBtn" type="button">Mot de passe oublié ?</button>
+    </form>
+    <form id="signupForm" class="form hidden">
+      <div class="grid2"><label>Prénom<input id="firstName" required></label><label>Nom<input id="lastName" required></label></div>
+      <label>Téléphone<input id="phone" inputmode="tel" required></label>
+      <label>E-mail<input id="signupEmail" type="email" required></label>
+      <label>Mot de passe<input id="signupPassword" type="password" minlength="12" required><small>12 caractères minimum</small></label>
+      <label>Je m'inscris comme<select id="role"><option value="client">Passager</option><option value="driver">Chauffeur</option></select></label>
+      <button class="primary tall" type="submit">Créer mon compte FAST</button>
+    </form>
+  </div>
 </section>
 
-<section id="app" class="screen">
-  <header><div class="brand compact"><div class="logo">F</div><b>FAST N°1</b></div><button id="profileBtn" class="avatar">F</button></header>
+<section id="app" class="screen app-screen">
+  <div id="map" class="full-map"></div>
+  <header class="floating-header">
+    <div class="mini-brand"><img src="fast-logo.svg" alt="FAST"><b>FAST N°1</b></div>
+    <button id="profileBtn" class="avatar">F</button>
+  </header>
+
   <main>
-    <section id="clientHome" class="view">
-      <div class="map" id="map"><div class="mapBadge">FAST • Position en direct</div><div id="driverDots"></div></div>
-      <div class="sheet">
-        <h2>Commander un FAST</h2>
-        <label>Départ<input id="pickup" placeholder="Ma position actuelle"></label>
+    <section id="clientHome" class="view bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title"><div><small>Bonjour 👋</small><h2>Où allez-vous ?</h2></div><button id="locateBtn" class="round-action" title="Ma position">⌖</button></div>
+      <div class="route-box">
+        <div class="route-line"><span class="dot pickup-dot"></span><input id="pickup" placeholder="Lieu de départ" value="Ma position actuelle"><button id="clearPickup" class="clear-btn">×</button></div>
         <div id="pickupSuggestions" class="suggestions"></div>
-        <label>Destination<input id="destination" placeholder="Où allez-vous ?"></label>
+        <div class="route-divider"></div>
+        <div class="route-line"><span class="dot destination-dot"></span><input id="destination" placeholder="Votre destination"><button id="clearDestination" class="clear-btn">×</button></div>
         <div id="destinationSuggestions" class="suggestions"></div>
-        <div class="row"><button id="locateBtn" class="soft">📍 Ma position</button><button id="estimateBtn" class="soft">Calculer</button></div>
-        <div id="quote" class="quote hidden"></div>
+      </div>
+      <button id="estimateBtn" class="soft full">Afficher les options</button>
+
+      <div id="tripOptions" class="hidden">
+        <div id="routeSummary" class="route-summary"></div>
+        <div class="section-label">Choisissez votre FAST</div>
         <div class="rideTypes">
-          <button class="rideType active" data-type="standard"><b>FAST</b><small>Standard</small></button>
-          <button class="rideType" data-type="comfort"><b>Comfort</b><small>Confort +</small></button>
-          <button class="rideType" data-type="xl"><b>XL</b><small>Jusqu'à 6</small></button>
+          <button class="rideType active" data-type="standard"><span class="car-icon">🚘</span><div><b>FAST</b><small>Simple et efficace</small></div><strong id="priceStandard">—</strong></button>
+          <button class="rideType" data-type="comfort"><span class="car-icon">🚙</span><div><b>Comfort</b><small>Plus de confort</small></div><strong id="priceComfort">—</strong></button>
+          <button class="rideType" data-type="xl"><span class="car-icon">🚐</span><div><b>XL</b><small>Plus d'espace</small></div><strong id="priceXl">—</strong></button>
         </div>
-        <label>Paiement<select id="payment"><option value="cash">Espèces</option><option value="mobile_money">Mobile Money</option><option value="card">Carte</option></select></label>
-        <label class="switchLine"><input id="flexToggle" type="checkbox"> Je propose mon prix</label>
-        <label id="flexPriceWrap" class="hidden">Mon prix (FCFA)<input id="flexPrice" type="number" min="500" step="100"></label>
-        <button id="bookBtn" class="primary" disabled>Commander un FAST</button>
+
+        <div class="price-card">
+          <div><small>Prix FAST suggéré</small><strong id="suggestedPrice">—</strong></div>
+          <div class="price-adjust"><button id="priceMinus">−</button><input id="flexPrice" type="number" min="100" step="100"><button id="pricePlus">+</button></div>
+          <small class="muted">Vous pouvez ajuster votre proposition avant de commander.</small>
+        </div>
+
+        <label class="payment-row"><span><b>Paiement</b><small id="paymentHint">Choisissez votre moyen de paiement</small></span><select id="payment"></select></label>
+        <button id="bookBtn" class="primary tall" disabled>Commander un FAST</button>
       </div>
     </section>
 
-    <section id="clientRide" class="view hidden">
-      <div class="card"><span class="pill">Course en cours</span><h2 id="clientRideTitle">Recherche d'un chauffeur…</h2><p id="clientRideInfo"></p><div id="clientPin" class="pin hidden"></div><button id="cancelRideBtn" class="danger">Annuler la course</button></div>
+    <section id="clientRide" class="view bottom-sheet hidden ride-sheet">
+      <div class="sheet-handle"></div>
+      <span class="pill">COURSE FAST</span>
+      <h2 id="clientRideTitle">Recherche d’un chauffeur…</h2>
+      <p id="clientRideInfo" class="muted"></p>
+      <div id="driverCard" class="driver-card hidden">
+        <div class="driver-avatar" id="driverAvatar">F</div>
+        <div class="driver-meta"><b id="driverName">Votre chauffeur</b><small id="driverVehicle">Véhicule FAST</small></div>
+        <div class="eta-badge" id="driverEta">—</div>
+      </div>
+      <div id="clientPin" class="pin-card hidden"><small>Code à donner au chauffeur</small><strong>PIN —</strong></div>
+      <div id="clientRideProgress" class="progress-steps"><span class="active">Demandé</span><span>Chauffeur</span><span>Trajet</span><span>Arrivée</span></div>
+      <button id="cancelRideBtn" class="danger-link">Annuler la course</button>
     </section>
 
     <section id="driverHome" class="view hidden">
-      <div class="card"><div class="row between"><div><h2>Mode chauffeur</h2><p id="driverStatus">Hors ligne</p></div><label class="toggle"><input id="onlineToggle" type="checkbox"><span></span></label></div></div>
-      <div id="vehicleAlert" class="alert hidden">Complétez votre véhicule avant de passer en ligne.</div>
-      <div id="offerCard" class="card hidden"><span class="pill">Nouvelle course</span><h2 id="offerTitle">Course disponible</h2><p id="offerInfo"></p><div class="row"><button id="rejectOffer" class="soft">Refuser</button><button id="acceptOffer" class="primary">Accepter</button></div></div>
-      <div id="driverRide" class="card hidden"><span class="pill">Course active</span><h2 id="driverRideTitle"></h2><p id="driverRideInfo"></p><div id="pinCheck" class="hidden"><label>PIN client<input id="pinInput" inputmode="numeric" maxlength="6"></label><button id="verifyPinBtn" class="primary">Vérifier le PIN</button></div><button id="arrivedBtn" class="primary hidden">Je suis arrivé</button><button id="startRideBtn" class="primary hidden">Démarrer la course</button><button id="finishRideBtn" class="primary hidden">Terminer la course</button></div>
+      <div class="driver-online-card floating-card">
+        <div><small>Mode chauffeur</small><h2 id="driverStatus">Hors ligne</h2></div>
+        <label class="toggle"><input id="onlineToggle" type="checkbox"><span></span></label>
+      </div>
+      <div id="vehicleAlert" class="alert floating-alert hidden">Ajoutez l’immatriculation et la photo du véhicule avant de passer en ligne.</div>
+      <div id="offerCard" class="bottom-sheet hidden offer-sheet">
+        <div class="sheet-handle"></div><span class="pill">NOUVELLE DEMANDE</span>
+        <h2 id="offerTitle">Course disponible</h2>
+        <div class="offer-grid"><div><small>Prix</small><b id="offerPrice">—</b></div><div><small>Approche</small><b id="offerEta">—</b></div><div><small>Distance</small><b id="offerDistance">—</b></div></div>
+        <p id="offerInfo" class="muted"></p>
+        <div class="actions2"><button id="rejectOffer" class="secondary tall">Refuser</button><button id="acceptOffer" class="primary tall">Accepter</button></div>
+      </div>
+      <div id="driverRide" class="bottom-sheet hidden ride-sheet">
+        <div class="sheet-handle"></div><span class="pill">COURSE ACTIVE</span><h2 id="driverRideTitle"></h2><p id="driverRideInfo" class="muted"></p>
+        <div id="pinCheck" class="pin-entry hidden"><label>PIN du passager<input id="pinInput" inputmode="numeric" maxlength="6" placeholder="0000"></label><button id="verifyPinBtn" class="primary tall">Vérifier le PIN</button></div>
+        <button id="arrivedBtn" class="primary tall hidden">Je suis arrivé</button>
+        <button id="startRideBtn" class="primary tall hidden">Démarrer la course</button>
+        <button id="finishRideBtn" class="primary tall hidden">Terminer la course</button>
+      </div>
     </section>
 
-    <section id="activityView" class="view hidden"><div class="card"><h2>Activité</h2><div id="activityList" class="list"></div></div></section>
-    <section id="vehicleView" class="view hidden"><div class="card form"><h2>Mon véhicule</h2><label>Marque<input id="vehicleMake"></label><label>Modèle<input id="vehicleModel"></label><label>Immatriculation<input id="vehiclePlate"></label><label>Photo<input id="vehiclePhoto" type="file" accept="image/*"></label><button id="saveVehicleBtn" class="primary">Enregistrer</button></div></section>
-    <section id="profileView" class="view hidden"><div class="card form"><h2>Mon profil</h2><label>Prénom<input id="profileFirstName"></label><label>Nom<input id="profileLastName"></label><label>Téléphone<input id="profilePhone"></label><button id="saveProfileBtn" class="primary">Enregistrer</button><button id="logoutBtn" class="danger">Se déconnecter</button><small id="version"></small></div></section>
+    <section id="activityView" class="view overlay-view hidden"><div class="overlay-card"><div class="overlay-head"><h2>Mes trajets</h2><button class="closeView">×</button></div><div id="activityList" class="list"></div></div></section>
+    <section id="vehicleView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon véhicule</h2><button class="closeView">×</button></div><label>Marque<input id="vehicleMake" placeholder="Toyota"></label><label>Modèle<input id="vehicleModel" placeholder="Corolla"></label><label>Couleur<input id="vehicleColor" placeholder="Noir"></label><label>Immatriculation<input id="vehiclePlate" placeholder="AA-000-AA"></label><label>Type<select id="vehicleType"><option value="standard">FAST</option><option value="comfort">Comfort</option><option value="xl">XL</option></select></label><label>Photo du véhicule<input id="vehiclePhoto" type="file" accept="image/*"></label><button id="saveVehicleBtn" class="primary tall">Enregistrer le véhicule</button></div></section>
+    <section id="profileView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon profil</h2><button class="closeView">×</button></div><label>Prénom<input id="profileFirstName"></label><label>Nom<input id="profileLastName"></label><label>Téléphone<input id="profilePhone"></label><button id="saveProfileBtn" class="primary tall">Enregistrer</button><button id="logoutBtn" class="secondary tall">Se déconnecter</button><small id="version" class="muted"></small></div></section>
   </main>
-  <nav id="bottomNav"><button data-view="home" class="active">Accueil</button><button data-view="activity">Activité</button><button id="vehicleNav" data-view="vehicle" class="hidden">Véhicule</button><button data-view="profile">Profil</button></nav>
+
+  <nav id="bottomNav"><button data-view="home" class="active"><span>⌂</span>Accueil</button><button data-view="activity"><span>↺</span>Trajets</button><button id="vehicleNav" data-view="vehicle" class="hidden"><span>🚘</span>Véhicule</button><button data-view="profile"><span>☺</span>Profil</button></nav>
 </section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="core.js"></script>
 <script src="app.js"></script>
 </body>
