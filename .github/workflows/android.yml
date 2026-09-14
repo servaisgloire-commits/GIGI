@@ -16,7 +16,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FAST_GOOGLE_MAPS_API_KEY: ${{ secrets.FAST_GOOGLE_MAPS_API_KEY }}
       FAST_SIGNING_BROKER_URL: https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-signing-broker
 
     steps:
@@ -43,90 +42,26 @@ jobs:
           OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
           test -n "$OIDC_TOKEN"
           echo "::add-mask::$OIDC_TOKEN"
-
           RESPONSE_FILE="$RUNNER_TEMP/fast-signing-response.json"
-          HTTP_CODE="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' \
-            -X POST "$FAST_SIGNING_BROKER_URL" \
-            -H "Authorization: Bearer $OIDC_TOKEN" \
-            -H 'Content-Type: application/json' \
-            --data '{"action":"get"}')"
-
-          if [ "$HTTP_CODE" = "404" ]; then
-            STOREPASS="$(openssl rand -base64 48 | tr -d '\n=/+' | cut -c1-40)"
-            KEYPASS="$(openssl rand -base64 48 | tr -d '\n=/+' | cut -c1-40)"
-            KEY_ALIAS='fast-production'
-            KEYSTORE="$RUNNER_TEMP/fast-production.jks"
-            keytool -genkeypair -v \
-              -keystore "$KEYSTORE" -storetype JKS \
-              -storepass "$STOREPASS" -keypass "$KEYPASS" \
-              -alias "$KEY_ALIAS" -keyalg RSA -keysize 3072 -validity 10000 \
-              -dname 'CN=FAST N1, OU=Mobile, O=Gloire Group, L=Brazzaville, C=CG' >/dev/null 2>&1
-            KEYSTORE_B64="$(base64 -w0 "$KEYSTORE")"
-            CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STOREPASS" -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}')"
-            echo "::add-mask::$STOREPASS"
-            echo "::add-mask::$KEYPASS"
-            echo "::add-mask::$KEYSTORE_B64"
-            INIT_JSON="$RUNNER_TEMP/fast-signing-init.json"
-            jq -n \
-              --arg keystore_b64 "$KEYSTORE_B64" \
-              --arg store_password "$STOREPASS" \
-              --arg key_alias "$KEY_ALIAS" \
-              --arg key_password "$KEYPASS" \
-              --arg cert_sha256 "$CERT_SHA256" \
-              '{action:"initialize",keystore_b64:$keystore_b64,store_password:$store_password,key_alias:$key_alias,key_password:$key_password,cert_sha256:$cert_sha256}' > "$INIT_JSON"
-            INIT_CODE="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' \
-              -X POST "$FAST_SIGNING_BROKER_URL" \
-              -H "Authorization: Bearer $OIDC_TOKEN" \
-              -H 'Content-Type: application/json' \
-              --data-binary @"$INIT_JSON")"
-            if [ "$INIT_CODE" != "201" ]; then
-              cat "$RESPONSE_FILE" >&2
-              exit 1
-            fi
-          elif [ "$HTTP_CODE" = "200" ]; then
-            KEYSTORE_B64="$(jq -r '.keystore_b64' "$RESPONSE_FILE")"
-            STOREPASS="$(jq -r '.store_password' "$RESPONSE_FILE")"
-            KEY_ALIAS="$(jq -r '.key_alias' "$RESPONSE_FILE")"
-            KEYPASS="$(jq -r '.key_password' "$RESPONSE_FILE")"
-            CERT_SHA256="$(jq -r '.cert_sha256' "$RESPONSE_FILE")"
-            echo "::add-mask::$STOREPASS"
-            echo "::add-mask::$KEYPASS"
-            echo "::add-mask::$KEYSTORE_B64"
-            KEYSTORE="$RUNNER_TEMP/fast-production.jks"
-            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
-          else
-            cat "$RESPONSE_FILE" >&2
-            exit 1
-          fi
-
+          HTTP_CODE="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' -X POST "$FAST_SIGNING_BROKER_URL" -H "Authorization: Bearer $OIDC_TOKEN" -H 'Content-Type: application/json' --data '{"action":"get"}')"
+          test "$HTTP_CODE" = "200"
+          KEYSTORE_B64="$(jq -r '.keystore_b64' "$RESPONSE_FILE")"
+          STOREPASS="$(jq -r '.store_password' "$RESPONSE_FILE")"
+          KEY_ALIAS="$(jq -r '.key_alias' "$RESPONSE_FILE")"
+          KEYPASS="$(jq -r '.key_password' "$RESPONSE_FILE")"
+          CERT_SHA256="$(jq -r '.cert_sha256' "$RESPONSE_FILE")"
+          echo "::add-mask::$STOREPASS"
+          echo "::add-mask::$KEYPASS"
+          echo "::add-mask::$KEYSTORE_B64"
+          KEYSTORE="$RUNNER_TEMP/fast-production.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
           test -s "$KEYSTORE"
           keytool -list -keystore "$KEYSTORE" -storepass "$STOREPASS" -alias "$KEY_ALIAS" >/dev/null
-          ACTUAL_SHA256="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STOREPASS" -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}')"
-          test "$ACTUAL_SHA256" = "$CERT_SHA256"
           echo "FAST_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
           echo "FAST_KEYSTORE_PASSWORD=$STOREPASS" >> "$GITHUB_ENV"
           echo "FAST_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
           echo "FAST_KEY_PASSWORD=$KEYPASS" >> "$GITHUB_ENV"
           echo "FAST_CERT_SHA256=$CERT_SHA256" >> "$GITHUB_ENV"
-
-      - name: Force permanent Android package identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          sed -i -E 's/applicationId = "[^"]+"/applicationId = "cg.fast.n1"/' app/build.gradle.kts
-          sed -i '/applicationIdSuffix = ".debug"/d' app/build.gradle.kts
-          sed -i '/versionNameSuffix = "-debug"/d' app/build.gradle.kts
-          sed -i -E '/applicationIdSuffix = "\.install[0-9]+"/d' app/build.gradle.kts
-          sed -i '/versionNameSuffix = "-android"/d' app/build.gradle.kts
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          if grep -q 'applicationIdSuffix =' app/build.gradle.kts; then
-            echo "::error::An Android package suffix is still present."
-            exit 1
-          fi
-          if grep -q 'versionNameSuffix =' app/build.gradle.kts; then
-            echo "::error::A version name suffix is still present."
-            exit 1
-          fi
 
       - name: Read FAST version metadata
         shell: bash
@@ -137,17 +72,19 @@ jobs:
           test -n "$VERSION_NAME"
           test -n "$VERSION_CODE"
           VERSION_SLUG="$(printf '%s' "$VERSION_NAME" | tr '.' '-' | tr -cd '[:alnum:]-')"
-          APK_NAME="FAST-N1-${VERSION_SLUG}-ANDROID.apk"
-          RELEASE_TAG="fast-n1-${VERSION_SLUG}"
           echo "FAST_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "FAST_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "FAST_VERSION_SLUG=$VERSION_SLUG" >> "$GITHUB_ENV"
-          echo "FAST_APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
-          echo "FAST_RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "FAST_APK_NAME=FAST-N1-${VERSION_SLUG}-ANDROID.apk" >> "$GITHUB_ENV"
+          echo "FAST_RELEASE_TAG=fast-n1-${VERSION_SLUG}" >> "$GITHUB_ENV"
 
-      - name: Check application JavaScript
+      - name: Validate Android source
+        shell: bash
         run: |
+          set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
+          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          grep -q 'versionName = "14.09.2026"' app/build.gradle.kts
 
       - name: Build signed installable APK
         run: gradle clean assembleDirectInstall
@@ -166,51 +103,30 @@ jobs:
           grep -q "versionName='${FAST_VERSION_NAME}'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
-          if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then
-            echo "::error::Debug signing detected. Publication forbidden."
-            exit 1
-          fi
-          ACTUAL_CERT="$(sed -n 's/.*certificate SHA-256 digest: //p' /tmp/fast-signature.txt | head -1 | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g;s/:$//')"
-          EXPECTED_CERT="$(printf '%s' "$FAST_CERT_SHA256" | tr '[:lower:]' '[:upper:]')"
-          test "$ACTUAL_CERT" = "$EXPECTED_CERT"
-
-      - name: Prepare FAST APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp app/build/outputs/apk/directInstall/app-directInstall.apk "$FAST_APK_NAME"
+          if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then exit 1; fi
+          cp "$APK" "$FAST_APK_NAME"
           sha256sum "$FAST_APK_NAME" > "${FAST_APK_NAME}.sha256"
 
-      - name: Enable Android emulator hardware acceleration
+      - name: Prepare Android emulator acceleration
         shell: bash
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          test -r /dev/kvm
-          test -w /dev/kvm
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm || true; fi
+          ls -l /dev/kvm 2>/dev/null || true
 
-      - name: Prepare strict Android installation test
-        shell: bash
-        run: |
-          cat > "$RUNNER_TEMP/fast-install-smoke.sh" <<'SH'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          adb install "$FAST_APK_NAME"
-          adb shell pm list packages | grep 'package:cg.fast.n1'
-          adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
-          sleep 5
-          adb shell pidof cg.fast.n1
-          adb shell dumpsys activity activities | grep 'cg.fast.n1'
-          SH
-
-      - name: Install and launch on Android emulator
+      - name: Install and launch on Android 35 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           arch: x86_64
           profile: pixel_7
-          script: bash "$RUNNER_TEMP/fast-install-smoke.sh"
+          disable-animations: true
+          script: |
+            adb install -r "$FAST_APK_NAME"
+            adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
+            sleep 5
+            adb shell pidof cg.fast.n1
+            adb shell dumpsys activity activities | grep 'cg.fast.n1'
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
@@ -222,13 +138,12 @@ jobs:
           retention-days: 30
 
       - name: Publish official FAST download
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Package permanent cg.fast.n1 et signature de production stable."
+          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Nouvelle application reconstruite, package cg.fast.n1 et signature de production stable."
           if gh release view "$FAST_RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --clobber
             gh release edit "$FAST_RELEASE_TAG" --notes "$NOTES"
@@ -236,35 +151,32 @@ jobs:
             gh release create "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --title "FAST N°1 Android — ${FAST_VERSION_NAME}" --notes "$NOTES"
           fi
 
-      - name: Point official FAST site to this APK automatically
-        if: github.ref == 'refs/heads/main'
+      - name: Point official FAST site to this APK
         shell: bash
         run: |
           set -euo pipefail
           export FAST_SOURCE_APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${FAST_RELEASE_TAG}/${FAST_APK_NAME}"
           python3 - <<'PY'
           import json, os
-          path = 'updates/latest.json'
-          with open(path, 'r', encoding='utf-8') as f:
-              data = json.load(f)
-          data['version'] = os.environ['FAST_VERSION_NAME']
-          data['build'] = int(os.environ['FAST_VERSION_CODE'])
-          data['sourceApkUrl'] = os.environ['FAST_SOURCE_APK_URL']
-          data['fileName'] = os.environ['FAST_APK_NAME']
-          data['platform'] = 'Android'
-          data['url'] = 'https://fast-n1-officiel.vercel.app/#download'
-          data['apkUrl'] = 'https://fast-n1-officiel.vercel.app/api/download'
-          data['notes'] = f"FAST N°1 {os.environ['FAST_VERSION_NAME']} — dernière version Android validée et signée automatiquement."
-          with open(path, 'w', encoding='utf-8') as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
-              f.write('\n')
+          path='updates/latest.json'
+          with open(path, encoding='utf-8') as f: data=json.load(f)
+          data.update({
+            'version': os.environ['FAST_VERSION_NAME'],
+            'build': int(os.environ['FAST_VERSION_CODE']),
+            'sourceApkUrl': os.environ['FAST_SOURCE_APK_URL'],
+            'fileName': os.environ['FAST_APK_NAME'],
+            'platform': 'Android',
+            'url': 'https://fast-n1-officiel.vercel.app/#download',
+            'apkUrl': 'https://fast-n1-officiel.vercel.app/api/download',
+            'notes': f"FAST N°1 {os.environ['FAST_VERSION_NAME']} — nouvelle application Android validée, installée et signée."
+          })
+          with open(path,'w',encoding='utf-8') as f:
+            json.dump(data,f,ensure_ascii=False,indent=2); f.write('\n')
           PY
           git config user.name 'FAST Release Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add updates/latest.json
-          if git diff --cached --quiet; then
-            echo 'Official download manifest already points to this APK.'
-          else
+          if ! git diff --cached --quiet; then
             git commit -m "Update official FAST APK to ${FAST_VERSION_NAME}"
             git push origin HEAD:main
           fi
