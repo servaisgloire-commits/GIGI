@@ -41,7 +41,7 @@ jobs:
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
           grep -q 'versionName = "14.09.2026"' app/build.gradle.kts
-          grep -q 'versionCode = 14092028' app/build.gradle.kts
+          grep -q 'versionCode = 14092029' app/build.gradle.kts
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -R -q '/v1/auth/password' app/src/main/assets/*.js
@@ -55,6 +55,14 @@ jobs:
           grep -R -q 'issue_ride_pin' app/src/main/assets/*.js
           grep -R -q 'verify_ride_pin' app/src/main/assets/*.js
           grep -R -q '/v1/driver/vehicle' app/src/main/assets/*.js
+          grep -q 'https://www.google.com/maps?output=embed' app/src/main/assets/fast-simplified.js
+          cmp app/src/main/assets/fast-logo.svg admin/site/fast-logo.svg
+          ! grep -qi 'leaflet' app/src/main/assets/index.html
+          ! grep -qi 'openstreetmap' app/src/main/assets/index.html
+          ! grep -q 'data-type="comfort"' app/src/main/assets/index.html
+          ! grep -q 'data-type="xl"' app/src/main/assets/index.html
+          ! grep -q '>Comfort<' app/src/main/assets/index.html
+          ! grep -q '>XL<' app/src/main/assets/index.html
           if grep -RniE 'prototype|coming soon|lorem ipsum' app/src/main/assets; then exit 1; fi
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then exit 1; fi
       - name: Compile clean Android app
