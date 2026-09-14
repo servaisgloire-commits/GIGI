@@ -28,7 +28,9 @@ requireText(html,'id="offerPrice"','driver offer price');
 requireText(html,'fast-simplified.js','single FAST runtime layer');
 requireText(simplified,'https://www.google.com/maps?output=embed','Google Maps presentation');
 requireText(simplified,"vehicle_type: 'standard'",'single FAST service payload');
-requireText(simplified,"state.ride.status !== 'searching'",'client cancellation lock after driver acceptance');
+requireText(simplified,"['in_progress','completed','cancelled'].includes(status)",'client cancellation lock only after ride start');
+requireText(simplified,"cancelRideUntilStart",'client can cancel until driver starts ride');
+requireText(simplified,'La course ne peut plus être annulée après son démarrage.','client cancellation message after start');
 requireText(simplified,'/navigation','driver navigation polling');
 requireText(simplified,'Temps restant','driver remaining time display');
 requireText(simplified,'Agrandir le GPS','driver navigation expand control');
@@ -54,4 +56,4 @@ if(all.includes("setRideStatus('arrived')")) throw new Error('Legacy arrived sta
 if(all.includes("setRideStatus('started')")) throw new Error('Legacy started status still used');
 if(all.includes('/v1/places/autocomplete?input=')) throw new Error('Legacy autocomplete input= contract still used');
 
-console.log(`FAST mobile smoke OK: cancellation lock + driver navigation mode validated`);
+console.log(`FAST mobile smoke OK: cancellation until start + driver navigation mode validated`);
