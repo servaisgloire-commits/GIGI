@@ -2,9 +2,13 @@ package cg.fast.n1
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
@@ -18,6 +22,8 @@ import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
@@ -39,6 +45,8 @@ class MainActivity : AppCompatActivity() {
         cb.onReceiveValue(values)
         fileCallback = null
     }
+
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,11 +100,60 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        ensureRideOfferChannel()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         webView.addJavascriptInterface(FastNativeBridge(), "FastNative")
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
         setContentView(webView)
 
         ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1001)
+    }
+
+    private fun ensureRideOfferChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel = NotificationChannel(
+            RIDE_OFFER_CHANNEL_ID,
+            "Courses FAST disponibles",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Notifications envoyées aux chauffeurs lorsqu’une nouvelle course FAST est disponible."
+            enableVibration(true)
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    private fun showRideOfferNotification(offerId: String, title: String, message: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val notificationId = (offerId.hashCode() and Int.MAX_VALUE).takeIf { it != 0 } ?: 2001
+        val openApp = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            openApp,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, RIDE_OFFER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.fast_logo)
+            .setContentTitle(title.take(80))
+            .setContentText(message.take(220))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message.take(500)))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setVibrate(longArrayOf(0, 250, 120, 250))
+            .build()
+        NotificationManagerCompat.from(this).notify(notificationId, notification)
     }
 
     override fun onResume() {
@@ -126,6 +183,12 @@ class MainActivity : AppCompatActivity() {
             put("version", BuildConfig.VERSION_NAME)
             put("packageId", BuildConfig.APPLICATION_ID)
         }.toString()
+
+        @JavascriptInterface
+        fun notifyRideOffer(offerId: String, title: String, message: String) {
+            if (offerId.isBlank() || title.isBlank() || message.isBlank()) return
+            runOnUiThread { showRideOfferNotification(offerId, title, message) }
+        }
 
         @JavascriptInterface
         fun openExternal(url: String) {
@@ -177,5 +240,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    companion object {
+        private const val RIDE_OFFER_CHANNEL_ID = "fast_ride_offers"
     }
 }

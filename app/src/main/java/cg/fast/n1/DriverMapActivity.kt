@@ -3,7 +3,11 @@ package cg.fast.n1
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -21,7 +25,9 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
@@ -90,6 +96,7 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(map: GoogleMap) {
         Log.i(TAG, "map_ready")
+        val tripNavigation = phase == "to_destination"
         map.mapType = GoogleMap.MAP_TYPE_NORMAL
         map.isTrafficEnabled = true
         map.isBuildingsEnabled = true
@@ -101,13 +108,13 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             isCompassEnabled = true
             isMapToolbarEnabled = false
             isZoomControlsEnabled = false
-            isMyLocationButtonEnabled = true
+            isMyLocationButtonEnabled = !tripNavigation
         }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         ) {
-            runCatching { map.isMyLocationEnabled = true }
+            runCatching { map.isMyLocationEnabled = !tripNavigation }
         }
 
         val destinationPoint = destination ?: return
@@ -122,8 +129,10 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             map.addMarker(
                 MarkerOptions()
                     .position(it)
-                    .title("Votre position")
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                    .title(if (tripNavigation) "Votre FAST" else "Votre position")
+                    .icon(if (tripNavigation) carMarkerIcon() else BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                    .anchor(0.5f, 0.5f)
+                    .zIndex(if (tripNavigation) 20f else 1f)
             )
         }
 
@@ -133,19 +142,74 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
                 PolylineOptions()
                     .addAll(routePoints)
                     .color(Color.rgb(11, 87, 208))
-                    .width(dp(7).toFloat())
+                    .width(dp(if (tripNavigation) 9 else 7).toFloat())
                     .geodesic(false)
             )
         }
 
-        val cameraPoints = buildList {
-            addAll(routePoints)
-            current?.let(::add)
-            add(destinationPoint)
-        }
-        moveCameraToRoute(map, cameraPoints)
         map.setPadding(0, dp(88), 0, dp(138))
+        if (tripNavigation && current != null) {
+            map.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(current!!)
+                        .zoom(17.6f)
+                        .tilt(48f)
+                        .build()
+                )
+            )
+        } else {
+            val cameraPoints = buildList {
+                addAll(routePoints)
+                current?.let(::add)
+                add(destinationPoint)
+            }
+            moveCameraToRoute(map, cameraPoints)
+        }
         map.setOnMapLoadedCallback { Log.i(TAG, "map_loaded") }
+    }
+
+    private fun carMarkerIcon(): BitmapDescriptor {
+        val size = dp(72)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val center = size / 2f
+
+        val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+        canvas.drawCircle(center, center, size * 0.47f, halo)
+        val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(11, 87, 208)
+            style = Paint.Style.STROKE
+            strokeWidth = dp(3).toFloat()
+        }
+        canvas.drawCircle(center, center, size * 0.43f, ring)
+
+        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(11, 87, 208) }
+        val body = RectF(size * 0.31f, size * 0.13f, size * 0.69f, size * 0.87f)
+        canvas.drawRoundRect(body, dp(11).toFloat(), dp(11).toFloat(), bodyPaint)
+
+        val glass = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(220, 237, 255) }
+        canvas.drawRoundRect(
+            RectF(size * 0.36f, size * 0.25f, size * 0.64f, size * 0.43f),
+            dp(5).toFloat(),
+            dp(5).toFloat(),
+            glass,
+        )
+        canvas.drawRoundRect(
+            RectF(size * 0.36f, size * 0.57f, size * 0.64f, size * 0.73f),
+            dp(5).toFloat(),
+            dp(5).toFloat(),
+            glass,
+        )
+
+        val wheel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(17, 24, 39) }
+        val wheelRadius = dp(4).toFloat()
+        canvas.drawCircle(size * 0.29f, size * 0.34f, wheelRadius, wheel)
+        canvas.drawCircle(size * 0.71f, size * 0.34f, wheelRadius, wheel)
+        canvas.drawCircle(size * 0.29f, size * 0.68f, wheelRadius, wheel)
+        canvas.drawCircle(size * 0.71f, size * 0.68f, wheelRadius, wheel)
+
+        return BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 
     private fun moveCameraToRoute(map: GoogleMap, points: List<LatLng>) {
@@ -188,6 +252,27 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         )
 
+        if (phase == "to_destination") {
+            val driving = TextView(this).apply {
+                text = "🚘  EN COURSE"
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(dp(14), 0, dp(14), 0)
+                background = roundedBackground(Color.rgb(11, 87, 208), 18f)
+                elevation = dp(8).toFloat()
+            }
+            root.addView(
+                driving,
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(50)).apply {
+                    gravity = Gravity.TOP or Gravity.END
+                    rightMargin = dp(16)
+                    topMargin = dp(18)
+                }
+            )
+        }
+
         val info = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
@@ -196,7 +281,7 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             elevation = dp(10).toFloat()
         }
         val phaseLabel = TextView(this).apply {
-            text = if (phase == "to_pickup") "VERS LE CLIENT" else "VERS LA DESTINATION"
+            text = if (phase == "to_pickup") "VERS LE CLIENT" else "COURSE EN COURS"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(11, 87, 208))

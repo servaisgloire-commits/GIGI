@@ -75,6 +75,24 @@ def _signed_vehicle_photo(photo_path: str | None) -> str | None:
     return None
 
 
+def _signed_driver_photo(avatar_url: str | None) -> str | None:
+    path = str(avatar_url or "").strip()
+    if not path:
+        return None
+    if path.startswith("https://") or path.startswith("http://"):
+        return path
+    try:
+        payload = db().storage.from_("driver-photos").create_signed_url(path, 1800)
+        if isinstance(payload, dict):
+            data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+            url = data.get("signedURL") or data.get("signedUrl") or data.get("signed_url")
+            if url:
+                return str(url) if str(url).startswith("http") else SUPABASE_URL.rstrip("/") + str(url)
+    except Exception:
+        return None
+    return None
+
+
 def _optional_data(factory, default=None):
     try:
         response = db_retry(factory)
@@ -378,6 +396,8 @@ async def get_ride_with_vehicle_photo(ride_id: str, user: AuthUser = Depends(cur
             lambda: db().table("profiles").select("first_name,last_name,avatar_url").eq("id", ride["driver_id"]).single(),
             {},
         ) or {}
+        prof = dict(prof)
+        prof["photo_url"] = _signed_driver_photo(prof.get("avatar_url"))
         extra = {"driver_location": loc, "vehicle": vehicle, "driver": {**driver, **prof}}
 
     return {"ride": ride, **extra}
