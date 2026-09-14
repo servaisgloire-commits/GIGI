@@ -11,7 +11,7 @@ android {
         applicationId = "cg.fast.n1"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14092026
+        versionCode = 14092027
         versionName = "14.09.2026"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")

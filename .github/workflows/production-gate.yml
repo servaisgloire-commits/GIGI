@@ -41,11 +41,16 @@ jobs:
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
           grep -q 'versionName = "14.09.2026"' app/build.gradle.kts
-          grep -q 'versionCode = 14092026' app/build.gradle.kts
+          grep -q 'versionCode = 14092027' app/build.gradle.kts
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -R -q '/v1/auth/password' app/src/main/assets/*.js
           grep -R -q '/v1/auth/signup' app/src/main/assets/*.js
+          grep -R -q '/v1/places/autocomplete?q=' app/src/main/assets/*.js
+          grep -R -q 'pickup_address' app/src/main/assets/*.js
+          grep -R -q 'destination_address' app/src/main/assets/*.js
+          grep -R -q 'driver_arriving' app/src/main/assets/*.js
+          grep -R -q 'in_progress' app/src/main/assets/*.js
           grep -R -q '/v1/rides' app/src/main/assets/*.js
           grep -R -q 'issue_ride_pin' app/src/main/assets/*.js
           grep -R -q 'verify_ride_pin' app/src/main/assets/*.js
