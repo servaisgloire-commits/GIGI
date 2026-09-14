@@ -154,10 +154,7 @@ jobs:
             adb logcat -d > /tmp/fast-native-map-logcat.txt
             grep -E 'FAST_NATIVE_MAP|Google Maps Android API|Authorization failure|API key|not authorized' /tmp/fast-native-map-logcat.txt || true
             grep -q 'FAST_NATIVE_MAP.*map_ready' /tmp/fast-native-map-logcat.txt
-            if grep -Eqi 'Authorization failure|API key[^[:cntrl:]]*(invalid|rejected|not authorized)|not authorized to use this service' /tmp/fast-native-map-logcat.txt; then
-              echo 'Google Maps authorization error detected' >&2
-              exit 1
-            fi
+            if grep -Eqi 'Authorization failure|API key[^[:cntrl:]]*(invalid|rejected|not authorized)|not authorized to use this service' /tmp/fast-native-map-logcat.txt; then echo 'Google Maps authorization error detected' >&2; exit 1; fi
             grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-native-map-logcat.txt
 
       - name: Upload verified APK artifact
