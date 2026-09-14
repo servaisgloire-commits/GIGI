@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val mapsApiKey = (System.getenv("FAST_GOOGLE_MAPS_API_KEY") ?: "").trim()
+
 android {
     namespace = "cg.fast.n1"
     compileSdk = 35
@@ -16,6 +18,8 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
         buildConfigField("String", "PYTHON_API_URL", "\"https://fast-n1-python-api.vercel.app\"")
+        buildConfigField("boolean", "MAPS_NATIVE_CONFIGURED", mapsApiKey.isNotBlank().toString())
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildFeatures { buildConfig = true }
@@ -65,4 +69,5 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.webkit:webkit:1.13.0")
     implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.gms:play-services-maps:20.0.0")
 }
