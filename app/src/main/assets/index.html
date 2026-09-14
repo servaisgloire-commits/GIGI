@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#0b57d0">
   <title>FAST N°1</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="google-map.css">
 </head>
 <body>
 <div id="toast"></div>
@@ -57,16 +57,10 @@
         <div class="route-line"><span class="dot destination-dot"></span><input id="destination" placeholder="Votre destination"><button id="clearDestination" class="clear-btn">×</button></div>
         <div id="destinationSuggestions" class="suggestions"></div>
       </div>
-      <button id="estimateBtn" class="soft full">Afficher les options</button>
+      <button id="estimateBtn" class="soft full">Calculer le trajet</button>
 
       <div id="tripOptions" class="hidden">
         <div id="routeSummary" class="route-summary"></div>
-        <div class="section-label">Choisissez votre FAST</div>
-        <div class="rideTypes">
-          <button class="rideType active" data-type="standard"><span class="car-icon">🚘</span><div><b>FAST</b><small>Simple et efficace</small></div><strong id="priceStandard">—</strong></button>
-          <button class="rideType" data-type="comfort"><span class="car-icon">🚙</span><div><b>Comfort</b><small>Plus de confort</small></div><strong id="priceComfort">—</strong></button>
-          <button class="rideType" data-type="xl"><span class="car-icon">🚐</span><div><b>XL</b><small>Plus d'espace</small></div><strong id="priceXl">—</strong></button>
-        </div>
 
         <div class="price-card">
           <div><small>Prix FAST suggéré</small><strong id="suggestedPrice">—</strong></div>
@@ -117,15 +111,15 @@
     </section>
 
     <section id="activityView" class="view overlay-view hidden"><div class="overlay-card"><div class="overlay-head"><h2>Mes trajets</h2><button class="closeView">×</button></div><div id="activityList" class="list"></div></div></section>
-    <section id="vehicleView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon véhicule</h2><button class="closeView">×</button></div><label>Marque<input id="vehicleMake" placeholder="Toyota"></label><label>Modèle<input id="vehicleModel" placeholder="Corolla"></label><label>Couleur<input id="vehicleColor" placeholder="Noir"></label><label>Immatriculation<input id="vehiclePlate" placeholder="AA-000-AA"></label><label>Type<select id="vehicleType"><option value="standard">FAST</option><option value="comfort">Comfort</option><option value="xl">XL</option></select></label><label>Photo du véhicule<input id="vehiclePhoto" type="file" accept="image/*"></label><button id="saveVehicleBtn" class="primary tall">Enregistrer le véhicule</button></div></section>
+    <section id="vehicleView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon véhicule</h2><button class="closeView">×</button></div><label>Marque<input id="vehicleMake" placeholder="Toyota"></label><label>Modèle<input id="vehicleModel" placeholder="Corolla"></label><label>Couleur<input id="vehicleColor" placeholder="Noir"></label><label>Immatriculation<input id="vehiclePlate" placeholder="AA-000-AA"></label><select id="vehicleType" hidden><option value="standard" selected>FAST</option></select><label>Photo du véhicule<input id="vehiclePhoto" type="file" accept="image/*"></label><button id="saveVehicleBtn" class="primary tall">Enregistrer le véhicule</button></div></section>
     <section id="profileView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon profil</h2><button class="closeView">×</button></div><label>Prénom<input id="profileFirstName"></label><label>Nom<input id="profileLastName"></label><label>Téléphone<input id="profilePhone"></label><button id="saveProfileBtn" class="primary tall">Enregistrer</button><button id="logoutBtn" class="secondary tall">Se déconnecter</button><small id="version" class="muted"></small></div></section>
   </main>
 
   <nav id="bottomNav"><button data-view="home" class="active"><span>⌂</span>Accueil</button><button data-view="activity"><span>↺</span>Trajets</button><button id="vehicleNav" data-view="vehicle" class="hidden"><span>🚘</span>Véhicule</button><button data-view="profile"><span>☺</span>Profil</button></nav>
 </section>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="core.js"></script>
 <script src="app.js"></script>
 <script src="compat.js"></script>
+<script src="fast-simplified.js"></script>
 </body>
 </html>
