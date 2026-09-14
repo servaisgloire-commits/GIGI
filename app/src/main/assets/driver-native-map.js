@@ -146,3 +146,20 @@
     syncNativeDriverMap({autoLaunch:false});
   });
 })();
+
+(() => {
+  if (!document.querySelector('link[data-fast-driver-identity]')) {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'driver-identity.css';
+    css.dataset.fastDriverIdentity = '1';
+    document.head.appendChild(css);
+  }
+  if (!document.getElementById('fastDriverIdentityRuntime')) {
+    const script = document.createElement('script');
+    script.id = 'fastDriverIdentityRuntime';
+    script.src = 'driver-identity.js';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+})();
