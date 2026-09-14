@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from fastapi.testclient import TestClient
+
 from app.vehicle_main import app
 
 
@@ -28,6 +30,20 @@ def test_mobile_routes_are_exposed_by_production_entrypoint():
         ('/v1/driver/offers/current','GET'),
     }
     assert required <= routes
+
+
+def test_driver_vehicle_put_cors_preflight_is_allowed():
+    client=TestClient(app)
+    response=client.options(
+        '/v1/driver/vehicle',
+        headers={
+            'Origin':'https://appassets.androidplatform.net',
+            'Access-Control-Request-Method':'PUT',
+            'Access-Control-Request-Headers':'authorization,content-type',
+        },
+    )
+    assert response.status_code == 200
+    assert 'PUT' in response.headers.get('access-control-allow-methods','')
 
 
 def test_android_client_matches_backend_contract():
