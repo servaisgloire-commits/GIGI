@@ -157,7 +157,14 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         val builder = LatLngBounds.Builder()
         unique.forEach(builder::include)
-        map.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), dp(52)))
+        map.moveCamera(
+            CameraUpdateFactory.newLatLngBounds(
+                builder.build(),
+                resources.displayMetrics.widthPixels,
+                resources.displayMetrics.heightPixels,
+                dp(52),
+            )
+        )
     }
 
     private fun addOverlay(root: FrameLayout) {
