@@ -134,6 +134,37 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun openDriverMap(
+            destinationLat: Double,
+            destinationLng: Double,
+            currentLat: Double,
+            currentLng: Double,
+            hasCurrent: Boolean,
+            polyline: String,
+            etaMin: Double,
+            distanceKm: Double,
+            phase: String,
+            targetLabel: String,
+        ) {
+            if (!destinationLat.isFinite() || !destinationLng.isFinite()) return
+            runOnUiThread {
+                val intent = Intent(this@MainActivity, DriverMapActivity::class.java).apply {
+                    putExtra(DriverMapActivity.EXTRA_DESTINATION_LAT, destinationLat)
+                    putExtra(DriverMapActivity.EXTRA_DESTINATION_LNG, destinationLng)
+                    putExtra(DriverMapActivity.EXTRA_CURRENT_LAT, currentLat)
+                    putExtra(DriverMapActivity.EXTRA_CURRENT_LNG, currentLng)
+                    putExtra(DriverMapActivity.EXTRA_HAS_CURRENT, hasCurrent)
+                    putExtra(DriverMapActivity.EXTRA_POLYLINE, polyline)
+                    putExtra(DriverMapActivity.EXTRA_ETA_MIN, etaMin)
+                    putExtra(DriverMapActivity.EXTRA_DISTANCE_KM, distanceKm)
+                    putExtra(DriverMapActivity.EXTRA_PHASE, phase)
+                    putExtra(DriverMapActivity.EXTRA_TARGET_LABEL, targetLabel)
+                }
+                runCatching { startActivity(intent) }
+            }
+        }
+
+        @JavascriptInterface
         fun openNavigation(lat: Double, lng: Double) {
             runOnUiThread {
                 val navigation = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng&mode=d")).apply {

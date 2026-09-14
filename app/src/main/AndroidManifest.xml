@@ -12,6 +12,15 @@
         android:label="FAST N°1"
         android:icon="@drawable/fast_logo"
         android:roundIcon="@drawable/fast_logo">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
+        <activity
+            android:name=".DriverMapActivity"
+            android:exported="false"
+            android:hardwareAccelerated="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
