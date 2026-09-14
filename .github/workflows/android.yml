@@ -103,6 +103,7 @@ jobs:
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
           grep -q 'versionName = "14.09.2026"' app/build.gradle.kts
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
+          grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
           test -n "$FAST_GOOGLE_MAPS_API_KEY"
 
       - name: Build signed installable APK
@@ -132,20 +133,31 @@ jobs:
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm || true; fi
           ls -l /dev/kvm 2>/dev/null || true
 
-      - name: Install and launch on Android 35 emulator
+      - name: Verify native driver map on Android 35 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
+          target: google_apis
           arch: x86_64
           profile: pixel_7
           disable-animations: true
           script: |
+            set -euo pipefail
             adb install -r "$FAST_APK_NAME"
             adb shell pm list packages | grep 'package:cg.fast.n1'
             adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
-            sleep 5
+            sleep 3
             adb shell pidof cg.fast.n1
-            adb shell dumpsys activity activities | grep 'cg.fast.n1'
+            adb logcat -c
+            gradle :app:connectedDirectInstallAndroidTest
+            sleep 2
+            adb logcat -d > /tmp/fast-native-map-logcat.txt
+            grep -q 'FAST_NATIVE_MAP.*map_ready' /tmp/fast-native-map-logcat.txt
+            grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-native-map-logcat.txt
+            if grep -Eqi 'Authorization failure|API key[^[:cntrl:]]*(invalid|rejected|not authorized)|not authorized to use this service' /tmp/fast-native-map-logcat.txt; then
+              echo 'Google Maps authorization error detected' >&2
+              exit 1
+            fi
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
@@ -162,7 +174,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Nouvelle application reconstruite, package cg.fast.n1 et signature de production stable."
+          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Carte chauffeur Google Maps native validée sur Android 35, package cg.fast.n1 et signature de production stable."
           if gh release view "$FAST_RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --clobber
             gh release edit "$FAST_RELEASE_TAG" --notes "$NOTES"
@@ -187,7 +199,7 @@ jobs:
             'platform': 'Android',
             'url': 'https://fast-n1-officiel.vercel.app/#download',
             'apkUrl': 'https://fast-n1-officiel.vercel.app/api/download',
-            'notes': f"FAST N°1 {os.environ['FAST_VERSION_NAME']} — nouvelle application Android validée, installée et signée."
+            'notes': f"FAST N°1 {os.environ['FAST_VERSION_NAME']} — carte chauffeur Google Maps native validée sur Android 35."
           })
           with open(path,'w',encoding='utf-8') as f:
             json.dump(data,f,ensure_ascii=False,indent=2); f.write('\n')
