@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                if (request?.isForMainFrame == false) return false
                 val uri = request?.url ?: return true
                 if (uri.scheme == "https" && uri.host == "appassets.androidplatform.net") return false
                 if (uri.scheme == "https") runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
