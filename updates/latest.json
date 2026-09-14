@@ -1,12 +1,12 @@
 {
-  "version": "13.09.2026",
-  "build": 13092026,
+  "version": "14.09.2026",
+  "build": 14092026,
   "minimumBuild": 11092026,
   "mandatory": false,
   "url": "https://fast-n1-officiel.vercel.app/#download",
   "apkUrl": "https://fast-n1-officiel.vercel.app/api/download",
-  "sourceApkUrl": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-13-09-2026/FAST-N1-13-09-2026-ANDROID.apk",
-  "fileName": "FAST-N1-13-09-2026-ANDROID.apk",
+  "sourceApkUrl": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-14-09-2026/FAST-N1-14-09-2026-ANDROID.apk",
+  "fileName": "FAST-N1-14-09-2026-ANDROID.apk",
   "platform": "Android",
-  "notes": "FAST N°1 13.09.2026 — dernière version Android validée et signée automatiquement."
+  "notes": "FAST N°1 14.09.2026 — nouvelle application Android validée, installée et signée."
 }
