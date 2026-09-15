@@ -1,5 +1,8 @@
 package cg.fast.n1
 
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -10,23 +13,22 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class MainMapRuntimeTest {
+    private fun findWebView(view: View): WebView? {
+        if (view is WebView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findWebView(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
+
     @Test
     fun mainMapUsesContinuousGoogleSurfaceWithoutIframeReloadLayer() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             val launchLatch = CountDownLatch(1)
             scenario.onActivity { activity ->
-                val web = activity.findViewById<android.webkit.WebView>(android.R.id.content)
-                    ?: activity.window.decorView.rootView.let { root ->
-                        fun find(view: android.view.View): android.webkit.WebView? {
-                            if (view is android.webkit.WebView) return view
-                            if (view is android.view.ViewGroup) {
-                                for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
-                            }
-                            return null
-                        }
-                        find(root)
-                    }
-                requireNotNull(web)
+                val web = requireNotNull(findWebView(activity.window.decorView.rootView))
                 web.evaluateJavascript("(function(){ if(window.showApp){showApp();} if(window.initMap){initMap();} return true; })()") {
                     launchLatch.countDown()
                 }
@@ -37,14 +39,7 @@ class MainMapRuntimeTest {
             val resultLatch = CountDownLatch(1)
             var result = "false"
             scenario.onActivity { activity ->
-                fun find(view: android.view.View): android.webkit.WebView? {
-                    if (view is android.webkit.WebView) return view
-                    if (view is android.view.ViewGroup) {
-                        for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
-                    }
-                    return null
-                }
-                val web = requireNotNull(find(activity.window.decorView.rootView))
+                val web = requireNotNull(findWebView(activity.window.decorView.rootView))
                 val script = """
                     (function(){
                       var host=document.getElementById('map');
