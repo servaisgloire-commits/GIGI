@@ -38,6 +38,8 @@
     let lastY = 0;
     let lastAt = 0;
     let velocity = 0;
+    let moved = false;
+    let suppressHandleClick = false;
 
     const calcMax = () => {
       const visibleMin = 92;
@@ -66,6 +68,7 @@
       lastY = event.clientY;
       lastAt = performance.now();
       velocity = 0;
+      moved = false;
       sheet.classList.remove('fast-sheet-settling');
       sheet.classList.add('fast-sheet-dragging');
       try { sheet.setPointerCapture(pointerId); } catch {}
@@ -79,6 +82,7 @@
       velocity = (event.clientY - lastY) / dt;
       lastY = event.clientY;
       lastAt = now;
+      if (Math.abs(event.clientY - startY) > 6) moved = true;
       apply(startOffset + (event.clientY - startY));
       event.preventDefault();
     }, {passive:false});
@@ -96,6 +100,8 @@
       if (velocity > 0.45) target = currentOffset < maxOffset * 0.6 ? maxOffset * 0.55 : maxOffset;
       if (velocity < -0.45) target = currentOffset > maxOffset * 0.45 ? maxOffset * 0.55 : 0;
       apply(target);
+      suppressHandleClick = moved;
+      setTimeout(() => { suppressHandleClick = false; }, 0);
       setTimeout(() => sheet.classList.remove('fast-sheet-settling'), 260);
       event?.preventDefault?.();
     };
@@ -103,7 +109,11 @@
     sheet.addEventListener('pointerup', finish, {passive:false});
     sheet.addEventListener('pointercancel', finish, {passive:false});
 
-    sheet.querySelector('.sheet-handle')?.addEventListener('click', () => {
+    sheet.querySelector('.sheet-handle')?.addEventListener('click', event => {
+      if (suppressHandleClick) {
+        event.preventDefault();
+        return;
+      }
       sheet.classList.add('fast-sheet-settling');
       calcMax();
       apply(currentOffset < maxOffset * 0.35 ? maxOffset : 0);
