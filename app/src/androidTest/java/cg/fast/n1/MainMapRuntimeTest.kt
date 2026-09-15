@@ -33,8 +33,10 @@ class MainMapRuntimeTest {
                 val start = """
                     (function(){
                       try{
-                        document.getElementById('auth')?.classList.remove('active');
-                        document.getElementById('app')?.classList.add('active');
+                        var auth=document.getElementById('auth');
+                        var app=document.getElementById('app');
+                        if(auth) auth.classList.remove('active');
+                        if(app) app.classList.add('active');
                         if(window.initMap){ window.initMap(); return 'started'; }
                         return 'missing-init';
                       }catch(e){ return 'start-error:'+String(e&&e.message||e); }
@@ -52,18 +54,23 @@ class MainMapRuntimeTest {
                 val script = """
                     (function(){
                       var host=document.getElementById('map');
-                      var continuous=!!(window.google&&google.maps&&window.state&&state.map&&state.map.provider==='google-live'&&state.map.gmap);
+                      var appState=(typeof state!=='undefined')?state:null;
+                      var continuous=!!(window.google&&google.maps&&appState&&appState.map&&appState.map.provider==='google-live'&&appState.map.gmap);
                       var noIframe=!document.querySelector('#map iframe.google-map-frame');
                       var noLegacy=!document.getElementById('fastOneFingerMapSurface');
-                      var greedy=continuous && state.map.gmap.get('gestureHandling')==='greedy';
+                      var greedy=continuous && appState.map.gmap.get('gestureHandling')==='greedy';
+                      var googleSurface=!!document.querySelector('#map .gm-style');
+                      var noGoogleError=!document.querySelector('#map .gm-err-container,#map .gm-err-content');
                       var data={
                         host:!!host,
                         google:!!(window.google&&google.maps),
-                        provider:(window.state&&state.map&&state.map.provider)||null,
+                        provider:(appState&&appState.map&&appState.map.provider)||null,
                         continuous:continuous,
                         noIframe:noIframe,
                         noLegacy:noLegacy,
                         greedy:greedy,
+                        googleSurface:googleSurface,
+                        noGoogleError:noGoogleError,
                         hasKey:!!(window.FastNative&&FastNative.googleMapsApiKey&&String(FastNative.googleMapsApiKey()||'').length>10)
                       };
                       return JSON.stringify(data);
@@ -75,7 +82,14 @@ class MainMapRuntimeTest {
                 }
             }
             check(resultLatch.await(5, TimeUnit.SECONDS))
-            assertTrue("Continuous map runtime diagnostic: $result", result.contains("\\\"continuous\\\":true") && result.contains("\\\"noIframe\\\":true") && result.contains("\\\"greedy\\\":true"))
+            assertTrue(
+                "Continuous map runtime diagnostic: $result",
+                result.contains("\\\"continuous\\\":true") &&
+                    result.contains("\\\"noIframe\\\":true") &&
+                    result.contains("\\\"greedy\\\":true") &&
+                    result.contains("\\\"googleSurface\\\":true") &&
+                    result.contains("\\\"noGoogleError\\\":true")
+            )
         }
     }
 }
