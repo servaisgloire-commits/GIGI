@@ -4,6 +4,7 @@ plugins {
 }
 
 val mapsApiKey = (System.getenv("FAST_GOOGLE_MAPS_API_KEY") ?: "").trim()
+val escapedMapsApiKey = mapsApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "cg.fast.n1"
@@ -19,6 +20,7 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
         buildConfigField("String", "PYTHON_API_URL", "\"https://fast-n1-python-api.vercel.app\"")
+        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"$escapedMapsApiKey\"")
         buildConfigField("boolean", "MAPS_NATIVE_CONFIGURED", mapsApiKey.isNotBlank().toString())
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
