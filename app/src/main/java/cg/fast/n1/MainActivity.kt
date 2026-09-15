@@ -185,6 +185,9 @@ class MainActivity : AppCompatActivity() {
         }.toString()
 
         @JavascriptInterface
+        fun googleMapsApiKey(): String = BuildConfig.GOOGLE_MAPS_API_KEY
+
+        @JavascriptInterface
         fun notifyRideOffer(offerId: String, title: String, message: String) {
             if (offerId.isBlank() || title.isBlank() || message.isBlank()) return
             runOnUiThread { showRideOfferNotification(offerId, title, message) }
