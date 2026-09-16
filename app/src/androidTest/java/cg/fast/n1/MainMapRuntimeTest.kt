@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,6 +24,18 @@ class MainMapRuntimeTest {
         return null
     }
 
+    private fun grantRuntimePermissions() {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        listOf(
+            "pm grant cg.fast.n1 android.permission.ACCESS_COARSE_LOCATION",
+            "pm grant cg.fast.n1 android.permission.ACCESS_FINE_LOCATION",
+            "pm grant cg.fast.n1 android.permission.POST_NOTIFICATIONS",
+        ).forEach { command ->
+            automation.executeShellCommand(command).close()
+        }
+        Thread.sleep(750)
+    }
+
     private fun evaluate(scenario: ActivityScenario<MainActivity>, script: String, waitSeconds: Long = 6): String {
         val latch = CountDownLatch(1)
         var result = "{}"
@@ -39,6 +52,7 @@ class MainMapRuntimeTest {
 
     @Test
     fun mainMapIsNativeGoogleVisibleAndGestureReady() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             Thread.sleep(3000)
             val start = evaluate(
@@ -58,7 +72,7 @@ class MainMapRuntimeTest {
                 """
             )
             assertTrue("Native Google map start diagnostic: $start", start.contains("\\\"available\\\":true"))
-            Thread.sleep(10000)
+            Thread.sleep(12000)
 
             val result = evaluate(
                 scenario,
@@ -101,6 +115,7 @@ class MainMapRuntimeTest {
 
     @Test
     fun clientHomeReturnsAfterCancellationUiReset() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             Thread.sleep(2500)
             val result = evaluate(
