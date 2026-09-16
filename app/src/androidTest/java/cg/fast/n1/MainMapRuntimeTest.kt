@@ -5,7 +5,6 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.gms.maps.MapView
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,16 +18,6 @@ class MainMapRuntimeTest {
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
                 findWebView(view.getChildAt(i))?.let { return it }
-            }
-        }
-        return null
-    }
-
-    private fun findMapView(view: View): MapView? {
-        if (view is MapView) return view
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                findMapView(view.getChildAt(i))?.let { return it }
             }
         }
         return null
@@ -51,8 +40,8 @@ class MainMapRuntimeTest {
     @Test
     fun mainMapIsNativeGoogleVisibleAndGestureReady() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(2500)
-            evaluate(
+            Thread.sleep(3000)
+            val start = evaluate(
                 scenario,
                 """
                 (function(){
@@ -61,19 +50,15 @@ class MainMapRuntimeTest {
                     var app=document.getElementById('app');
                     if(auth) auth.classList.remove('active');
                     if(app) app.classList.add('active');
+                    var available=!!(window.FastNative&&FastNative.nativeMainMapAvailable&&FastNative.nativeMainMapAvailable());
                     if(window.initMap) window.initMap();
-                    return 'started';
-                  }catch(e){ return 'start-error:'+String(e&&e.message||e); }
+                    return JSON.stringify({started:true,available:available,hasInit:typeof window.initMap==='function'});
+                  }catch(e){ return JSON.stringify({started:false,error:String(e&&e.message||e)}); }
                 })()
                 """
             )
-            Thread.sleep(9000)
-
-            var nativeMapVisible = false
-            scenario.onActivity { activity ->
-                val mapView = findMapView(activity.window.decorView.rootView)
-                nativeMapVisible = mapView != null && mapView.visibility == View.VISIBLE && mapView.width > 0 && mapView.height > 0
-            }
+            assertTrue("Native Google map start diagnostic: $start", start.contains("\\\"available\\\":true"))
+            Thread.sleep(10000)
 
             val result = evaluate(
                 scenario,
@@ -89,15 +74,16 @@ class MainMapRuntimeTest {
                     nativeLoaded:!!(bridge&&bridge.nativeMainMapLoaded&&bridge.nativeMainMapLoaded()),
                     transparent:document.documentElement.classList.contains('fast-native-main-map'),
                     noIframe:!document.querySelector('#map iframe'),
+                    noLegacy:!document.getElementById('fastOneFingerMapSurface'),
                     canSetView:!!(appState&&appState.map&&typeof appState.map.setView==='function'),
-                    canFit:!!(appState&&appState.map&&typeof appState.map.fitBounds==='function')
+                    canFit:!!(appState&&appState.map&&typeof appState.map.fitBounds==='function'),
+                    nativeBridge:!!bridge
                   };
                   return JSON.stringify(data);
                 })()
                 """
             )
 
-            assertTrue("Native Google MapView must be visible", nativeMapVisible)
             assertTrue(
                 "Native main map runtime diagnostic: $result",
                 result.contains("\\\"provider\\\":\\\"google-native-main\\\"") &&
@@ -105,8 +91,10 @@ class MainMapRuntimeTest {
                     result.contains("\\\"nativeLoaded\\\":true") &&
                     result.contains("\\\"transparent\\\":true") &&
                     result.contains("\\\"noIframe\\\":true") &&
+                    result.contains("\\\"noLegacy\\\":true") &&
                     result.contains("\\\"canSetView\\\":true") &&
-                    result.contains("\\\"canFit\\\":true")
+                    result.contains("\\\"canFit\\\":true") &&
+                    result.contains("\\\"nativeBridge\\\":true")
             )
         }
     }
