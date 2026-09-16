@@ -113,7 +113,7 @@
 
     <section id="activityView" class="view overlay-view hidden"><div class="overlay-card"><div class="overlay-head"><h2>Mes trajets</h2><button class="closeView">×</button></div><div id="activityList" class="list"></div></div></section>
     <section id="vehicleView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon véhicule</h2><button class="closeView">×</button></div><label>Marque<input id="vehicleMake" placeholder="Toyota"></label><label>Modèle<input id="vehicleModel" placeholder="Corolla"></label><label>Couleur<input id="vehicleColor" placeholder="Noir"></label><label>Immatriculation<input id="vehiclePlate" placeholder="AA-000-AA"></label><select id="vehicleType" hidden><option value="standard" selected>FAST</option></select><label>Photo du véhicule<input id="vehiclePhoto" type="file" accept="image/*"></label><button id="saveVehicleBtn" class="primary tall">Enregistrer le véhicule</button></div></section>
-    <section id="profileView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon profil</h2><button class="closeView">×</button></div><label>Prénom<input id="profileFirstName"></label><label>Nom<input id="profileLastName"></label><label>Téléphone<input id="profilePhone"></label><button id="saveProfileBtn" class="primary tall">Enregistrer</button><button id="logoutBtn" class="secondary tall">Se déconnecter</button><small id="version" class="muted"></small></div></section>
+    <section id="profileView" class="view overlay-view hidden"><div class="overlay-card form"><div class="overlay-head"><h2>Mon profil</h2><button class="closeView">×</button></div><label>Prénom<input id="profileFirstName"><label>Nom<input id="profileLastName"></label><label>Téléphone<input id="profilePhone"></label><button id="saveProfileBtn" class="primary tall">Enregistrer</button><button id="logoutBtn" class="secondary tall">Se déconnecter</button><small id="version" class="muted"></small></div></section>
   </main>
 
   <nav id="bottomNav"><button data-view="home" class="active"><span>⌂</span>Accueil</button><button data-view="activity"><span>↺</span>Trajets</button><button id="vehicleNav" data-view="vehicle" class="hidden"><span>🚘</span>Véhicule</button><button data-view="profile"><span>☺</span>Profil</button></nav>
@@ -123,6 +123,7 @@
 <script src="compat.js"></script>
 <script src="fast-simplified.js"></script>
 <script src="stable-map.js"></script>
+<script src="native-main-map.js"></script>
 <script src="client-sheet-drag.js"></script>
 <script src="client-ui-recovery.js"></script>
 <script src="driver-native-map.js"></script>
