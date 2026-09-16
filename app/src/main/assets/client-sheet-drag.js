@@ -54,6 +54,18 @@
       sheet.setAttribute('aria-expanded', currentOffset < maxOffset * 0.45 ? 'true' : 'false');
     };
 
+    const reset = () => {
+      pointerId = null;
+      startOffset = 0;
+      currentOffset = 0;
+      velocity = 0;
+      moved = false;
+      sheet.classList.remove('fast-sheet-dragging','fast-sheet-settling');
+      sheet.style.setProperty('--fast-client-sheet-y','0px');
+      sheet.setAttribute('aria-expanded','true');
+    };
+    window.FAST_RESET_CLIENT_SHEET = reset;
+
     const isDragZone = target => {
       if (!(target instanceof Element)) return false;
       if (target.closest('button,input,select,textarea,a')) return false;
@@ -121,6 +133,7 @@
     });
 
     window.addEventListener('resize', () => apply(currentOffset));
+    document.addEventListener('fast:client-sheet-reset', reset);
     apply(0);
   }
 
