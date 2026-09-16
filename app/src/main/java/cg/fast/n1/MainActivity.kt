@@ -7,9 +7,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
@@ -19,6 +24,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -26,10 +32,32 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
+import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
+    private lateinit var mainMapView: MapView
+    private var mainGoogleMap: GoogleMap? = null
+    private var mainMapEnabled = false
+    private var mainMapLoaded = false
+    private var forwardingMapGesture = false
+    private var mainMapTouchBoundaryRatio = 0.58f
+    private var mainPickupMarker: Marker? = null
+    private var mainDestinationMarker: Marker? = null
+    private var mainDriverMarker: Marker? = null
+    private val mainNearbyMarkers = mutableListOf<Marker>()
+    private var mainRoutePolyline: Polyline? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
 
     private val picker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -48,14 +76,25 @@ class MainActivity : AppCompatActivity() {
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
-        webView = WebView(this)
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(238, 243, 248)) }
+        mainMapView = MapView(this).apply {
+            visibility = View.INVISIBLE
+            onCreate(savedInstanceState)
+        }
+        root.addView(
+            mainMapView,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        )
+        mainMapView.getMapAsync { configureMainMap(it) }
+
+        webView = WebView(this).apply { setBackgroundColor(Color.TRANSPARENT) }
         with(webView.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -100,6 +139,23 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        webView.setOnTouchListener { _, event ->
+            if (!mainMapEnabled || mainMapView.visibility != View.VISIBLE) return@setOnTouchListener false
+            val boundary = webView.height * mainMapTouchBoundaryRatio
+            val headerGuard = dp(88).toFloat()
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                forwardingMapGesture = event.y > headerGuard && event.y < boundary
+            }
+            if (!forwardingMapGesture) return@setOnTouchListener false
+            val copy = MotionEvent.obtain(event)
+            val handled = mainMapView.dispatchTouchEvent(copy)
+            copy.recycle()
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                forwardingMapGesture = false
+            }
+            handled || true
+        }
+
         ensureRideOfferChannel()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -108,11 +164,196 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(FastNativeBridge(), "FastNative")
+        root.addView(
+            webView,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        )
+        setContentView(root)
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
-        setContentView(webView)
 
         ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1001)
     }
+
+    private fun configureMainMap(map: GoogleMap) {
+        mainGoogleMap = map
+        mainMapLoaded = false
+        Log.i(MAIN_MAP_TAG, "map_ready")
+        map.mapType = GoogleMap.MAP_TYPE_NORMAL
+        map.isTrafficEnabled = true
+        map.isBuildingsEnabled = true
+        map.uiSettings.apply {
+            isScrollGesturesEnabled = true
+            isZoomGesturesEnabled = true
+            isRotateGesturesEnabled = true
+            isTiltGesturesEnabled = true
+            isCompassEnabled = true
+            isZoomControlsEnabled = true
+            isMapToolbarEnabled = false
+            isMyLocationButtonEnabled = false
+        }
+        enableMainLocationLayer()
+        updateMainMapPadding()
+        map.setOnMapLoadedCallback {
+            mainMapLoaded = true
+            Log.i(MAIN_MAP_TAG, "map_loaded")
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun enableMainLocationLayer() {
+        val map = mainGoogleMap ?: return
+        val allowed = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (allowed) runCatching { map.isMyLocationEnabled = true }
+    }
+
+    private fun updateMainMapPadding() {
+        val map = mainGoogleMap ?: return
+        if (!::webView.isInitialized || webView.height <= 0) return
+        val boundaryPx = (webView.height * mainMapTouchBoundaryRatio).toInt()
+        val bottom = (webView.height - boundaryPx + dp(12)).coerceAtLeast(dp(82))
+        map.setPadding(dp(8), dp(92), dp(10), bottom)
+    }
+
+    private fun setMainCamera(lat: Double, lng: Double, zoom: Double) {
+        if (!lat.isFinite() || !lng.isFinite()) return
+        val map = mainGoogleMap ?: return
+        val safeZoom = zoom.takeIf { it.isFinite() }?.toFloat()?.coerceIn(3f, 20f) ?: 15f
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), safeZoom))
+    }
+
+    private fun fitMainBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double) {
+        if (!listOf(minLat, minLng, maxLat, maxLng).all { it.isFinite() }) return
+        val map = mainGoogleMap ?: return
+        val southWest = LatLng(kotlin.math.min(minLat, maxLat), kotlin.math.min(minLng, maxLng))
+        val northEast = LatLng(kotlin.math.max(minLat, maxLat), kotlin.math.max(minLng, maxLng))
+        if (southWest == northEast) {
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(southWest, 15f))
+            return
+        }
+        runCatching {
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds(southWest, northEast), dp(72)))
+        }
+    }
+
+    private fun updateMainMarkers(
+        hasPickup: Boolean,
+        pickupLat: Double,
+        pickupLng: Double,
+        hasDestination: Boolean,
+        destinationLat: Double,
+        destinationLng: Double,
+    ) {
+        val map = mainGoogleMap ?: return
+        mainPickupMarker?.remove()
+        mainDestinationMarker?.remove()
+        mainPickupMarker = null
+        mainDestinationMarker = null
+        if (hasPickup && pickupLat.isFinite() && pickupLng.isFinite()) {
+            mainPickupMarker = map.addMarker(
+                MarkerOptions()
+                    .position(LatLng(pickupLat, pickupLng))
+                    .title("Départ")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+            )
+        }
+        if (hasDestination && destinationLat.isFinite() && destinationLng.isFinite()) {
+            mainDestinationMarker = map.addMarker(
+                MarkerOptions()
+                    .position(LatLng(destinationLat, destinationLng))
+                    .title("Destination")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            )
+        }
+    }
+
+    private fun updateMainRoute(encoded: String) {
+        val map = mainGoogleMap ?: return
+        mainRoutePolyline?.remove()
+        mainRoutePolyline = null
+        val points = decodePolyline(encoded)
+        if (points.size < 2) return
+        mainRoutePolyline = map.addPolyline(
+            PolylineOptions()
+                .addAll(points)
+                .color(Color.rgb(11, 87, 208))
+                .width(dp(7).toFloat())
+                .geodesic(false)
+        )
+    }
+
+    private fun updateNearbyDrivers(json: String) {
+        val map = mainGoogleMap ?: return
+        mainNearbyMarkers.forEach { it.remove() }
+        mainNearbyMarkers.clear()
+        runCatching {
+            val rows = JSONArray(json)
+            for (i in 0 until rows.length()) {
+                val item = rows.optJSONObject(i) ?: continue
+                val lat = item.optDouble("lat", Double.NaN)
+                val lng = item.optDouble("lng", Double.NaN)
+                if (!lat.isFinite() || !lng.isFinite()) continue
+                map.addMarker(
+                    MarkerOptions()
+                        .position(LatLng(lat, lng))
+                        .title("Chauffeur FAST")
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                )?.let(mainNearbyMarkers::add)
+            }
+        }
+    }
+
+    private fun updateMainDriver(lat: Double, lng: Double) {
+        if (!lat.isFinite() || !lng.isFinite()) return
+        val map = mainGoogleMap ?: return
+        val point = LatLng(lat, lng)
+        if (mainDriverMarker == null) {
+            mainDriverMarker = map.addMarker(
+                MarkerOptions()
+                    .position(point)
+                    .title("Votre chauffeur FAST")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                    .zIndex(20f)
+            )
+        } else {
+            mainDriverMarker?.position = point
+            mainDriverMarker?.isVisible = true
+        }
+    }
+
+    private fun decodePolyline(encoded: String): List<LatLng> {
+        if (encoded.isBlank()) return emptyList()
+        val result = ArrayList<LatLng>()
+        var index = 0
+        var lat = 0
+        var lng = 0
+        while (index < encoded.length) {
+            var b: Int
+            var shift = 0
+            var value = 0
+            do {
+                if (index >= encoded.length) return result
+                b = encoded[index++].code - 63
+                value = value or ((b and 0x1f) shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            lat += if ((value and 1) != 0) (value shr 1).inv() else value shr 1
+
+            shift = 0
+            value = 0
+            do {
+                if (index >= encoded.length) return result
+                b = encoded[index++].code - 63
+                value = value or ((b and 0x1f) shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            lng += if ((value and 1) != 0) (value shr 1).inv() else value shr 1
+            result += LatLng(lat / 1e5, lng / 1e5)
+        }
+        return result
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun ensureRideOfferChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -156,9 +397,40 @@ class MainActivity : AppCompatActivity() {
         NotificationManagerCompat.from(this).notify(notificationId, notification)
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (::mainMapView.isInitialized) mainMapView.onStart()
+    }
+
     override fun onResume() {
         super.onResume()
+        if (::mainMapView.isInitialized) mainMapView.onResume()
         if (::webView.isInitialized) webView.evaluateJavascript("window.FAST_RESUME && window.FAST_RESUME()", null)
+    }
+
+    override fun onPause() {
+        if (::mainMapView.isInitialized) mainMapView.onPause()
+        super.onPause()
+    }
+
+    override fun onStop() {
+        if (::mainMapView.isInitialized) mainMapView.onStop()
+        super.onStop()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (::mainMapView.isInitialized) mainMapView.onLowMemory()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (::mainMapView.isInitialized) mainMapView.onSaveInstanceState(outState)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) enableMainLocationLayer()
     }
 
     override fun onDestroy() {
@@ -171,6 +443,7 @@ class MainActivity : AppCompatActivity() {
             webView.removeAllViews()
             webView.destroy()
         }
+        if (::mainMapView.isInitialized) mainMapView.onDestroy()
         super.onDestroy()
     }
 
@@ -186,6 +459,80 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun googleMapsApiKey(): String = BuildConfig.GOOGLE_MAPS_API_KEY
+
+        @JavascriptInterface
+        fun nativeMainMapAvailable(): Boolean = BuildConfig.MAPS_NATIVE_CONFIGURED
+
+        @JavascriptInterface
+        fun nativeMainMapLoaded(): Boolean = mainMapLoaded
+
+        @JavascriptInterface
+        fun enableMainMap(lat: Double, lng: Double, zoom: Double) {
+            if (!BuildConfig.MAPS_NATIVE_CONFIGURED) return
+            runOnUiThread {
+                mainMapEnabled = true
+                mainMapView.visibility = View.VISIBLE
+                setMainCamera(lat, lng, zoom)
+                updateMainMapPadding()
+            }
+        }
+
+        @JavascriptInterface
+        fun setMainMapTouchBoundary(topCssPx: Double, viewportCssPx: Double) {
+            if (!topCssPx.isFinite() || !viewportCssPx.isFinite() || viewportCssPx <= 0) return
+            val ratio = (topCssPx / viewportCssPx).toFloat().coerceIn(0.22f, 0.94f)
+            runOnUiThread {
+                mainMapTouchBoundaryRatio = ratio
+                updateMainMapPadding()
+            }
+        }
+
+        @JavascriptInterface
+        fun setMainMapCamera(lat: Double, lng: Double, zoom: Double) {
+            runOnUiThread { setMainCamera(lat, lng, zoom) }
+        }
+
+        @JavascriptInterface
+        fun fitMainMapBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double) {
+            runOnUiThread { fitMainBounds(minLat, minLng, maxLat, maxLng) }
+        }
+
+        @JavascriptInterface
+        fun setMainMapMarkers(
+            hasPickup: Boolean,
+            pickupLat: Double,
+            pickupLng: Double,
+            hasDestination: Boolean,
+            destinationLat: Double,
+            destinationLng: Double,
+        ) {
+            runOnUiThread {
+                updateMainMarkers(hasPickup, pickupLat, pickupLng, hasDestination, destinationLat, destinationLng)
+            }
+        }
+
+        @JavascriptInterface
+        fun setMainMapRoute(polyline: String) {
+            runOnUiThread { updateMainRoute(polyline) }
+        }
+
+        @JavascriptInterface
+        fun setMainMapNearbyDrivers(json: String) {
+            runOnUiThread { updateNearbyDrivers(json) }
+        }
+
+        @JavascriptInterface
+        fun clearMainMapNearbyDrivers() {
+            runOnUiThread {
+                mainNearbyMarkers.forEach { it.remove() }
+                mainNearbyMarkers.clear()
+            }
+        }
+
+        @JavascriptInterface
+        fun setMainMapDriverLocation(lat: Double, lng: Double) {
+            runOnUiThread { updateMainDriver(lat, lng) }
+        }
 
         @JavascriptInterface
         fun notifyRideOffer(offerId: String, title: String, message: String) {
@@ -247,5 +594,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val RIDE_OFFER_CHANNEL_ID = "fast_ride_offers"
+        private const val MAIN_MAP_TAG = "FAST_NATIVE_MAIN"
     }
 }
