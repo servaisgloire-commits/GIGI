@@ -195,6 +195,11 @@ class MainActivity : AppCompatActivity() {
         }
         enableMainLocationLayer()
         updateMainMapPadding()
+        armMainMapLoadedCallback()
+    }
+
+    private fun armMainMapLoadedCallback() {
+        val map = mainGoogleMap ?: return
         map.setOnMapLoadedCallback {
             mainMapLoaded = true
             Log.i(MAIN_MAP_TAG, "map_loaded")
@@ -504,9 +509,18 @@ class MainActivity : AppCompatActivity() {
             if (!BuildConfig.MAPS_NATIVE_CONFIGURED) return
             runOnUiThread {
                 mainMapEnabled = true
+                mainMapLoaded = false
                 mainMapView.visibility = View.VISIBLE
+                mainMapView.requestLayout()
+                mainMapView.invalidate()
+                armMainMapLoadedCallback()
                 setMainCamera(lat, lng, zoom)
                 updateMainMapPadding()
+                mainMapView.post {
+                    mainMapView.requestLayout()
+                    mainMapView.invalidate()
+                    updateMainMapPadding()
+                }
             }
         }
 
