@@ -400,10 +400,17 @@
     if (driverNavTimer) clearInterval(driverNavTimer);
     driverNavTimer = null;
     driverNavRideId = null;
+    driverNavLaunchedForRide = null;
     $('driverNavigationPanel')?.classList.add('hidden');
     $('map')?.classList.remove('driver-driving-map');
     syncDriverOneFingerSurface(false);
   }
+
+  window.FAST_RESET_RIDE_MAP_STATE = function resetRideMapState(){
+    driverLivePos = null;
+    stopDriverNavigationMode();
+    try { refreshGoogleMap(); } catch {}
+  };
 
   async function refreshDriverNavigation() {
     const ride = state.ride;
