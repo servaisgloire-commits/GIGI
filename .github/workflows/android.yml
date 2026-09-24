@@ -145,23 +145,29 @@ jobs:
             set -eu
             adb install -r "$FAST_APK_NAME"
             adb shell pm list packages | grep 'package:cg.fast.n1'
-            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
-            sleep 3
-            adb shell pidof cg.fast.n1
             adb logcat -c
-
-            echo "Running Android test class: cg.fast.n1.DriverMapRuntimeTest"
-            gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.DriverMapRuntimeTest || (echo "Retrying DriverMapRuntimeTest once after Android process reset..." >&2; adb wait-for-device; adb shell am force-stop cg.fast.n1 || true; adb shell am force-stop cg.fast.n1.test || true; sleep 2; gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.DriverMapRuntimeTest)
-
-            echo "Running Android test class: cg.fast.n1.MainMapRuntimeTest"
-            gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.MainMapRuntimeTest || (echo "Retrying MainMapRuntimeTest once after Android process reset..." >&2; adb wait-for-device; adb shell am force-stop cg.fast.n1 || true; adb shell am force-stop cg.fast.n1.test || true; sleep 2; gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.MainMapRuntimeTest)
-
+            gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.DriverMapRuntimeTest
             sleep 2
-            adb logcat -d > /tmp/fast-native-map-logcat.txt
-            grep -E 'FAST_NATIVE_MAP|Google Maps Android API|Authorization failure|API key|not authorized' /tmp/fast-native-map-logcat.txt || true
-            grep -q 'FAST_NATIVE_MAP.*map_ready' /tmp/fast-native-map-logcat.txt
-            if grep -Eqi 'Authorization failure|API key[^[:cntrl:]]*(invalid|rejected|not authorized)|not authorized to use this service' /tmp/fast-native-map-logcat.txt; then echo 'Google Maps authorization error detected' >&2; exit 1; fi
-            grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-native-map-logcat.txt
+            adb logcat -d > /tmp/fast-driver-map-logcat.txt
+            grep -E 'FAST_NATIVE_MAP|Google Maps Android API|Authorization failure|API key|not authorized' /tmp/fast-driver-map-logcat.txt || true
+            grep -q 'FAST_NATIVE_MAP.*map_ready' /tmp/fast-driver-map-logcat.txt
+            if grep -Eqi 'Authorization failure|API key[^[:cntrl:]]*(invalid|rejected|not authorized)|not authorized to use this service' /tmp/fast-driver-map-logcat.txt; then echo 'Google Maps authorization error detected' >&2; exit 1; fi
+            grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-driver-map-logcat.txt
+
+      - name: Verify FAST main interface on Android 35 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis_playstore
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          script: |
+            set -eu
+            adb install -r "$FAST_APK_NAME"
+            adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb logcat -c
+            gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.MainMapRuntimeTest
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
