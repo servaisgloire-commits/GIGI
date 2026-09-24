@@ -84,6 +84,7 @@
         polyline,
         Number.isFinite(eta) ? eta : 0,
         Number.isFinite(distance) ? distance : 0,
+        Number(nav.driver_location?.heading || 0),
         phase,
         label,
       );
@@ -122,7 +123,7 @@
       expand.onclick = () => launchNativeDriverMap(true);
     }
 
-    if (autoLaunch) {
+    if (autoLaunch && ride.status === 'in_progress') {
       const key = `${ride.id}:${phase}`;
       if (!launchedPhases.has(key)) setTimeout(() => launchNativeDriverMap(false), 80);
     }
@@ -141,10 +142,17 @@
     if (startButton) {
       startButton.onclick = async () => {
         await setRideStatus('in_progress');
+        if (state.ride?.status === 'in_progress') setTimeout(() => launchNativeDriverMap(false), 120);
       };
     }
     syncNativeDriverMap({autoLaunch:false});
   });
+
+  window.FAST_DRIVER_RIDE_CLEARED = function clearDriverNativeRide(){
+    launchedPhases.clear();
+    document.getElementById('app')?.classList.remove('driver-native-map-active');
+    document.getElementById('driverNativeMapLauncher')?.classList.add('hidden');
+  };
 })();
 
 (() => {

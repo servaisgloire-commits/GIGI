@@ -633,6 +633,7 @@ class MainActivity : AppCompatActivity() {
             polyline: String,
             etaMin: Double,
             distanceKm: Double,
+            heading: Double,
             phase: String,
             targetLabel: String,
         ) {
@@ -647,6 +648,7 @@ class MainActivity : AppCompatActivity() {
                     putExtra(DriverMapActivity.EXTRA_POLYLINE, polyline)
                     putExtra(DriverMapActivity.EXTRA_ETA_MIN, etaMin)
                     putExtra(DriverMapActivity.EXTRA_DISTANCE_KM, distanceKm)
+                    putExtra(DriverMapActivity.EXTRA_HEADING, heading)
                     putExtra(DriverMapActivity.EXTRA_PHASE, phase)
                     putExtra(DriverMapActivity.EXTRA_TARGET_LABEL, targetLabel)
                 }
