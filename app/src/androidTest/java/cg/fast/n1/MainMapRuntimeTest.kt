@@ -139,12 +139,12 @@ class MainMapRuntimeTest {
                   if(window.initMap) window.initMap();
                   window.dispatchEvent(new Event('resize'));
                   var rect=card?card.getBoundingClientRect():null;
-                  return JSON.stringify({
+                  return {
                     cardVisible:!!card&&getComputedStyle(card).display!=='none',
                     cardBottom:rect?rect.bottom:0,
                     viewport:window.innerHeight||0,
                     toggle:!!document.getElementById('onlineToggle')
-                  });
+                  };
                 })()
                 """
             )
