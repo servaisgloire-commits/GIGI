@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from supabase import create_client
 
+from .http_pool import shared_http_client
+
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://hmwxwzfcpdvgzjgxruup.supabase.co")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 GOOGLE_MAPS_API_KEY = (os.getenv("GOOGLE_MAPS_API_KEY") or "").strip()
@@ -116,14 +118,15 @@ async def current_user(authorization: Optional[str] = Header(default=None)) -> A
         return AuthUser(**cached)
 
     try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(
-                f"{SUPABASE_URL}/auth/v1/user",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "apikey": SUPABASE_SERVICE_ROLE_KEY,
-                },
-            )
+        client = shared_http_client()
+        r = await client.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            },
+            timeout=8,
+        )
     except httpx.HTTPError as exc:
         raise HTTPException(503, "Authentication service temporarily unavailable") from exc
 
@@ -263,8 +266,13 @@ async def google_route(origin: Location, destination: Location):
         "units": "METRIC",
     }
     try:
-        async with httpx.AsyncClient(timeout=12) as client:
-            r = await client.post("https://routes.googleapis.com/directions/v2:computeRoutes", headers=headers, json=body)
+        client = shared_http_client()
+        r = await client.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes",
+            headers=headers,
+            json=body,
+            timeout=12,
+        )
     except httpx.HTTPError:
         return None
     if r.status_code != 200:
@@ -326,8 +334,13 @@ async def osrm_route(origin: Location, destination: Location):
         "annotations": "false",
     }
     try:
-        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "FAST-N1/6.0"}) as client:
-            r = await client.get(f"https://router.project-osrm.org/route/v1/driving/{coords}", params=params)
+        client = shared_http_client()
+        r = await client.get(
+            f"https://router.project-osrm.org/route/v1/driving/{coords}",
+            params=params,
+            headers={"User-Agent": "FAST-N1/6.0"},
+            timeout=10,
+        )
     except httpx.HTTPError:
         return None
     if r.status_code != 200:
@@ -608,8 +621,13 @@ async def autocomplete(q: str = Query(min_length=2, max_length=120)):
             "languageCode": "fr",
         }
         try:
-            async with httpx.AsyncClient(timeout=8) as client:
-                r = await client.post("https://places.googleapis.com/v1/places:autocomplete", headers=headers, json=body)
+            client = shared_http_client()
+            r = await client.post(
+                "https://places.googleapis.com/v1/places:autocomplete",
+                headers=headers,
+                json=body,
+                timeout=8,
+            )
             if r.status_code == 200:
                 items = []
                 for s in r.json().get("suggestions", []):
@@ -623,11 +641,13 @@ async def autocomplete(q: str = Query(min_length=2, max_length=120)):
             pass
 
     try:
-        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "FAST-N1/6.0 support=servaisgloire@hotmail.com"}) as client:
-            r = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params={"q": q_clean, "format": "jsonv2", "limit": 6, "countrycodes": "cg", "addressdetails": 1},
-            )
+        client = shared_http_client()
+        r = await client.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": q_clean, "format": "jsonv2", "limit": 6, "countrycodes": "cg", "addressdetails": 1},
+            headers={"User-Agent": "FAST-N1/6.0 support=servaisgloire@hotmail.com"},
+            timeout=8,
+        )
     except httpx.HTTPError:
         return {"items": []}
     result = {
@@ -651,14 +671,15 @@ async def place_details(place_id: str):
     if not GOOGLE_MAPS_API_KEY:
         raise HTTPException(400, "Google place details requires GOOGLE_MAPS_API_KEY")
     try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(
-                f"https://places.googleapis.com/v1/places/{place_id}",
-                headers={
-                    "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
-                    "X-Goog-FieldMask": "id,displayName,formattedAddress,location",
-                },
-            )
+        client = shared_http_client()
+        r = await client.get(
+            f"https://places.googleapis.com/v1/places/{place_id}",
+            headers={
+                "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+                "X-Goog-FieldMask": "id,displayName,formattedAddress,location",
+            },
+            timeout=8,
+        )
     except httpx.HTTPError as exc:
         raise HTTPException(502, "Place lookup failed") from exc
     if r.status_code != 200:
