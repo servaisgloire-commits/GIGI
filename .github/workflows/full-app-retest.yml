@@ -1,0 +1,64 @@
+name: FAST Full App Retest
+
+on:
+  push:
+    branches: [ agent-g-server-capacity-20260924 ]
+    paths:
+      - '.github/workflows/full-app-retest.yml'
+      - 'audits/full-app-retest.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  full-app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Backend compile and tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -q -r backend/requirements.txt pytest
+          PYTHONPATH="$GITHUB_WORKSPACE/backend" python -m pytest -q backend/tests
+          python -m compileall -q backend/app backend/api
+
+      - name: Validate every application JavaScript file
+        run: |
+          set -euo pipefail
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+
+      - name: Run FAST mobile/UI contracts
+        run: |
+          node tests/fast-mobile-smoke.mjs
+          node tests/full-ride-flow-contract.mjs
+          node tests/client-rebuild-smoke.mjs
+          node tests/driver-restart-pin-smoke.mjs
+
+      - name: Verify FAST brand and production UI
+        run: |
+          set -euo pipefail
+          test -s app/src/main/res/drawable/fast_logo.xml
+          grep -q 'FAST N°1' app/src/main/assets/index.html
+          grep -q 'android:icon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@drawable/fast_logo"' app/src/main/AndroidManifest.xml
+          if grep -RniE 'prototype|bêta|beta|coming soon|lorem ipsum' app/src/main/assets; then exit 1; fi
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compile Android verification app and tests
+        run: |
+          gradle :app:assembleVerification :app:assembleVerificationAndroidTest
