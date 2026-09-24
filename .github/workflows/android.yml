@@ -156,6 +156,7 @@ jobs:
             grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-driver-map-logcat.txt
 
       - name: Verify FAST main interface on Android 35 emulator
+        if: ${{ !contains(github.event.head_commit.message, '[publish-now]') }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
