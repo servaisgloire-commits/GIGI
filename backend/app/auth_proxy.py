@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from .main import SUPABASE_URL
+from .http_pool import shared_http_client
 
 router = APIRouter(prefix="/v1/auth", tags=["auth-proxy"])
 
@@ -37,15 +38,16 @@ async def _supabase_auth_post(path: str, payload: dict):
         raise HTTPException(503, "FAST authentication is not configured")
 
     try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            response = await client.post(
-                f"{SUPABASE_URL.rstrip('/')}{path}",
-                headers={
-                    "apikey": SUPABASE_PUBLISHABLE_KEY,
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
+        client = shared_http_client()
+        response = await client.post(
+            f"{SUPABASE_URL.rstrip('/')}{path}",
+            headers={
+                "apikey": SUPABASE_PUBLISHABLE_KEY,
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=12.0,
+        )
     except httpx.HTTPError as exc:
         raise HTTPException(503, "FAST authentication service temporarily unavailable") from exc
 
