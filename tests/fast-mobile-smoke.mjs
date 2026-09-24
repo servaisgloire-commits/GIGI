@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const html=fs.readFileSync('app/src/main/assets/index.html','utf8');
+const css=fs.readFileSync('app/src/main/assets/styles.css','utf8');
 const core=fs.readFileSync('app/src/main/assets/core.js','utf8');
 const app=fs.readFileSync('app/src/main/assets/app.js','utf8');
 const simplified=fs.readFileSync('app/src/main/assets/fast-simplified.js','utf8');
@@ -74,6 +75,14 @@ requireText(driverNativeCss,'.driver-native-map-active #map .google-map-frame','
 requireText(native,'fun openDriverMap(','native driver map bridge');
 requireText(native,'ValueAnimator.ofFloat(0f, 1f)','smooth live driver marker interpolation');
 requireText(native,'FAST_LOCATION_PERMISSION_CHANGED','Android location permission callback');
+requireText(native,'OnBackPressedCallback','native Android back interception');
+requireText(native,'BACK_EXIT_WINDOW_MS = 2_000L','double-back exit window');
+requireText(native,'Appuyez encore sur Retour pour quitter FAST.','first back press exit warning');
+requireText(native,'setMainMapTouchTopBoundary','native map top touch guard bridge');
+requireText(nativeMain,"'.driver-online-card'",'driver availability card protected from native map touch forwarding');
+requireText(nativeMain,"call('setMainMapTouchTopBoundary'",'native map receives protected top control boundary');
+requireText(css,'.toggle input{position:absolute','driver availability checkbox keeps a real tappable hit area');
+requireText(css,'touch-action:manipulation','driver availability switch mobile touch handling');
 requireText(nativeMain,"state?.ride?.optimized_route_polyline",'active route restoration after app resume');
 requireText(nativeMain,"ridePoint('pickup')",'pickup marker restoration from active ride');
 requireText(nativeMain,"ridePoint('destination')",'destination marker restoration from active ride');

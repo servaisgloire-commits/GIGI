@@ -110,6 +110,21 @@
 
   function syncBoundary() {
     const viewport = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+
+    const topControls = ['.floating-header','.driver-online-card','#vehicleAlert']
+      .map(selector => document.querySelector(selector))
+      .filter(el => {
+        if (!el || el.classList.contains('hidden')) return false;
+        const rect = el.getBoundingClientRect();
+        return getComputedStyle(el).display !== 'none' && rect.width > 0 && rect.height > 0;
+      });
+    let touchTop = 0;
+    topControls.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (Number.isFinite(rect.bottom)) touchTop = Math.max(touchTop, rect.bottom);
+    });
+    call('setMainMapTouchTopBoundary', Math.max(0, Math.min(viewport, touchTop)), viewport);
+
     const selectors = ['#clientHome','#clientRide','#offerCard','#driverRide'];
     const visibleSheets = selectors
       .map(selector => document.querySelector(selector))

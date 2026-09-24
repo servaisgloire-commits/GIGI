@@ -26,6 +26,8 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -54,6 +56,8 @@ class MainActivity : AppCompatActivity() {
     private var mainMapLoaded = false
     private var forwardingMapGesture = false
     private var mainMapTouchBoundaryRatio = 0.58f
+    private var mainMapTouchTopBoundaryRatio = 0.11f
+    private var lastBackPressAt = 0L
     private var mainPickupMarker: Marker? = null
     private var mainDestinationMarker: Marker? = null
     private var mainDriverMarker: Marker? = null
@@ -145,8 +149,10 @@ class MainActivity : AppCompatActivity() {
             if (!mainMapEnabled || mainMapView.visibility != View.VISIBLE) return@setOnTouchListener false
             val boundary = webView.height * mainMapTouchBoundaryRatio
             val headerGuard = dp(88).toFloat()
+            val interactiveTopGuard = webView.height * mainMapTouchTopBoundaryRatio
+            val touchTop = maxOf(headerGuard, interactiveTopGuard)
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                forwardingMapGesture = event.y > headerGuard && event.y < boundary
+                forwardingMapGesture = event.y > touchTop && event.y < boundary
             }
             if (!forwardingMapGesture) return@setOnTouchListener false
             val copy = MotionEvent.obtain(event)
@@ -171,6 +177,21 @@ class MainActivity : AppCompatActivity() {
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         )
         setContentView(root)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressAt <= BACK_EXIT_WINDOW_MS) {
+                    finish()
+                    return
+                }
+                lastBackPressAt = now
+                Toast.makeText(
+                    this@MainActivity,
+                    "Appuyez encore sur Retour pour quitter FAST.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        })
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
 
         ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1001)
@@ -535,6 +556,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun setMainMapTouchTopBoundary(bottomCssPx: Double, viewportCssPx: Double) {
+            if (!bottomCssPx.isFinite() || !viewportCssPx.isFinite() || viewportCssPx <= 0) return
+            val ratio = (bottomCssPx / viewportCssPx).toFloat().coerceIn(0f, 0.80f)
+            runOnUiThread {
+                mainMapTouchTopBoundaryRatio = ratio
+            }
+        }
+
+        @JavascriptInterface
         fun setMainMapCamera(lat: Double, lng: Double, zoom: Double) {
             runOnUiThread { setMainCamera(lat, lng, zoom) }
         }
@@ -642,5 +672,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val RIDE_OFFER_CHANNEL_ID = "fast_ride_offers"
         private const val MAIN_MAP_TAG = "FAST_NATIVE_MAIN"
+        private const val BACK_EXIT_WINDOW_MS = 2_000L
     }
 }

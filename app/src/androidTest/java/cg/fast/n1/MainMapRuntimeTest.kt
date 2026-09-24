@@ -6,6 +6,7 @@ import android.webkit.WebView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,6 +115,74 @@ class MainMapRuntimeTest {
                     result.contains("\\\"canFit\\\":true") &&
                     result.contains("\\\"nativeBridge\\\":true")
             )
+        }
+    }
+
+    @Test
+    fun driverAvailabilityCardIsOutsideNativeMapTouchZone() {
+        grantRuntimePermissions()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            Thread.sleep(2500)
+            val diagnostic = evaluate(
+                scenario,
+                """
+                (function(){
+                  var auth=document.getElementById('auth');
+                  var app=document.getElementById('app');
+                  var client=document.getElementById('clientHome');
+                  var driver=document.getElementById('driverHome');
+                  var card=document.querySelector('.driver-online-card');
+                  if(auth) auth.classList.remove('active');
+                  if(app) app.classList.add('active');
+                  if(client) client.classList.add('hidden');
+                  if(driver) driver.classList.remove('hidden');
+                  if(window.initMap) window.initMap();
+                  window.dispatchEvent(new Event('resize'));
+                  var rect=card?card.getBoundingClientRect():null;
+                  return JSON.stringify({
+                    cardVisible:!!card&&getComputedStyle(card).display!=='none',
+                    cardBottom:rect?rect.bottom:0,
+                    viewport:window.innerHeight||0,
+                    toggle:!!document.getElementById('onlineToggle')
+                  });
+                })()
+                """
+            )
+            Thread.sleep(350)
+
+            var nativeTopRatio = 0f
+            scenario.onActivity { activity ->
+                val field = MainActivity::class.java.getDeclaredField("mainMapTouchTopBoundaryRatio")
+                field.isAccessible = true
+                nativeTopRatio = field.getFloat(activity)
+            }
+
+            assertTrue("Driver availability diagnostic: $diagnostic", diagnostic.contains("\"cardVisible\":true"))
+            assertTrue("Driver availability toggle missing: $diagnostic", diagnostic.contains("\"toggle\":true"))
+            assertTrue(
+                "Native map must start below the driver availability card; ratio=$nativeTopRatio diagnostic=$diagnostic",
+                nativeTopRatio > 0.12f
+            )
+        }
+    }
+
+    @Test
+    fun backRequiresTwoPressesToExit() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            Thread.sleep(1000)
+            var afterFirstPress = false
+            scenario.onActivity { activity ->
+                activity.onBackPressedDispatcher.onBackPressed()
+                afterFirstPress = activity.isFinishing
+            }
+            assertFalse("FAST must stay open after the first Back press", afterFirstPress)
+
+            var afterSecondPress = false
+            scenario.onActivity { activity ->
+                activity.onBackPressedDispatcher.onBackPressed()
+                afterSecondPress = activity.isFinishing
+            }
+            assertTrue("FAST must exit after the second Back press", afterSecondPress)
         }
     }
 
