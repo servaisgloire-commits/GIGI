@@ -9,6 +9,7 @@ const mapCss=fs.readFileSync('app/src/main/assets/google-map.css','utf8');
 const nativeMain=fs.readFileSync('app/src/main/assets/native-main-map.js','utf8');
 const driverNative=fs.readFileSync('app/src/main/assets/driver-native-map.js','utf8');
 const driverNativeCss=fs.readFileSync('app/src/main/assets/driver-native-map.css','utf8');
+const clientRecovery=fs.readFileSync('app/src/main/assets/client-ui-recovery.js','utf8');
 const driverIdentity=fs.readFileSync('app/src/main/assets/driver-identity.js','utf8');
 const driverIdentityCss=fs.readFileSync('app/src/main/assets/driver-identity.css','utf8');
 const native=fs.readFileSync('app/src/main/java/cg/fast/n1/MainActivity.kt','utf8');
@@ -68,6 +69,16 @@ requireText(driverNative,"new Set(['accepted', 'driver_arriving', 'in_progress']
 requireText(driverNative,'window.FastNative?.openDriverMap','native map bridge call');
 requireText(driverNative,"phase === 'to_pickup'",'native pickup navigation phase');
 requireText(driverNative,'driver-native-map-active','native driver map mode');
+requireText(driverNative,"autoLaunch && ride.status === 'in_progress'",'native GPS auto-opens only after ride starts');
+requireText(driverNative,'FAST_DRIVER_RIDE_CLEARED','driver native map resets after completed ride');
+requireText(driverNative,'Number(nav.driver_location?.heading || 0)','live heading passed to native GPS');
+requireText(app,"state.offer=null",'completed driver ride clears previous offer state');
+requireText(app,"$('driverStatus').textContent='En ligne'",'driver returns online after completed ride');
+requireText(app,'startOfferPolling();pollOffer();','driver immediately resumes offer polling');
+requireText(clientRecovery,'state.pickup = null','client pickup cleared after ride end');
+requireText(clientRecovery,'state.destination = null','client destination cleared after ride end');
+requireText(clientRecovery,'state.quote = null','client quote cleared after ride end');
+requireText(clientRecovery,"for (const id of ['pickup','destination','pinInput'])",'client ride inputs cleared after ride end');
 requireText(driverNative,'driver-identity.js','isolated driver identity runtime loader');
 requireText(driverNative,'driver-identity.css','isolated driver identity stylesheet loader');
 requireText(driverNativeCss,'.driver-native-map-active #map .driver-map-touch-surface','legacy two-finger surface disabled');
@@ -154,12 +165,16 @@ requireText(backendVehicle,'def _signed_driver_photo','signed driver photo helpe
 requireText(backendVehicle,'prof["photo_url"] = _signed_driver_photo','driver signed photo returned to client');
 requireText(backendVehicle,'result["photo_url"] = _signed_vehicle_photo','vehicle signed photo preserved');
 
-// After ride start, navigation changes only to the requested large-car mode.
-requireText(driverMapActivity,'val tripNavigation = phase == "to_destination"','post-start car navigation phase');
-requireText(driverMapActivity,'carMarkerIcon()','large car marker');
-requireText(driverMapActivity,'.zoom(17.6f)','post-start navigation zoom');
-requireText(driverMapActivity,'.tilt(48f)','post-start navigation tilt');
-requireText(driverMapActivity,'🚘  EN COURSE','post-start large car screen badge');
+// After PIN + ride start, navigation becomes a live full-screen GPS mode.
+requireText(driverMapActivity,'tripNavigation = phase == "to_destination"','post-start GPS navigation phase');
+requireText(driverMapActivity,'LocationListener','live Android GPS listener');
+requireText(driverMapActivity,'requestLocationUpdates(LocationManager.GPS_PROVIDER','live GPS updates');
+requireText(driverMapActivity,'override fun onLocationChanged(location: Location)','live driver position handler');
+requireText(driverMapActivity,'.zoom(if (tripNavigation) 18.4f else 16.5f)','GPS navigation zoom');
+requireText(driverMapActivity,'.tilt(if (tripNavigation) 55f else 0f)','GPS navigation tilt');
+requireText(driverMapActivity,'.bearing(if (tripNavigation) bearing else 0f)','GPS follows driver heading');
+requireText(driverMapActivity,'◎  Recentrer','GPS recenter control');
+requireText(driverMapActivity,'🚘  EN COURSE','post-start full-screen driving badge');
 requireText(driverMapActivity,'if (tripNavigation) carMarkerIcon() else BitmapDescriptorFactory.defaultMarker','pre-start marker preserved');
 
 if(html.includes('data-type="comfort"') || html.includes('data-type="xl"')) throw new Error('Retired ride categories are visible');
