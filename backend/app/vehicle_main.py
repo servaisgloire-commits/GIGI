@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from .auth_proxy import router as auth_proxy_router
@@ -38,7 +38,10 @@ app.router.routes = [
 
 
 @app.get("/health")
-async def health_async():
+async def health_async(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=5"
+    response.headers["CDN-Cache-Control"] = "public, s-maxage=10, stale-while-revalidate=30"
+    response.headers["Vercel-CDN-Cache-Control"] = "public, s-maxage=10, stale-while-revalidate=30"
     return {"ok": True, "service": "fast-n1", "version": APP_VERSION}
 
 
