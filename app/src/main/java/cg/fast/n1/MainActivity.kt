@@ -454,7 +454,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001) enableMainLocationLayer()
+        if (requestCode == 1001) {
+            enableMainLocationLayer()
+            val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (::webView.isInitialized) {
+                webView.evaluateJavascript("window.FAST_LOCATION_PERMISSION_CHANGED && window.FAST_LOCATION_PERMISSION_CHANGED($granted)", null)
+            }
+        }
     }
 
     override fun onDestroy() {
