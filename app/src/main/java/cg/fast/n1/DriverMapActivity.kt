@@ -1,8 +1,12 @@
 package cg.fast.n1
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -30,13 +34,19 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 
-class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
+class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback, LocationListener {
     private lateinit var mapView: MapView
+    private var googleMap: GoogleMap? = null
     private var destination: LatLng? = null
     private var current: LatLng? = null
+    private var driverMarker: Marker? = null
+    private var followDriver = true
+    private var initialHeading = 0f
+    private var tripNavigation = false
     private var routePolyline: String = ""
     private var etaMin: Double = 0.0
     private var distanceKm: Double = 0.0
@@ -63,7 +73,9 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
         routePolyline = intent.getStringExtra(EXTRA_POLYLINE).orEmpty()
         etaMin = intent.getDoubleExtra(EXTRA_ETA_MIN, 0.0)
         distanceKm = intent.getDoubleExtra(EXTRA_DISTANCE_KM, 0.0)
+        initialHeading = intent.getDoubleExtra(EXTRA_HEADING, 0.0).toFloat().takeIf { it.isFinite() } ?: 0f
         phase = intent.getStringExtra(EXTRA_PHASE).orEmpty().ifBlank { "to_destination" }
+        tripNavigation = phase == "to_destination"
         targetLabel = intent.getStringExtra(EXTRA_TARGET_LABEL).orEmpty().ifBlank {
             if (phase == "to_pickup") "Point de prise en charge" else "Destination"
         }
@@ -95,8 +107,8 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onMapReady(map: GoogleMap) {
+        googleMap = map
         Log.i(TAG, "map_ready")
-        val tripNavigation = phase == "to_destination"
         map.mapType = GoogleMap.MAP_TYPE_NORMAL
         map.isTrafficEnabled = true
         map.isBuildingsEnabled = true
@@ -108,13 +120,13 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             isCompassEnabled = true
             isMapToolbarEnabled = false
             isZoomControlsEnabled = false
-            isMyLocationButtonEnabled = !tripNavigation
+            isMyLocationButtonEnabled = true
         }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         ) {
-            runCatching { map.isMyLocationEnabled = !tripNavigation }
+            runCatching { map.isMyLocationEnabled = true }
         }
 
         val destinationPoint = destination ?: return
@@ -126,12 +138,14 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
         )
 
         current?.let {
-            map.addMarker(
+            driverMarker = map.addMarker(
                 MarkerOptions()
                     .position(it)
                     .title(if (tripNavigation) "Votre FAST" else "Votre position")
                     .icon(if (tripNavigation) carMarkerIcon() else BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                     .anchor(0.5f, 0.5f)
+                    .flat(tripNavigation)
+                    .rotation(if (tripNavigation) initialHeading else 0f)
                     .zIndex(if (tripNavigation) 20f else 1f)
             )
         }
@@ -147,17 +161,12 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             )
         }
 
-        map.setPadding(0, dp(88), 0, dp(138))
+        map.setPadding(0, dp(76), 0, dp(126))
+        map.setOnCameraMoveStartedListener { reason ->
+            if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) followDriver = false
+        }
         if (tripNavigation && current != null) {
-            map.moveCamera(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.Builder()
-                        .target(current!!)
-                        .zoom(17.6f)
-                        .tilt(48f)
-                        .build()
-                )
-            )
+            focusOnDriver(current!!, initialHeading, animate = false)
         } else {
             val cameraPoints = buildList {
                 addAll(routePoints)
@@ -167,6 +176,63 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
             moveCameraToRoute(map, cameraPoints)
         }
         map.setOnMapLoadedCallback { Log.i(TAG, "map_loaded") }
+        startLiveGps()
+    }
+
+    private fun focusOnDriver(point: LatLng, bearing: Float, animate: Boolean = true) {
+        val map = googleMap ?: return
+        val camera = CameraPosition.Builder()
+            .target(point)
+            .zoom(if (tripNavigation) 18.4f else 16.5f)
+            .tilt(if (tripNavigation) 55f else 0f)
+            .bearing(if (tripNavigation) bearing else 0f)
+            .build()
+        if (animate) map.animateCamera(CameraUpdateFactory.newCameraPosition(camera))
+        else map.moveCamera(CameraUpdateFactory.newCameraPosition(camera))
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startLiveGps() {
+        if (!tripNavigation) return
+        val allowed = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!allowed) return
+        val manager = getSystemService(LocationManager::class.java) ?: return
+        runCatching { manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 2f, this) }
+        runCatching { manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1500L, 3f, this) }
+        val last = runCatching { manager.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
+            ?: runCatching { manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull()
+        if (last != null) onLocationChanged(last)
+    }
+
+    private fun stopLiveGps() {
+        val manager = getSystemService(LocationManager::class.java) ?: return
+        runCatching { manager.removeUpdates(this) }
+    }
+
+    override fun onLocationChanged(location: Location) {
+        if (!tripNavigation) return
+        val point = LatLng(location.latitude, location.longitude)
+        current = point
+        val bearing = if (location.hasBearing()) location.bearing else initialHeading
+        initialHeading = bearing
+        val marker = driverMarker
+        if (marker == null) {
+            driverMarker = googleMap?.addMarker(
+                MarkerOptions()
+                    .position(point)
+                    .title("Votre FAST")
+                    .icon(carMarkerIcon())
+                    .anchor(0.5f, 0.5f)
+                    .flat(true)
+                    .rotation(bearing)
+                    .zIndex(20f)
+            )
+        } else {
+            marker.position = point
+            marker.rotation = bearing
+        }
+        if (followDriver) focusOnDriver(point, bearing)
     }
 
     private fun carMarkerIcon(): BitmapDescriptor {
@@ -271,6 +337,29 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
                     topMargin = dp(18)
                 }
             )
+
+            val recenter = TextView(this).apply {
+                text = "◎  Recentrer"
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(15, 23, 42))
+                gravity = Gravity.CENTER
+                setPadding(dp(14), 0, dp(14), 0)
+                background = roundedBackground(Color.WHITE, 18f)
+                elevation = dp(9).toFloat()
+                setOnClickListener {
+                    followDriver = true
+                    current?.let { point -> focusOnDriver(point, initialHeading) }
+                }
+            }
+            root.addView(
+                recenter,
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(46)).apply {
+                    gravity = Gravity.END or Gravity.BOTTOM
+                    rightMargin = dp(16)
+                    bottomMargin = dp(158)
+                }
+            )
         }
 
         val info = LinearLayout(this).apply {
@@ -372,6 +461,7 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onResume() {
         super.onResume()
         if (::mapView.isInitialized) mapView.onResume()
+        startLiveGps()
     }
 
     override fun onStart() {
@@ -380,6 +470,7 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onPause() {
+        stopLiveGps()
         if (::mapView.isInitialized) mapView.onPause()
         super.onPause()
     }
@@ -390,6 +481,7 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onDestroy() {
+        stopLiveGps()
         if (::mapView.isInitialized) mapView.onDestroy()
         super.onDestroy()
     }
@@ -414,6 +506,7 @@ class DriverMapActivity : AppCompatActivity(), OnMapReadyCallback {
         const val EXTRA_POLYLINE = "polyline"
         const val EXTRA_ETA_MIN = "eta_min"
         const val EXTRA_DISTANCE_KM = "distance_km"
+        const val EXTRA_HEADING = "heading"
         const val EXTRA_PHASE = "phase"
         const val EXTRA_TARGET_LABEL = "target_label"
     }
