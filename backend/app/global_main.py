@@ -7,6 +7,8 @@ import httpx
 from fastapi import Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from .http_pool import shared_http_client
+
 from .main import (
     GOOGLE_MAPS_API_KEY,
     AuthUser,
@@ -96,11 +98,12 @@ async def country_for_location(lat: float, lng: float) -> dict:
     result = None
     if GOOGLE_MAPS_API_KEY:
         try:
-            async with httpx.AsyncClient(timeout=7) as client:
-                r = await client.get(
-                    "https://maps.googleapis.com/maps/api/geocode/json",
-                    params={"latlng": f"{lat},{lng}", "key": GOOGLE_MAPS_API_KEY, "language": "fr"},
-                )
+            client = shared_http_client()
+            r = await client.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={"latlng": f"{lat},{lng}", "key": GOOGLE_MAPS_API_KEY, "language": "fr"},
+                timeout=7,
+            )
             if r.status_code == 200:
                 payload = r.json()
                 for item in payload.get("results", []):
@@ -240,8 +243,13 @@ async def autocomplete_global(
                 "circle": {"center": {"latitude": lat, "longitude": lng}, "radius": 50000.0}
             }
         try:
-            async with httpx.AsyncClient(timeout=8) as client:
-                r = await client.post("https://places.googleapis.com/v1/places:autocomplete", headers=headers, json=body)
+            client = shared_http_client()
+            r = await client.post(
+                "https://places.googleapis.com/v1/places:autocomplete",
+                headers=headers,
+                json=body,
+                timeout=8,
+            )
             if r.status_code == 200:
                 items = []
                 for s in r.json().get("suggestions", []):
@@ -253,11 +261,13 @@ async def autocomplete_global(
             pass
 
     try:
-        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "FAST-N1/6.0"}) as client:
-            r = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params={"q": q_clean, "format": "jsonv2", "limit": 6, "addressdetails": 1},
-            )
+        client = shared_http_client()
+        r = await client.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": q_clean, "format": "jsonv2", "limit": 6, "addressdetails": 1},
+            headers={"User-Agent": "FAST-N1/6.0"},
+            timeout=8,
+        )
         return {
             "items": [
                 {
