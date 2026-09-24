@@ -149,7 +149,7 @@ jobs:
             sleep 3
             adb shell pidof cg.fast.n1
             adb logcat -c
-            gradle :app:connectedDirectInstallAndroidTest
+            gradle :app:connectedVerificationAndroidTest
             sleep 2
             adb logcat -d > /tmp/fast-native-map-logcat.txt
             grep -E 'FAST_NATIVE_MAP|Google Maps Android API|Authorization failure|API key|not authorized' /tmp/fast-native-map-logcat.txt || true

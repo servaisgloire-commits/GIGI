@@ -89,6 +89,9 @@ requireText(driverMapActivity,'map.isTrafficEnabled = true','native traffic laye
 requireText(driverMapActivity,'map_loaded','native map load verification hook');
 requireText(gradle,'com.google.android.gms:play-services-maps:20.0.0','Maps SDK dependency');
 if ((gradle.match(/isMinifyEnabled = true/g) || []).length < 2) throw new Error('Production and direct-install APKs must both enable R8 minification');
+requireText(gradle,'create("verification")','dedicated Android verification build type');
+requireText(gradle,'testBuildType = "verification"','instrumentation uses non-production verification variant');
+requireText(workflow,'connectedVerificationAndroidTest','production CI uses verification instrumentation variant');
 requireText(securityHardening,'grant update (first_name, last_name, phone, avatar_url) on table public.profiles to authenticated','profile role cannot be self-escalated');
 requireText(securityHardening,'extensions.hmac(','ride PIN keyed HMAC protection');
 requireText(securityHardening,'extensions.gen_random_bytes(2)','cryptographic PIN generation');

@@ -51,7 +51,13 @@ android {
             isJniDebuggable = false
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            testProguardFile("proguard-test-rules.pro")
+            signingConfigs.findByName("production")?.let { signingConfig = it }
+        }
+        create("verification") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            isJniDebuggable = false
+            isMinifyEnabled = false
             signingConfigs.findByName("production")?.let { signingConfig = it }
         }
         release {
@@ -63,7 +69,7 @@ android {
         }
     }
 
-    testBuildType = "directInstall"
+    testBuildType = "verification"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
