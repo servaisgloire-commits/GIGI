@@ -19,6 +19,8 @@ const workflow=fs.readFileSync('.github/workflows/android.yml','utf8');
 const pinMigration=fs.readFileSync('supabase/migrations/20260914_require_verified_pin_before_start.sql','utf8');
 const mapsMigration=fs.readFileSync('supabase/migrations/20260914_add_android_maps_key_reader.sql','utf8');
 const driverPhotoMigration=fs.readFileSync('supabase/migrations/20260914_driver_profile_photos.sql','utf8');
+const securityHardening=fs.readFileSync('supabase/migrations/20260924_security_g_hardening.sql','utf8');
+const securityAgent=fs.readFileSync('supabase/functions/security-g/index.ts','utf8');
 const all=core+'\n'+app+'\n'+simplified+'\n'+driverNative+'\n'+driverIdentity;
 
 function requireText(text,needle,label){
@@ -86,6 +88,14 @@ requireText(driverMapActivity,'isTiltGesturesEnabled = true','native tilt gestur
 requireText(driverMapActivity,'map.isTrafficEnabled = true','native traffic layer');
 requireText(driverMapActivity,'map_loaded','native map load verification hook');
 requireText(gradle,'com.google.android.gms:play-services-maps:20.0.0','Maps SDK dependency');
+if ((gradle.match(/isMinifyEnabled = true/g) || []).length < 2) throw new Error('Production and direct-install APKs must both enable R8 minification');
+requireText(securityHardening,'grant update (first_name, last_name, phone, avatar_url) on table public.profiles to authenticated','profile role cannot be self-escalated');
+requireText(securityHardening,'extensions.hmac(','ride PIN keyed HMAC protection');
+requireText(securityHardening,'extensions.gen_random_bytes(2)','cryptographic PIN generation');
+requireText(securityHardening,"raise exception 'pin_key_unavailable'","PIN Vault key is mandatory");
+if (securityHardening.includes('FAST-N1-PIN-FALLBACK')) throw new Error('Static PIN fallback key must not exist');
+requireText(securityAgent,'safeEqual(','constant-time SECURITY G token comparison');
+requireText(securityAgent,'rides_with_repeated_pin_failures','SECURITY G PIN abuse monitoring');
 requireText(gradle,'FAST_GOOGLE_MAPS_API_KEY','dedicated Android Maps build key');
 requireText(gradle,'MAPS_NATIVE_CONFIGURED','native Maps build guard');
 requireText(manifest,'com.google.android.geo.API_KEY','Google Maps Android API key metadata');
