@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from .global_main import (
@@ -66,8 +66,11 @@ async def _active_offer_for_ride(ride_id: str, now: datetime):
 
 
 @app.get("/v1/config")
-async def config_resilient():
+async def config_resilient(response: Response):
     """Keep the mobile app usable if PostgREST has a short gateway timeout."""
+    response.headers["Cache-Control"] = "public, max-age=10"
+    response.headers["CDN-Cache-Control"] = "public, s-maxage=30, stale-while-revalidate=120"
+    response.headers["Vercel-CDN-Cache-Control"] = "public, s-maxage=30, stale-while-revalidate=120"
     global _last_good_config, _last_good_config_at
     now = datetime.now(timezone.utc)
     if _last_good_config_at and (now - _last_good_config_at).total_seconds() < 60:
