@@ -51,6 +51,7 @@ android {
             isJniDebuggable = false
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            testProguardFile("proguard-test-rules.pro")
             signingConfigs.findByName("production")?.let { signingConfig = it }
         }
         release {
@@ -81,4 +82,5 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.tracing:tracing:1.1.0")
 }
