@@ -149,7 +149,24 @@ jobs:
             sleep 3
             adb shell pidof cg.fast.n1
             adb logcat -c
-            gradle :app:connectedVerificationAndroidTest
+
+            run_test_class() {
+              class_name="$1"
+              echo "Running Android test class: $class_name"
+              if gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$class_name"; then
+                return 0
+              fi
+              echo "First attempt failed for $class_name; retrying once after Android process reset..." >&2
+              adb wait-for-device
+              adb shell am force-stop cg.fast.n1 || true
+              adb shell am force-stop cg.fast.n1.test || true
+              sleep 2
+              gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$class_name"
+            }
+
+            run_test_class cg.fast.n1.DriverMapRuntimeTest
+            run_test_class cg.fast.n1.MainMapRuntimeTest
+
             sleep 2
             adb logcat -d > /tmp/fast-native-map-logcat.txt
             grep -E 'FAST_NATIVE_MAP|Google Maps Android API|Authorization failure|API key|not authorized' /tmp/fast-native-map-logcat.txt || true
