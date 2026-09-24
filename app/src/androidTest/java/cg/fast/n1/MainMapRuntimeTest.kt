@@ -72,31 +72,35 @@ class MainMapRuntimeTest {
                 """
             )
             assertTrue("Native Google map start diagnostic: $start", start.contains("\\\"available\\\":true"))
-            Thread.sleep(12000)
 
-            val result = evaluate(
-                scenario,
-                """
-                (function(){
-                  var host=document.getElementById('map');
-                  var appState=(typeof state!=='undefined')?state:null;
-                  var bridge=window.FastNative;
-                  var data={
-                    host:!!host,
-                    provider:(appState&&appState.map&&appState.map.provider)||null,
-                    nativeAvailable:!!(bridge&&bridge.nativeMainMapAvailable&&bridge.nativeMainMapAvailable()),
-                    nativeLoaded:!!(bridge&&bridge.nativeMainMapLoaded&&bridge.nativeMainMapLoaded()),
-                    transparent:document.documentElement.classList.contains('fast-native-main-map'),
-                    noIframe:!document.querySelector('#map iframe'),
-                    noLegacy:!document.getElementById('fastOneFingerMapSurface'),
-                    canSetView:!!(appState&&appState.map&&typeof appState.map.setView==='function'),
-                    canFit:!!(appState&&appState.map&&typeof appState.map.fitBounds==='function'),
-                    nativeBridge:!!bridge
-                  };
-                  return JSON.stringify(data);
-                })()
-                """
-            )
+            var result = "{}"
+            repeat(12) {
+                result = evaluate(
+                    scenario,
+                    """
+                    (function(){
+                      var host=document.getElementById('map');
+                      var appState=(typeof state!=='undefined')?state:null;
+                      var bridge=window.FastNative;
+                      var data={
+                        host:!!host,
+                        provider:(appState&&appState.map&&appState.map.provider)||null,
+                        nativeAvailable:!!(bridge&&bridge.nativeMainMapAvailable&&bridge.nativeMainMapAvailable()),
+                        nativeLoaded:!!(bridge&&bridge.nativeMainMapLoaded&&bridge.nativeMainMapLoaded()),
+                        transparent:document.documentElement.classList.contains('fast-native-main-map'),
+                        noIframe:!document.querySelector('#map iframe'),
+                        noLegacy:!document.getElementById('fastOneFingerMapSurface'),
+                        canSetView:!!(appState&&appState.map&&typeof appState.map.setView==='function'),
+                        canFit:!!(appState&&appState.map&&typeof appState.map.fitBounds==='function'),
+                        nativeBridge:!!bridge
+                      };
+                      return JSON.stringify(data);
+                    })()
+                    """
+                )
+                if (result.contains("\\\"nativeLoaded\\\":true")) return@repeat
+                Thread.sleep(2000)
+            }
 
             assertTrue(
                 "Native main map runtime diagnostic: $result",
