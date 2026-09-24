@@ -1,6 +1,7 @@
 package cg.fast.n1
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private var mainPickupMarker: Marker? = null
     private var mainDestinationMarker: Marker? = null
     private var mainDriverMarker: Marker? = null
+    private var mainDriverAnimator: ValueAnimator? = null
     private val mainNearbyMarkers = mutableListOf<Marker>()
     private var mainRoutePolyline: Polyline? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
@@ -306,18 +308,40 @@ class MainActivity : AppCompatActivity() {
     private fun updateMainDriver(lat: Double, lng: Double) {
         if (!lat.isFinite() || !lng.isFinite()) return
         val map = mainGoogleMap ?: return
-        val point = LatLng(lat, lng)
-        if (mainDriverMarker == null) {
+        val target = LatLng(lat, lng)
+        val marker = mainDriverMarker
+        if (marker == null) {
             mainDriverMarker = map.addMarker(
                 MarkerOptions()
-                    .position(point)
+                    .position(target)
                     .title("Votre chauffeur FAST")
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                     .zIndex(20f)
             )
-        } else {
-            mainDriverMarker?.position = point
-            mainDriverMarker?.isVisible = true
+            return
+        }
+
+        marker.isVisible = true
+        val start = marker.position
+        val latDelta = target.latitude - start.latitude
+        val lngDelta = target.longitude - start.longitude
+        if (kotlin.math.abs(latDelta) > 0.05 || kotlin.math.abs(lngDelta) > 0.05) {
+            mainDriverAnimator?.cancel()
+            marker.position = target
+            return
+        }
+
+        mainDriverAnimator?.cancel()
+        mainDriverAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 900L
+            addUpdateListener { animation ->
+                val t = animation.animatedFraction.toDouble()
+                marker.position = LatLng(
+                    start.latitude + latDelta * t,
+                    start.longitude + lngDelta * t,
+                )
+            }
+            start()
         }
     }
 
@@ -430,10 +454,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001) enableMainLocationLayer()
+        if (requestCode == 1001) {
+            enableMainLocationLayer()
+            val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (::webView.isInitialized) {
+                webView.evaluateJavascript("window.FAST_LOCATION_PERMISSION_CHANGED && window.FAST_LOCATION_PERMISSION_CHANGED($granted)", null)
+            }
+        }
     }
 
     override fun onDestroy() {
+        mainDriverAnimator?.cancel()
+        mainDriverAnimator = null
         fileCallback?.onReceiveValue(null)
         fileCallback = null
         if (::webView.isInitialized) {

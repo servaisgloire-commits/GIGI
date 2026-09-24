@@ -15,6 +15,33 @@
   const point = value => value && Number.isFinite(Number(value.lat)) && Number.isFinite(Number(value.lng))
     ? {lat:Number(value.lat), lng:Number(value.lng)} : null;
 
+  function ridePoint(kind) {
+    const ride = state?.ride;
+    if (!ride) return null;
+    const lat = Number(ride[`${kind}_lat`]);
+    const lng = Number(ride[`${kind}_lng`]);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? {lat, lng} : null;
+  }
+
+  function pickupPoint() {
+    return point(state?.pickup) || ridePoint('pickup');
+  }
+
+  function destinationPoint() {
+    return point(state?.destination) || ridePoint('destination');
+  }
+
+  function activeRoutePolyline() {
+    return String(
+      state?.quote?.polyline ||
+      state?.ride?.optimized_route_polyline ||
+      state?.ride?.route_polyline ||
+      ''
+    );
+  }
+
+  let lastApproachFitAt = 0;
+
   function call(name, ...args) {
     try {
       const fn = window.FastNative?.[name];
@@ -39,13 +66,46 @@
         touch-action:none!important;
       }
       html.fast-native-main-map #map>*{display:none!important}
+      .fast-map-status{
+        position:absolute;left:50%;top:92px;transform:translateX(-50%);
+        z-index:35;max-width:calc(100% - 32px);padding:9px 13px;border-radius:999px;
+        background:rgba(16,35,63,.9);color:#fff;font-size:12px;font-weight:800;
+        box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none
+      }
+      .fast-map-status.hidden{display:none!important}
+      .fast-map-status.ok{background:rgba(15,118,70,.92)}
+      .fast-map-status.warn{background:rgba(146,64,14,.94)}
     `;
     document.head.appendChild(style);
     document.documentElement.classList.add('fast-native-main-map');
   }
 
+  function ensureMapStatus() {
+    let el = document.getElementById('fastMapStatus');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'fastMapStatus';
+    el.className = 'fast-map-status hidden';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  let statusTimer = null;
+  function setMapStatus(message, kind = 'warn', autoHideMs = 0) {
+    const el = ensureMapStatus();
+    if (statusTimer) clearTimeout(statusTimer);
+    el.textContent = message || '';
+    el.className = `fast-map-status ${message ? kind : 'hidden'}`;
+    if (message && autoHideMs > 0) {
+      statusTimer = setTimeout(() => {
+        el.className = 'fast-map-status hidden';
+        el.textContent = '';
+      }, autoHideMs);
+    }
+  }
+
   function centerPoint() {
-    return point(state?.coords) || point(state?.pickup) || {lat:-4.2634,lng:15.2429};
+    return point(state?.coords) || pickupPoint() || {lat:-4.2634,lng:15.2429};
   }
 
   function syncBoundary() {
@@ -68,8 +128,8 @@
   }
 
   function syncMarkers() {
-    const pickup = point(state?.pickup);
-    const destination = point(state?.destination);
+    const pickup = pickupPoint();
+    const destination = destinationPoint();
     call(
       'setMainMapMarkers',
       !!pickup, pickup?.lat || 0, pickup?.lng || 0,
@@ -78,7 +138,7 @@
   }
 
   function fitCurrentPoints() {
-    const pts = [point(state?.pickup), point(state?.destination)].filter(Boolean);
+    const pts = [pickupPoint(), destinationPoint()].filter(Boolean);
     if (!pts.length) return;
     if (pts.length === 1) {
       call('setMainMapCamera', pts[0].lat, pts[0].lng, 15);
@@ -131,7 +191,8 @@
     call('enableMainMap', center.lat, center.lng, 15);
     state.map = makeNativeMapAdapter();
     syncMarkers();
-    if (state?.quote?.polyline) call('setMainMapRoute', String(state.quote.polyline));
+    const route = activeRoutePolyline();
+    if (route) call('setMainMapRoute', route);
     syncBoundary();
     requestAnimationFrame(syncBoundary);
   }
@@ -177,7 +238,25 @@
       const result = previousRenderDriverClient.call(this, response);
       const lat = Number(response?.driver_location?.latitude ?? response?.driver_location?.lat);
       const lng = Number(response?.driver_location?.longitude ?? response?.driver_location?.lng);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) call('setMainMapDriverLocation', lat, lng);
+      syncMarkers();
+      const route = activeRoutePolyline();
+      if (route) call('setMainMapRoute', route);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        call('setMainMapDriverLocation', lat, lng);
+        const status = String(state?.ride?.status || response?.ride?.status || '');
+        const pickup = pickupPoint();
+        const now = Date.now();
+        if (pickup && ['accepted','driver_arriving'].includes(status) && now - lastApproachFitAt > 12000) {
+          lastApproachFitAt = now;
+          call(
+            'fitMainMapBounds',
+            Math.min(pickup.lat, lat),
+            Math.min(pickup.lng, lng),
+            Math.max(pickup.lat, lat),
+            Math.max(pickup.lng, lng),
+          );
+        }
+      }
       return result;
     };
   }
@@ -189,8 +268,21 @@
   document.addEventListener('pointerup', scheduleBoundary, true);
   document.addEventListener('pointercancel', scheduleBoundary, true);
 
+  window.addEventListener('offline', () => {
+    setMapStatus('Connexion interrompue — la carte peut cesser de s’actualiser.', 'warn');
+  });
+  window.addEventListener('online', () => {
+    setMapStatus('Connexion rétablie.', 'ok', 2200);
+  });
+  window.FAST_LOCATION_PERMISSION_CHANGED = granted => {
+    if (granted) setMapStatus('Localisation activée.', 'ok', 1800);
+    else setMapStatus('Localisation désactivée — saisissez une adresse de départ.', 'warn', 4500);
+  };
+
   const boot = () => {
     installTransparency();
+    ensureMapStatus();
+    if (!navigator.onLine) setMapStatus('Connexion interrompue — la carte peut cesser de s’actualiser.', 'warn');
     const root = document.getElementById('app') || document.body;
     new MutationObserver(scheduleBoundary).observe(root, {subtree:true, childList:true, attributes:true, attributeFilter:['class','style']});
     syncBoundary();
