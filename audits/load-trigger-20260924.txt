@@ -1,0 +1,5 @@
+FAST production load audit trigger
+Date: 2026-09-24
+Mode: 10000 read-only requests / 100 parallel workers
+Endpoints: /health and /v1/config
+No business data writes.
