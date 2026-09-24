@@ -1,0 +1,54 @@
+const U=Deno.env.get("SUPABASE_URL")!;
+const K=(()=>{try{const j=JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}");return j.default||Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}catch{return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}})();
+const E=new TextEncoder();
+const J=(d,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{"content-type":"application/json","cache-control":"no-store"}});
+async function H(v){const b=new Uint8Array(await crypto.subtle.digest("SHA-256",E.encode(v)));return Array.from(b).map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function R(p,i={}){const h=new Headers(i.headers||{});h.set("apikey",K);if(!K.startsWith("sb_secret_"))h.set("Authorization","Bearer "+K);if(!h.has("content-type"))h.set("content-type","application/json");const r=await fetch(U+"/rest/v1/"+p,{...i,headers:h});const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch{d=t}if(!r.ok)throw new Error(d?.message||d?.hint||d?.error||("REST "+r.status));return{data:d,headers:r.headers}}
+async function A(req){const raw=req.headers.get("x-agent-token")||"";if(!raw)return false;const dig=await H(raw);const x=(await R("fast_agent_registry?agent_code=eq.G_FAST_ADMIN&select=token_hash,status&limit=1")).data?.[0];return!!x&&x.status==="active"&&x.token_hash===dig}
+async function count(table,q="",col="id"){const s=q?"&"+q:"";const r=await R(table+"?select="+encodeURIComponent(col)+s,{headers:{Prefer:"count=exact",Range:"0-0"}});const cr=r.headers.get("content-range")||"";const n=Number(cr.split("/")[1]||0);return Number.isFinite(n)?n:0}
+async function run(trigger){const x=(await R("fast_agent_runs",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({agent_code:"G_FAST_ADMIN",trigger_source:trigger,status:"running"})})).data;return x?.[0]?.id}
+async function ev(id,severity,category,title,details={}){await R("fast_agent_events",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({run_id:id,agent_code:"G_FAST_ADMIN",severity,category,title,details})})}
+async function task(id,kind,key,priority,payload){const e=(await R("fast_agent_tasks?dedupe_key=eq."+encodeURIComponent(key)+"&status=in.(queued,in_progress,blocked)&select=id&limit=1")).data;if(e?.length)return{created:false,id:e[0].id};const x=(await R("fast_agent_tasks",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({agent_code:"G_FAST_ADMIN",run_id:id,kind,dedupe_key:key,priority,payload,status:"queued"})})).data;return{created:true,id:x?.[0]?.id}}
+const TABLES={"fast_admin_users":"id","account_admin_controls":"user_id","fast_site_config":"id","app_settings":"key","fast_admin_datasets":"id","drivers":"user_id","driver_documents":"id","vehicles":"id","notifications":"id"};
+const BLOCKED=new Set(["credential_hash","credential_salt","credential_iterations","last_login_at","created_at","updated_at","payment_state","provider_reference"]);
+function validateProposal(p){
+  const table=String(p.target_table||""); const pk=TABLES[table]; if(!pk)throw new Error("Table hors périmètre");
+  const op=String(p.operation||"").toLowerCase(); if(op!=="insert"&&op!=="update")throw new Error("Seuls INSERT et UPDATE sont autorisés");
+  const changes=(p.changes&&typeof p.changes==="object"&&!Array.isArray(p.changes))?p.changes:null;if(!changes||!Object.keys(changes).length)throw new Error("Modifications vides");
+  for(const k of Object.keys(changes)){if(BLOCKED.has(k))throw new Error("Colonne protégée: "+k)}
+  if(op==="update"){const sel=(p.selector&&typeof p.selector==="object"&&!Array.isArray(p.selector))?p.selector:{};const keys=Object.keys(sel);if(keys.length!==1||keys[0]!==pk)throw new Error("Sélecteur invalide: clé primaire requise");if(Object.prototype.hasOwnProperty.call(changes,pk))throw new Error("Clé primaire immuable")}
+  if(table==="app_settings"){const key=String((p.selector||{}).key||(p.changes||{}).key||"");if(!["country","currency","flexible_pricing","ride_pin_required"].includes(key))throw new Error("Paramètre non autorisé");if(["flexible_pricing","ride_pin_required"].includes(key)&&String(p.risk_level||"")!=="high"&&String(p.risk_level||"")!=="critical")throw new Error("Paramètre protégé: risque high/critical requis");}if(["market_pricing","pricing_config"].includes(table))throw new Error("Tarification verrouillée");
+  return{table,pk,op,changes,selector:p.selector||{}};
+}
+async function propose(body){
+  const v=validateProposal(body);
+  const row={proposed_by:"G_FAST_ADMIN",target_table:v.table,operation:v.op,selector:v.selector,changes:v.changes,reason:String(body.reason||"Proposition de G_FAST_ADMIN").slice(0,1200),risk_level:["low","normal","high","critical"].includes(String(body.risk_level))?String(body.risk_level):"normal",status:"pending"};
+  const x=(await R("fast_agent_change_proposals",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(row)})).data;return x?.[0];
+}
+async function executeApproved(runId){
+  const rows=(await R("fast_agent_change_proposals?proposed_by=eq.G_FAST_ADMIN&status=eq.approved&select=id,target_table,operation,selector,changes,risk_level&order=approved_at.asc&limit=10")).data||[];const out=[];
+  for(const p of rows){try{const v=validateProposal(p);let result=null;if(v.op==="insert"){result=(await R(v.table,{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(v.changes)})).data}else{result=(await R(v.table+"?"+v.pk+"=eq."+encodeURIComponent(String(v.selector[v.pk])),{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(v.changes)})).data}
+    await R("fast_agent_change_proposals?id=eq."+p.id,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"executed",executed_at:new Date().toISOString(),execution_result:{ok:true,rows:Array.isArray(result)?result.length:1,no_delete:true,agent:"G_FAST_ADMIN"}})});
+    await ev(runId,"info","approved_change","Modification approuvée exécutée",{proposal_id:p.id,target_table:v.table,operation:v.op});out.push({proposal_id:p.id,status:"executed",target_table:v.table,operation:v.op});
+  }catch(e){const m=e instanceof Error?e.message:String(e);try{await R("fast_agent_change_proposals?id=eq."+p.id,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"failed",executed_at:new Date().toISOString(),execution_result:{ok:false,error:m,no_delete:true}})})}catch{}out.push({proposal_id:p.id,status:"failed",error:m})}}
+  return out
+}
+async function recent(table,select,limit=100){return (await R(table+"?select="+encodeURIComponent(select)+"&order=created_at.desc&limit="+limit)).data||[]}
+async function observe(runId){
+  const now=new Date();const dayAgo=new Date(now.getTime()-86400000).toISOString();const audit=await recent("fast_admin_audit","id,username,action,target_type,target_id,created_at",100);const sensitiveWords=["role","admin","password","credential","payment","refund","pricing","security","pin"];const sensitive=audit.filter(x=>sensitiveWords.some(w=>String(x.action||"").toLowerCase().includes(w)));
+  const snapshot={measured_at:now.toISOString(),admin_users_total:await count("fast_admin_users"),inactive_admin_users:await count("fast_admin_users","is_active=eq.false"),inactive_admin_controls:await count("account_admin_controls","is_active=eq.false","user_id"),pending_driver_documents:await count("driver_documents","status=eq.pending"),unverified_drivers:await count("drivers","is_verified=eq.false","user_id"),inactive_vehicles:await count("vehicles","is_active=eq.false"),failed_payments_24h:await count("payments","status=eq.failed&created_at=gte."+encodeURIComponent(dayAgo)),recent_sensitive_admin_actions:sensitive.length,site_config_rows:await count("fast_site_config")};
+  const decisions=[];
+  if(snapshot.pending_driver_documents>0){const t=await task(runId,"admin_review_driver_documents","fast:admin:pending_docs","normal",{count:snapshot.pending_driver_documents,no_delete:true});decisions.push({action:"create_internal_task",kind:"admin_review_driver_documents",...t})}
+  if(snapshot.unverified_drivers>0){const t=await task(runId,"admin_review_unverified_drivers","fast:admin:unverified_drivers","normal",{count:snapshot.unverified_drivers,no_delete:true});decisions.push({action:"create_internal_task",kind:"admin_review_unverified_drivers",...t})}
+  if(snapshot.failed_payments_24h>0){const t=await task(runId,"admin_payment_failure_read_only_review","fast:admin:failed_payments","high",{count:snapshot.failed_payments_24h,read_only:true,no_refund:true,no_delete:true});decisions.push({action:"create_internal_task",kind:"admin_payment_failure_read_only_review",...t})}
+  if(snapshot.recent_sensitive_admin_actions>0){const t=await task(runId,"admin_sensitive_activity_review","fast:admin:sensitive_activity","high",{count:snapshot.recent_sensitive_admin_actions,no_delete:true});decisions.push({action:"create_internal_task",kind:"admin_sensitive_activity_review",...t})}
+  return{snapshot,decisions};
+}
+Deno.serve(async req=>{if(req.method!=="POST")return J({ok:false,error:"POST required"},405);if(!(await A(req)))return J({ok:false,error:"Unauthorized"},401);let b={};try{b=await req.json()}catch{}const action=String(b.action||"cycle");
+  if(action==="propose_change"){try{const p=await propose(b);return J({ok:true,agent:"G_FAST_ADMIN",proposal:p,no_delete_capability:true})}catch(e){return J({ok:false,error:e instanceof Error?e.message:String(e)},400)}}
+  const id=await run(String(b.trigger||action||"manual").slice(0,50));try{const obs=await observe(id);const executed=await executeApproved(id);const decisions=[...(obs.decisions||[]),...executed.map(x=>({action:"execute_user_approved_change",...x}))];const verification={no_delete_capability:true,business_data_mutated:executed.some(x=>x.status==="executed"),approved_changes_executed:executed.filter(x=>x.status==="executed").length,scope:"FAST Administration"};
+    await R("fast_agent_runs?id=eq."+id,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"completed",finished_at:new Date().toISOString(),observations:obs.snapshot||{},decisions,verification})});
+    await R("fast_agent_registry?agent_code=eq.G_FAST_ADMIN",{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({last_seen_at:new Date().toISOString(),updated_at:new Date().toISOString()})});
+    return J({ok:true,agent:"G_FAST_ADMIN",run_id:id,observations:obs.snapshot,decisions,verification});
+  }catch(e){const m=e instanceof Error?e.message:String(e);try{await R("fast_agent_runs?id=eq."+id,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"failed",finished_at:new Date().toISOString(),error:m})});await ev(id,"critical","runtime","Échec du cycle G_FAST_ADMIN",{error:m})}catch{}return J({ok:false,agent:"G_FAST_ADMIN",run_id:id,error:m},500)}
+});
