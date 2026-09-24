@@ -1,0 +1,69 @@
+name: Deploy Agent Intelligence Core
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'agent-brain/**'
+      - '.github/workflows/agent-brain-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_ikooiav5lkWrGTZIY05wYg0n
+      PROJECT_NAME: fast-talent-agent-intelligence-core
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Vercel authorization
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo '::error::VERCEL_TOKEN absent.'
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Ensure isolated Vercel project exists
+        shell: bash
+        run: |
+          PROJECT_JSON="$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN"             "https://api.vercel.com/v9/projects/$PROJECT_NAME?teamId=$VERCEL_ORG_ID" || true)"
+          PROJECT_ID="$(node -e 'try{const x=JSON.parse(process.argv[1]);process.stdout.write(x.id||"")}catch{}' "$PROJECT_JSON")"
+          if [ -z "$PROJECT_ID" ]; then
+            PROJECT_JSON="$(curl -fsS -X POST               -H "Authorization: Bearer $VERCEL_TOKEN"               -H "Content-Type: application/json"               "https://api.vercel.com/v11/projects?teamId=$VERCEL_ORG_ID"               --data '{"name":"fast-talent-agent-intelligence-core","framework":null,"oidcTokenConfig":{"enabled":true,"issuerMode":"team"}}')"
+            PROJECT_ID="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.id||"")' "$PROJECT_JSON")"
+          fi
+          test -n "$PROJECT_ID"
+          mkdir -p agent-brain/.vercel
+          printf '%s\n' "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$PROJECT_ID\"}" > agent-brain/.vercel/project.json
+          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+
+      - name: Deploy isolated intelligence core
+        id: deploy
+        shell: bash
+        run: |
+          URL="$(vercel deploy --prod --yes --force --token "$VERCEL_TOKEN" --cwd agent-brain)"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Brain URL: $URL"
+
+      - name: Verify health
+        shell: bash
+        run: |
+          URL='${{ steps.deploy.outputs.url }}'
+          for i in 1 2 3 4 5 6; do
+            BODY="$(curl -fsSL "$URL/api/health" || true)"
+            if grep -q '"ok":true' <<<"$BODY"; then
+              echo "$BODY"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::Agent Intelligence Core health check failed.'
+          exit 1
