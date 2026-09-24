@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from supabase import create_client
 
+from .http_pool import shared_http_client
+
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://hmwxwzfcpdvgzjgxruup.supabase.co")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 AUTH_EMAIL_COOLDOWN_SECONDS = max(60, int(os.getenv("AUTH_EMAIL_COOLDOWN_SECONDS", "120")))
@@ -16,6 +18,7 @@ AUTH_EMAIL_LIMIT_BACKOFF_SECONDS = max(300, int(os.getenv("AUTH_EMAIL_LIMIT_BACK
 RESET_REDIRECT_URL = f"{SUPABASE_URL}/functions/v1/fast-reset-password"
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
+_auth_memory_db = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if SUPABASE_SERVICE_ROLE_KEY else None
 
 
 class EmailRequest(BaseModel):
@@ -23,9 +26,9 @@ class EmailRequest(BaseModel):
 
 
 def _db():
-    if not SUPABASE_SERVICE_ROLE_KEY:
+    if _auth_memory_db is None:
         raise HTTPException(503, "Service d’authentification momentanément indisponible")
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    return _auth_memory_db
 
 
 def _normalize_email(value: str) -> str:
@@ -114,8 +117,13 @@ async def _auth_email_request(*, request: Request, email: str, purpose: str, pat
         "Sb-Forwarded-For": _client_ip(request),
     }
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
-            response = await http.post(f"{SUPABASE_URL}{path}", headers=headers, json=payload)
+        http = shared_http_client()
+        response = await http.post(
+            f"{SUPABASE_URL}{path}",
+            headers=headers,
+            json=payload,
+            timeout=15,
+        )
     except Exception:
         _remember(client, key, attempts, "network_error", now + timedelta(seconds=60))
         raise HTTPException(503, "L’envoi de l’e-mail est momentanément indisponible. Réessayez dans une minute.")
