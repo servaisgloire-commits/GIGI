@@ -1,0 +1,38 @@
+name: FAST Legacy Signing Fingerprint
+
+on:
+  push:
+    branches: [ agent-g-signature-recovery-20260925 ]
+    paths:
+      - '.github/workflows/legacy-signature-fingerprint.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprint:
+    runs-on: ubuntu-latest
+    env:
+      FAST_KEYSTORE_B64: ${{ secrets.FAST_KEYSTORE_B64 }}
+      FAST_KEYSTORE_PASSWORD: ${{ secrets.FAST_KEYSTORE_PASSWORD }}
+      FAST_KEY_ALIAS: ${{ secrets.FAST_KEY_ALIAS }}
+    steps:
+      - name: Check legacy signing material fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${FAST_KEYSTORE_B64:-}" ] || [ -z "${FAST_KEYSTORE_PASSWORD:-}" ]; then
+            echo "LEGACY_SIGNING_SECRET=missing"
+            exit 0
+          fi
+          KEYSTORE="$RUNNER_TEMP/legacy-fast.jks"
+          printf '%s' "$FAST_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          ALIAS="${FAST_KEY_ALIAS:-}"
+          if [ -z "$ALIAS" ]; then
+            ALIAS="$(keytool -list -keystore "$KEYSTORE" -storepass "$FAST_KEYSTORE_PASSWORD" 2>/dev/null | awk -F, '/PrivateKeyEntry/{print $1; exit}' | xargs)"
+          fi
+          test -n "$ALIAS"
+          CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$FAST_KEYSTORE_PASSWORD" -alias "$ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}')"
+          echo "LEGACY_SIGNING_SECRET=present"
+          echo "LEGACY_CERT_SHA256=$CERT_SHA256"
