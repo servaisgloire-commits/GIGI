@@ -103,19 +103,19 @@ jobs:
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          grep -q 'versionName = "25.09.2026"' app/build.gradle.kts
+          grep -q 'versionName = "25.09.2026.2"' app/build.gradle.kts
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
           grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
           test -n "$FAST_GOOGLE_MAPS_API_KEY"
 
       - name: Build signed installable APK
-        run: gradle clean assembleDirectInstall
+        run: gradle clean assembleRelease
 
       - name: Verify stable package and production certificate
         shell: bash
         run: |
           set -euo pipefail
-          APK='app/build/outputs/apk/directInstall/app-directInstall.apk'
+          APK='app/build/outputs/apk/release/app-release.apk'
           test -s "$APK"
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
@@ -139,7 +139,6 @@ jobs:
           ls -l /dev/kvm 2>/dev/null || true
 
       - name: Verify native driver map on Android 35 emulator
-        if: ${{ !contains(github.event.head_commit.message, '[publish-now]') }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -149,8 +148,11 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            adb install -r "$FAST_APK_NAME"
+            adb uninstall cg.fast.n1 >/dev/null 2>&1 || true
+            adb install "$FAST_APK_NAME"
             adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
+            adb shell dumpsys activity activities | grep 'cg.fast.n1'
             adb logcat -c
             gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.DriverMapRuntimeTest
             sleep 2
@@ -161,7 +163,6 @@ jobs:
             grep -q 'FAST_NATIVE_MAP.*map_loaded' /tmp/fast-driver-map-logcat.txt
 
       - name: Verify FAST main interface on Android 35 emulator
-        if: ${{ !contains(github.event.head_commit.message, '[publish-now]') }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -171,8 +172,11 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            adb install -r "$FAST_APK_NAME"
+            adb uninstall cg.fast.n1 >/dev/null 2>&1 || true
+            adb install "$FAST_APK_NAME"
             adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
+            adb shell dumpsys activity activities | grep 'cg.fast.n1'
             adb logcat -c
             gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.MainMapRuntimeTest
 
