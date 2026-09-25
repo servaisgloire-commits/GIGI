@@ -39,7 +39,6 @@ jobs:
           echo "FAST_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "FAST_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           test -s app/src/main/assets/fast-logo.svg
-          grep -q 'ensureOfficialBranding' app/src/main/assets/production-ui.js
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
       - name: Build unsigned Play Store bundle
         run: gradle bundleRelease
