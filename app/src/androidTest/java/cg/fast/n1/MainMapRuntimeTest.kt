@@ -28,9 +28,9 @@ class MainMapRuntimeTest {
     private fun grantRuntimePermissions() {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         listOf(
-            "pm grant cg.fast.n1 android.permission.ACCESS_COARSE_LOCATION",
-            "pm grant cg.fast.n1 android.permission.ACCESS_FINE_LOCATION",
-            "pm grant cg.fast.n1 android.permission.POST_NOTIFICATIONS",
+            "pm grant cg.fast.n1.mobile android.permission.ACCESS_COARSE_LOCATION",
+            "pm grant cg.fast.n1.mobile android.permission.ACCESS_FINE_LOCATION",
+            "pm grant cg.fast.n1.mobile android.permission.POST_NOTIFICATIONS",
         ).forEach { command ->
             automation.executeShellCommand(command).close()
         }
