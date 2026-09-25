@@ -49,7 +49,8 @@ android {
             initWith(getByName("release"))
             isDebuggable = false
             isJniDebuggable = false
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfigs.findByName("production")?.let { signingConfig = it }
         }
         create("verification") {
@@ -62,7 +63,8 @@ android {
         release {
             isDebuggable = false
             isJniDebuggable = false
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfigs.findByName("production")?.let { signingConfig = it }
         }
     }
