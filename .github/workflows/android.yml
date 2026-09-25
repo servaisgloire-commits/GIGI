@@ -50,6 +50,8 @@ jobs:
           KEY_ALIAS="$(jq -r '.key_alias' "$RESPONSE_FILE")"
           KEYPASS="$(jq -r '.key_password' "$RESPONSE_FILE")"
           CERT_SHA256="$(jq -r '.cert_sha256' "$RESPONSE_FILE")"
+          EXPECTED_FAST_CERT_SHA256="4B:56:27:CB:DC:9C:46:94:84:DC:4C:A7:D9:F0:5E:98:5E:A6:C8:27:56:A0:B7:FA:37:94:83:AE:21:C7:EA:52"
+          test "$(printf '%s' "$CERT_SHA256" | tr '[:lower:]' '[:upper:]')" = "$EXPECTED_FAST_CERT_SHA256"
           echo "::add-mask::$STOREPASS"
           echo "::add-mask::$KEYPASS"
           echo "::add-mask::$KEYSTORE_B64"
@@ -101,7 +103,7 @@ jobs:
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
-          grep -q 'versionName = "14.09.2026"' app/build.gradle.kts
+          grep -q 'versionName = "25.09.2026"' app/build.gradle.kts
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
           grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
           test -n "$FAST_GOOGLE_MAPS_API_KEY"
@@ -124,6 +126,9 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
           grep -q 'Verifies' /tmp/fast-signature.txt
           if grep -qi 'CN=Android Debug' /tmp/fast-signature.txt; then exit 1; fi
+          ACTUAL_CERT="$(sed -n 's/.*certificate SHA-256 digest: //p' /tmp/fast-signature.txt | head -1 | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g;s/:$//')"
+          EXPECTED_CERT="4B:56:27:CB:DC:9C:46:94:84:DC:4C:A7:D9:F0:5E:98:5E:A6:C8:27:56:A0:B7:FA:37:94:83:AE:21:C7:EA:52"
+          test "$ACTUAL_CERT" = "$EXPECTED_CERT"
           cp "$APK" "$FAST_APK_NAME"
           sha256sum "$FAST_APK_NAME" > "${FAST_APK_NAME}.sha256"
 
