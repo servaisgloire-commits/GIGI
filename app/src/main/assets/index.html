@@ -23,17 +23,17 @@
   </div>
   <div class="auth-panel">
     <div class="tabs"><button class="tab active" data-auth="login">Connexion</button><button class="tab" data-auth="signup">Créer un compte</button></div>
-    <form id="loginForm" class="form">
-      <label>E-mail<input id="loginEmail" type="email" autocomplete="email" required placeholder="vous@exemple.com"></label>
-      <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••••••"></label>
+    <form id="loginForm" class="form" autocomplete="on">
+      <label>E-mail<input id="loginEmail" name="username" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="vous@exemple.com"></label>
+      <label>Mot de passe<input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="••••••••••••"></label>
       <button class="primary tall" type="submit">Se connecter</button>
       <button class="link" id="forgotBtn" type="button">Mot de passe oublié ?</button>
     </form>
     <form id="signupForm" class="form hidden">
       <div class="grid2"><label>Prénom<input id="firstName" required></label><label>Nom<input id="lastName" required></label></div>
       <label>Téléphone<input id="phone" inputmode="tel" required></label>
-      <label>E-mail<input id="signupEmail" type="email" required></label>
-      <label>Mot de passe<input id="signupPassword" type="password" minlength="12" required><small>12 caractères minimum</small></label>
+      <label>E-mail<input id="signupEmail" name="username" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+      <label>Mot de passe<input id="signupPassword" name="new-password" type="password" autocomplete="new-password" minlength="12" required><small>12 caractères minimum</small></label>
       <label>Je m'inscris comme<select id="role"><option value="client">Passager</option><option value="driver">Chauffeur</option></select></label>
       <button class="primary tall" type="submit">Créer mon compte FAST</button>
     </form>
@@ -127,5 +127,6 @@
 <script src="client-sheet-drag.js"></script>
 <script src="client-ui-recovery.js"></script>
 <script src="driver-native-map.js"></script>
+<script src="address-search.js"></script>
 </body>
 </html>

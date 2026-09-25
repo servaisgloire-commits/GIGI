@@ -38,6 +38,7 @@ login=async function(e){
     }
     if(!r?.access_token)throw new Error('Session FAST incomplète.');
     saveSession(r);
+    try { window.FastNative?.commitAutofill?.(); } catch {}
     await enter();
   }catch(error){toast(error.message)}
 };
@@ -67,6 +68,7 @@ signup=async function(e){
     }
     if(r?.access_token){
       saveSession(r);
+      try { window.FastNative?.commitAutofill?.(); } catch {}
       toast('Compte FAST créé.');
       await enter();
     }else{
