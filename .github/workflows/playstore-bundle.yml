@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
           VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -1)"
           VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode = ([0-9]+).*/\1/p' app/build.gradle.kts | head -1)"
           test -n "$VERSION_NAME"
