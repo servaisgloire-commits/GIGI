@@ -66,6 +66,25 @@
     };
     window.FAST_RESET_CLIENT_SHEET = reset;
 
+    const restoreClientHomeFallback = () => {
+      try { reset(); } catch {}
+      const home = document.getElementById('clientHome');
+      const ride = document.getElementById('clientRide');
+      const nav = document.getElementById('bottomNav');
+      const app = document.getElementById('app');
+      if (ride) ride.classList.add('hidden');
+      if (home) {
+        home.classList.remove('hidden');
+        home.style.setProperty('--fast-client-sheet-y','0px');
+        home.setAttribute('aria-expanded','true');
+      }
+      if (nav) nav.style.display = 'flex';
+      app?.classList.remove('client-route-dismissed');
+    };
+    if (typeof window.FAST_RESTORE_CLIENT_HOME !== 'function') {
+      window.FAST_RESTORE_CLIENT_HOME = restoreClientHomeFallback;
+    }
+
     const isDragZone = target => {
       if (!(target instanceof Element)) return false;
       if (target.closest('button,input,select,textarea,a')) return false;
