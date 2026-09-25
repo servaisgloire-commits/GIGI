@@ -103,7 +103,7 @@ jobs:
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
-          grep -q 'versionName = "25.09.2026.3"' app/build.gradle.kts
+          grep -q 'versionName = "25.09.2026.4"' app/build.gradle.kts
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
           grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
           test -n "$FAST_GOOGLE_MAPS_API_KEY"
@@ -129,8 +129,27 @@ jobs:
           ACTUAL_CERT="$(sed -n 's/.*certificate SHA-256 digest: //p' /tmp/fast-signature.txt | head -1 | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g;s/:$//')"
           EXPECTED_CERT="4B:56:27:CB:DC:9C:46:94:84:DC:4C:A7:D9:F0:5E:98:5E:A6:C8:27:56:A0:B7:FA:37:94:83:AE:21:C7:EA:52"
           test "$ACTUAL_CERT" = "$EXPECTED_CERT"
+          unzip -t "$APK" >/dev/null
+          APK_SIZE="$(stat -c%s "$APK")"
+          echo "FAST_APK_SIZE_BYTES=$APK_SIZE"
+          if [ "$APK_SIZE" -lt 4500000 ]; then
+            echo "::error::APK unexpectedly small ($APK_SIZE bytes). Full non-minified build expected."
+            exit 1
+          fi
           cp "$APK" "$FAST_APK_NAME"
           sha256sum "$FAST_APK_NAME" > "${FAST_APK_NAME}.sha256"
+
+      - name: Download previous official FAST APK for update test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/fast-previous"
+          gh release download fast-n1-25-09-2026-3 \
+            --pattern 'FAST-N1-25-09-2026-3-ANDROID.apk' \
+            --dir "$RUNNER_TEMP/fast-previous"
+          test -s "$RUNNER_TEMP/fast-previous/FAST-N1-25-09-2026-3-ANDROID.apk"
 
       - name: Prepare Android emulator acceleration
         shell: bash
@@ -169,6 +188,25 @@ jobs:
             adb shell pm list packages | grep 'package:cg.fast.n1.mobile'
             adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
             adb shell dumpsys activity activities | grep 'cg.fast.n1.mobile'
+
+      - name: Verify signed in-place update on Android 26
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 26
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -eu
+            OLD_APK="$RUNNER_TEMP/fast-previous/FAST-N1-25-09-2026-3-ANDROID.apk"
+            adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
+            adb install "$OLD_APK"
+            adb shell dumpsys package cg.fast.n1.mobile | grep -E 'versionCode=25092028|versionName=25.09.2026.3'
+            adb install -r "$FAST_APK_NAME"
+            adb shell dumpsys package cg.fast.n1.mobile | grep -E 'versionCode=25092029|versionName=25.09.2026.4'
+            adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
+            adb shell pidof cg.fast.n1.mobile
 
       - name: Verify native driver map on Android 35 emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -229,7 +267,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Nouvelle identité Android permanente cg.fast.n1.mobile, installation propre validée sur Android 35 et signature FAST permanente verrouillée."
+          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. APK complète non minifiée, identité permanente cg.fast.n1.mobile, signature FAST permanente, installation propre Android 6/8/15 et mise à jour signée validées."
           if gh release view "$FAST_RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --clobber
             gh release edit "$FAST_RELEASE_TAG" --notes "$NOTES"
