@@ -11,7 +11,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "cg.fast.n1"
+        applicationId = "cg.fast.n1.mobile"
         minSdk = 26
         targetSdk = 35
         versionCode = 25092027

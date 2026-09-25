@@ -27,10 +27,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sed -i -E 's/applicationId = "[^"]+"/applicationId = "cg.fast.n1"/' app/build.gradle.kts
+          sed -i -E 's/applicationId = "[^"]+"/applicationId = "cg.fast.n1.mobile"/' app/build.gradle.kts
           sed -i -E '/applicationIdSuffix = "\.install[0-9]+"/d' app/build.gradle.kts
           sed -i '/versionNameSuffix = "-android"/d' app/build.gradle.kts
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
           if grep -q 'applicationIdSuffix = ".install' app/build.gradle.kts; then exit 1; fi
       - name: Validate application JavaScript
         shell: bash
