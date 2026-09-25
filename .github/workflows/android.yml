@@ -102,7 +102,7 @@ jobs:
         run: |
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
           grep -q 'versionName = "25.09.2026.2"' app/build.gradle.kts
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
           grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
@@ -120,7 +120,7 @@ jobs:
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" | tee /tmp/fast-badging.txt
-          grep -q "package: name='cg.fast.n1'" /tmp/fast-badging.txt
+          grep -q "package: name='cg.fast.n1.mobile'" /tmp/fast-badging.txt
           grep -q "versionCode='${FAST_VERSION_CODE}'" /tmp/fast-badging.txt
           grep -q "versionName='${FAST_VERSION_NAME}'" /tmp/fast-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/fast-signature.txt
@@ -150,7 +150,7 @@ jobs:
             set -eu
             adb uninstall cg.fast.n1 >/dev/null 2>&1 || true
             adb install "$FAST_APK_NAME"
-            adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell pm list packages | grep 'package:cg.fast.n1.mobile'
             adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
             adb shell dumpsys activity activities | grep 'cg.fast.n1'
             adb logcat -c
@@ -174,7 +174,7 @@ jobs:
             set -eu
             adb uninstall cg.fast.n1 >/dev/null 2>&1 || true
             adb install "$FAST_APK_NAME"
-            adb shell pm list packages | grep 'package:cg.fast.n1'
+            adb shell pm list packages | grep 'package:cg.fast.n1.mobile'
             adb shell am start -W -n cg.fast.n1/cg.fast.n1.MainActivity
             adb shell dumpsys activity activities | grep 'cg.fast.n1'
             adb logcat -c
@@ -195,7 +195,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Carte chauffeur Google Maps native validée sur Android 35, package cg.fast.n1 et signature de production stable."
+          NOTES="FAST N°1 Android ${FAST_VERSION_NAME}. Nouvelle identité Android permanente cg.fast.n1.mobile, installation propre validée sur Android 35 et signature FAST permanente verrouillée."
           if gh release view "$FAST_RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$FAST_RELEASE_TAG" "$FAST_APK_NAME" "${FAST_APK_NAME}.sha256" --clobber
             gh release edit "$FAST_RELEASE_TAG" --notes "$NOTES"
