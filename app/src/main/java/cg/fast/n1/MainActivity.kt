@@ -183,17 +183,26 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                val now = System.currentTimeMillis()
-                if (now - lastBackPressAt <= BACK_EXIT_WINDOW_MS) {
-                    finish()
-                    return
+                webView.evaluateJavascript(
+                    "typeof window.FAST_HANDLE_BACK === 'function' ? window.FAST_HANDLE_BACK() : true",
+                ) { consumed ->
+                    if (isFinishing || isDestroyed) return@evaluateJavascript
+                    if (consumed != "false") {
+                        lastBackPressAt = 0L
+                        return@evaluateJavascript
+                    }
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (lastBackPressAt != 0L && now - lastBackPressAt <= BACK_EXIT_WINDOW_MS) {
+                        finish()
+                    } else {
+                        lastBackPressAt = now
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Appuyez encore sur Retour pour quitter FAST.",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 }
-                lastBackPressAt = now
-                Toast.makeText(
-                    this@MainActivity,
-                    "Appuyez encore sur Retour pour quitter FAST.",
-                    Toast.LENGTH_SHORT,
-                ).show()
             }
         })
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
@@ -463,6 +472,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        lastBackPressAt = 0L
         if (::mainMapView.isInitialized) mainMapView.onPause()
         super.onPause()
     }
@@ -511,6 +521,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class FastNativeBridge {
+        @JavascriptInterface
+        fun resetBackExit() {
+            runOnUiThread { lastBackPressAt = 0L }
+        }
+
         @JavascriptInterface
         fun commitAutofill() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

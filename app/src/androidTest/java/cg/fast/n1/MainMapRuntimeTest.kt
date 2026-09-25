@@ -195,19 +195,42 @@ class MainMapRuntimeTest {
     fun backRequiresTwoPressesToExit() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             Thread.sleep(1000)
-            var afterFirstPress = false
-            scenario.onActivity { activity ->
-                activity.onBackPressedDispatcher.onBackPressed()
-                afterFirstPress = activity.isFinishing
-            }
+            val afterFirstPress = pressBackAndWait(scenario)
             assertFalse("FAST must stay open after the first Back press", afterFirstPress)
-
-            var afterSecondPress = false
-            scenario.onActivity { activity ->
-                activity.onBackPressedDispatcher.onBackPressed()
-                afterSecondPress = activity.isFinishing
-            }
+            val afterSecondPress = pressBackAndWait(scenario)
             assertTrue("FAST must exit after the second Back press", afterSecondPress)
+        }
+    }
+
+    private fun pressBackAndWait(scenario: ActivityScenario<MainActivity>): Boolean {
+        val latch = CountDownLatch(1)
+        var finishing = false
+        scenario.onActivity { activity ->
+            activity.onBackPressedDispatcher.onBackPressed()
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                finishing = activity.isFinishing
+                latch.countDown()
+            }, 350)
+        }
+        check(latch.await(5, TimeUnit.SECONDS))
+        return finishing
+    }
+
+    @Test
+    fun backRetracesViewsBeforeDoublePressExit() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            Thread.sleep(1500)
+            evaluate(scenario, """
+                state.role='client';
+                window.loadActivity=async function(){};
+                showApp();switchView('home');switchView('profile');switchView('activity');
+            """)
+            assertFalse(pressBackAndWait(scenario))
+            assertTrue(evaluate(scenario, "!document.getElementById('profileView').classList.contains('hidden')") == "true")
+            assertFalse(pressBackAndWait(scenario))
+            assertTrue(evaluate(scenario, "document.getElementById('profileView').classList.contains('hidden')") == "true")
+            assertFalse("Returning to home must not count as the first exit press", pressBackAndWait(scenario))
+            assertTrue(pressBackAndWait(scenario))
         }
     }
 
