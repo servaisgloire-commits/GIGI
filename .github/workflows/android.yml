@@ -199,9 +199,8 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            OLD_APK="$RUNNER_TEMP/fast-previous/FAST-N1-25-09-2026-3-ANDROID.apk"
             adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
-            adb install "$OLD_APK"
+            adb install "$RUNNER_TEMP/fast-previous/FAST-N1-25-09-2026-3-ANDROID.apk"
             adb shell dumpsys package cg.fast.n1.mobile | grep -E 'versionCode=25092028|versionName=25.09.2026.3'
             adb install -r "$FAST_APK_NAME"
             adb shell dumpsys package cg.fast.n1.mobile | grep -E 'versionCode=25092029|versionName=25.09.2026.4'
