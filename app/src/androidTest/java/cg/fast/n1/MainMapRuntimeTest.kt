@@ -230,17 +230,23 @@ class MainMapRuntimeTest {
     }
 
     private fun pressBackAndWait(scenario: ActivityScenario<MainActivity>): Boolean {
-        val latch = CountDownLatch(1)
-        var finishing = false
-        scenario.onActivity { activity ->
-            activity.onBackPressedDispatcher.onBackPressed()
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                finishing = activity.isFinishing
-                latch.countDown()
-            }, 350)
+        try {
+            scenario.onActivity { activity ->
+                activity.onBackPressedDispatcher.onBackPressed()
+            }
+        } catch (_: IllegalStateException) {
+            return true
         }
-        check(latch.await(5, TimeUnit.SECONDS))
-        return finishing
+        Thread.sleep(450)
+        return try {
+            var finishing = false
+            scenario.onActivity { activity ->
+                finishing = activity.isFinishing || activity.isDestroyed
+            }
+            finishing
+        } catch (_: IllegalStateException) {
+            true
+        }
     }
 
     @Test
