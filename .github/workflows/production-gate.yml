@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
-          grep -q 'applicationId = "cg.fast.n1"' app/build.gradle.kts
+          grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
           grep -q 'versionName = "25.09.2026.2"' app/build.gradle.kts
           grep -q 'versionCode = 25092027' app/build.gradle.kts
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
