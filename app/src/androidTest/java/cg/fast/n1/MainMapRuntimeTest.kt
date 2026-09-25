@@ -17,8 +17,9 @@ import java.util.concurrent.TimeUnit
 class MainMapRuntimeTest {
     @Test
     fun loginFormExposesPasswordAutofillMetadata() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(1500)
+            waitForFastWebApp(scenario)
             val result = evaluate(scenario, """
                 (function(){
                   var username=document.getElementById('loginEmail');
@@ -76,11 +77,35 @@ class MainMapRuntimeTest {
         return result
     }
 
+    private fun waitForFastWebApp(scenario: ActivityScenario<MainActivity>, requireBackNavigation: Boolean = false) {
+        var diagnostic = "null"
+        repeat(40) {
+            diagnostic = evaluate(
+                scenario,
+                """
+                (function(){
+                  var ready=document.readyState!=='loading' &&
+                    !!document.getElementById('loginEmail') &&
+                    !!document.getElementById('loginPassword') &&
+                    typeof window.FastNative==='object' &&
+                    typeof window.initMap==='function';
+                  if ($requireBackNavigation) ready = ready && typeof window.FAST_HANDLE_BACK==='function';
+                  return !!ready;
+                })()
+                """,
+                3
+            )
+            if (diagnostic == "true") return
+            Thread.sleep(250)
+        }
+        assertTrue("FAST WebView did not become ready: $diagnostic", false)
+    }
+
     @Test
     fun mainMapIsNativeGoogleVisibleAndGestureReady() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(3000)
+            waitForFastWebApp(scenario)
             val start = evaluate(
                 scenario,
                 """
@@ -105,6 +130,7 @@ class MainMapRuntimeTest {
                     scenario,
                     """
                     (function(){
+                      if (typeof window.initMap==='function') window.initMap();
                       var host=document.getElementById('map');
                       var appState=(typeof state!=='undefined')?state:null;
                       var bridge=window.FastNative;
@@ -147,7 +173,7 @@ class MainMapRuntimeTest {
     fun driverAvailabilityCardIsOutsideNativeMapTouchZone() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(2500)
+            waitForFastWebApp(scenario)
             val diagnostic = evaluate(
                 scenario,
                 """
@@ -193,8 +219,9 @@ class MainMapRuntimeTest {
 
     @Test
     fun backRequiresTwoPressesToExit() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            waitForFastWebApp(scenario, requireBackNavigation = true)
             val afterFirstPress = pressBackAndWait(scenario)
             assertFalse("FAST must stay open after the first Back press", afterFirstPress)
             val afterSecondPress = pressBackAndWait(scenario)
@@ -218,8 +245,9 @@ class MainMapRuntimeTest {
 
     @Test
     fun backRetracesViewsBeforeDoublePressExit() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(1500)
+            waitForFastWebApp(scenario, requireBackNavigation = true)
             evaluate(scenario, """
                 state.role='client';
                 window.loadActivity=async function(){};
@@ -238,7 +266,7 @@ class MainMapRuntimeTest {
     fun clientHomeReturnsAfterCancellationUiReset() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(2500)
+            waitForFastWebApp(scenario)
             val result = evaluate(
                 scenario,
                 """
