@@ -16,6 +16,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.autofill.AutofillManager
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
@@ -101,6 +102,9 @@ class MainActivity : AppCompatActivity() {
         mainMapView.getMapAsync { configureMainMap(it) }
 
         webView = WebView(this).apply { setBackgroundColor(Color.TRANSPARENT) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_YES
+        }
         with(webView.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -507,6 +511,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class FastNativeBridge {
+        @JavascriptInterface
+        fun commitAutofill() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                runOnUiThread {
+                    getSystemService(AutofillManager::class.java)?.commit()
+                }
+            }
+        }
+
         @JavascriptInterface
         fun config(): String = JSONObject().apply {
             put("supabaseUrl", BuildConfig.SUPABASE_URL)

@@ -15,6 +15,31 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class MainMapRuntimeTest {
+    @Test
+    fun loginFormExposesPasswordAutofillMetadata() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            Thread.sleep(1500)
+            val result = evaluate(scenario, """
+                (function(){
+                  var username=document.getElementById('loginEmail');
+                  var password=document.getElementById('loginPassword');
+                  var signup=document.getElementById('signupPassword');
+                  return username.name==='username' && username.autocomplete==='username' &&
+                    password.name==='password' && password.autocomplete==='current-password' &&
+                    signup.autocomplete==='new-password' &&
+                    typeof FastNative.commitAutofill==='function';
+                })()
+            """)
+            assertTrue("Login autofill metadata missing: $result", result == "true")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                scenario.onActivity { activity ->
+                    val web = requireNotNull(findWebView(activity.window.decorView.rootView))
+                    assertTrue(web.importantForAutofill == View.IMPORTANT_FOR_AUTOFILL_YES)
+                }
+            }
+        }
+    }
+
     private fun findWebView(view: View): WebView? {
         if (view is WebView) return view
         if (view is ViewGroup) {
