@@ -12,10 +12,10 @@ android {
 
     defaultConfig {
         applicationId = "cg.fast.n1.mobile"
-        minSdk = 26
+        minSdk = 23
         targetSdk = 35
-        versionCode = 25092027
-        versionName = "25.09.2026.2"
+        versionCode = 25092028
+        versionName = "25.09.2026.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
