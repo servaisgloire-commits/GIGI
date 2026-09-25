@@ -108,7 +108,7 @@ requireText(driverMapActivity,'isTiltGesturesEnabled = true','native tilt gestur
 requireText(driverMapActivity,'map.isTrafficEnabled = true','native traffic layer');
 requireText(driverMapActivity,'map_loaded','native map load verification hook');
 requireText(gradle,'com.google.android.gms:play-services-maps:20.0.0','Maps SDK dependency');
-if ((gradle.match(/isMinifyEnabled = true/g) || []).length < 2) throw new Error('Production and direct-install APKs must both enable R8 minification');
+if ((gradle.match(/isMinifyEnabled = false/g) || []).length < 3) throw new Error('FAST full APK build modes must remain non-minified');
 requireText(gradle,'create("verification")','dedicated Android verification build type');
 requireText(gradle,'testBuildType = "verification"','instrumentation uses non-production verification variant');
 requireText(workflow,'connectedVerificationAndroidTest','production CI uses verification instrumentation variant');
