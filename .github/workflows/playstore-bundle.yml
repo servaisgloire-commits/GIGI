@@ -10,10 +10,13 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   bundle:
     runs-on: ubuntu-latest
+    env:
+      FAST_SIGNING_BROKER_URL: https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-signing-broker
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +30,36 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Acquire permanent FAST production signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=fast-signing")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
+          RESPONSE_FILE="$RUNNER_TEMP/fast-signing-response.json"
+          HTTP_CODE="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' -X POST "$FAST_SIGNING_BROKER_URL" -H "Authorization: Bearer $OIDC_TOKEN" -H 'Content-Type: application/json' --data '{"action":"get"}')"
+          test "$HTTP_CODE" = "200"
+          KEYSTORE_B64="$(jq -r '.keystore_b64' "$RESPONSE_FILE")"
+          STOREPASS="$(jq -r '.store_password' "$RESPONSE_FILE")"
+          KEY_ALIAS="$(jq -r '.key_alias' "$RESPONSE_FILE")"
+          KEYPASS="$(jq -r '.key_password' "$RESPONSE_FILE")"
+          CERT_SHA256="$(jq -r '.cert_sha256' "$RESPONSE_FILE")"
+          EXPECTED_FAST_CERT_SHA256="4B:56:27:CB:DC:9C:46:94:84:DC:4C:A7:D9:F0:5E:98:5E:A6:C8:27:56:A0:B7:FA:37:94:83:AE:21:C7:EA:52"
+          test "$(printf '%s' "$CERT_SHA256" | tr '[:lower:]' '[:upper:]')" = "$EXPECTED_FAST_CERT_SHA256"
+          echo "::add-mask::$STOREPASS"
+          echo "::add-mask::$KEYPASS"
+          echo "::add-mask::$KEYSTORE_B64"
+          KEYSTORE="$RUNNER_TEMP/fast-production.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$STOREPASS" -alias "$KEY_ALIAS" >/dev/null
+          echo "FAST_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "FAST_KEYSTORE_PASSWORD=$STOREPASS" >> "$GITHUB_ENV"
+          echo "FAST_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "FAST_KEY_PASSWORD=$KEYPASS" >> "$GITHUB_ENV"
+
       - name: Validate FAST release identity
         shell: bash
         run: |
@@ -40,13 +73,19 @@ jobs:
           echo "FAST_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           test -s app/src/main/assets/fast-logo.svg
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
-      - name: Build unsigned Play Store bundle
+      - name: Build signed Play Store bundle
         run: gradle bundleRelease
-      - name: Verify AAB exists
-        run: test -s app/build/outputs/bundle/release/app-release.aab
-      - name: Upload unsigned AAB
+      - name: Verify signed AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB='app/build/outputs/bundle/release/app-release.aab'
+          test -s "$AAB"
+          jarsigner -verify -verbose -certs "$AAB" | tee /tmp/fast-aab-signature.txt
+          grep -q 'jar verified' /tmp/fast-aab-signature.txt
+      - name: Upload signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: FAST-N1-${{ env.FAST_VERSION_NAME }}-build${{ env.FAST_VERSION_CODE }}-unsigned-aab
+          name: FAST-N1-${{ env.FAST_VERSION_NAME }}-build${{ env.FAST_VERSION_CODE }}-signed-aab
           path: app/build/outputs/bundle/release/app-release.aab
           retention-days: 14
