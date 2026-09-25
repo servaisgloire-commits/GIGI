@@ -102,4 +102,7 @@
       });
     }
   });
+  document.addEventListener('fast:dismiss-address-search',()=>{
+    for(const kind of ['pickup','destination']){++generation[kind];clearTimeout(timers[kind]);}
+  });
 })();
