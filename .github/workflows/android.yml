@@ -103,7 +103,7 @@ jobs:
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
-          grep -q 'versionName = "25.09.2026.2"' app/build.gradle.kts
+          grep -q 'versionName = "25.09.2026.3"' app/build.gradle.kts
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
           grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
           test -n "$FAST_GOOGLE_MAPS_API_KEY"
@@ -137,6 +137,38 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm || true; fi
           ls -l /dev/kvm 2>/dev/null || true
+
+      - name: Verify clean install on Android 23
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 23
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -eu
+            adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
+            adb install "$FAST_APK_NAME"
+            adb shell pm list packages | grep 'package:cg.fast.n1.mobile'
+            adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
+            adb shell dumpsys activity activities | grep 'cg.fast.n1.mobile'
+
+      - name: Verify clean install on Android 26
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 26
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -eu
+            adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
+            adb install "$FAST_APK_NAME"
+            adb shell pm list packages | grep 'package:cg.fast.n1.mobile'
+            adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
+            adb shell dumpsys activity activities | grep 'cg.fast.n1.mobile'
 
       - name: Verify native driver map on Android 35 emulator
         uses: reactivecircus/android-emulator-runner@v2
