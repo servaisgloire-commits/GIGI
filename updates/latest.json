@@ -1,12 +1,12 @@
 {
-  "version": "25.09.2026.3",
-  "build": 25092028,
+  "version": "25.09.2026.4",
+  "build": 25092029,
   "minimumBuild": 11092026,
   "mandatory": false,
   "url": "https://fast-n1-officiel.vercel.app/#download",
   "apkUrl": "https://fast-n1-officiel.vercel.app/api/download",
-  "sourceApkUrl": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-25-09-2026-3/FAST-N1-25-09-2026-3-ANDROID.apk",
-  "fileName": "FAST-N1-25-09-2026-3-ANDROID.apk",
+  "sourceApkUrl": "https://github.com/servaisgloire-commits/GIGI/releases/download/fast-n1-25-09-2026-4/FAST-N1-25-09-2026-4-ANDROID.apk",
+  "fileName": "FAST-N1-25-09-2026-4-ANDROID.apk",
   "platform": "Android",
-  "notes": "FAST N°1 25.09.2026.3 — carte chauffeur Google Maps native validée sur Android 35."
+  "notes": "FAST N°1 25.09.2026.4 — carte chauffeur Google Maps native validée sur Android 35."
 }
