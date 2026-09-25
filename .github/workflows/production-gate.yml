@@ -34,14 +34,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Validate clean FAST 25.09.2026.2 Android source
+      - name: Validate clean FAST 25.09.2026.3 Android source
         shell: bash
         run: |
           set -euo pipefail
           for f in app/src/main/assets/*.js; do node --check "$f"; done
           grep -q 'applicationId = "cg.fast.n1.mobile"' app/build.gradle.kts
-          grep -q 'versionName = "25.09.2026.2"' app/build.gradle.kts
-          grep -q 'versionCode = 25092027' app/build.gradle.kts
+          grep -q 'versionName = "25.09.2026.3"' app/build.gradle.kts
+          grep -q 'versionCode = 25092028' app/build.gradle.kts
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -R -q '/v1/auth/password' app/src/main/assets/*.js
