@@ -191,6 +191,8 @@ jobs:
 
       - name: Verify signed in-place update on Android 26
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          OLD_APK: ${{ runner.temp }}/fast-previous/FAST-N1-25-09-2026-3-ANDROID.apk
         with:
           api-level: 26
           target: google_apis
@@ -199,7 +201,7 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            OLD_APK="$RUNNER_TEMP/fast-previous/FAST-N1-25-09-2026-3-ANDROID.apk"
+            test -s "$OLD_APK"
             adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
             adb install "$OLD_APK"
             adb shell dumpsys package cg.fast.n1.mobile | grep -E 'versionCode=25092028|versionName=25.09.2026.3'
@@ -304,3 +306,4 @@ jobs:
             git commit -m "Update official FAST APK to ${FAST_VERSION_NAME}"
             git push origin HEAD:main
           fi
+
