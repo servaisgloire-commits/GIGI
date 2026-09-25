@@ -299,8 +299,17 @@
     ensureMapStatus();
     if (!navigator.onLine) setMapStatus('Connexion interrompue — la carte peut cesser de s’actualiser.', 'warn');
     const root = document.getElementById('app') || document.body;
-    new MutationObserver(scheduleBoundary).observe(root, {subtree:true, childList:true, attributes:true, attributeFilter:['class','style']});
+    const ensureActiveNativeMap = () => {
+      const app = document.getElementById('app');
+      if (!app?.classList.contains('active') || !nativeAvailable()) return;
+      if (state?.map?.provider !== 'google-native-main') initNativeMainMap();
+    };
+    new MutationObserver(() => {
+      scheduleBoundary();
+      ensureActiveNativeMap();
+    }).observe(root, {subtree:true, childList:true, attributes:true, attributeFilter:['class','style']});
     syncBoundary();
+    ensureActiveNativeMap();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
   else boot();

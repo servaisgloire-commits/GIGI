@@ -184,7 +184,7 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 webView.evaluateJavascript(
-                    "typeof window.FAST_HANDLE_BACK === 'function' ? window.FAST_HANDLE_BACK() : true",
+                    "typeof window.FAST_HANDLE_BACK === 'function' ? window.FAST_HANDLE_BACK() : false",
                 ) { consumed ->
                     if (isFinishing || isDestroyed) return@evaluateJavascript
                     if (consumed != "false") {
