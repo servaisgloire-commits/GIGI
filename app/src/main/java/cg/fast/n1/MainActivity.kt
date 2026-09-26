@@ -184,7 +184,7 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 webView.evaluateJavascript(
-                    "typeof window.FAST_HANDLE_BACK === 'function' ? window.FAST_HANDLE_BACK() : true",
+                    "typeof window.FAST_HANDLE_BACK === 'function' ? window.FAST_HANDLE_BACK() : false",
                 ) { consumed ->
                     if (isFinishing || isDestroyed) return@evaluateJavascript
                     if (consumed != "false") {
@@ -557,6 +557,7 @@ class MainActivity : AppCompatActivity() {
         fun enableMainMap(lat: Double, lng: Double, zoom: Double) {
             if (!BuildConfig.MAPS_NATIVE_CONFIGURED) return
             runOnUiThread {
+                if (mainMapEnabled) return@runOnUiThread
                 mainMapEnabled = true
                 mainMapLoaded = false
                 mainMapView.visibility = View.VISIBLE

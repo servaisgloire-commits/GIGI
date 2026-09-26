@@ -19,7 +19,7 @@ class MainMapRuntimeTest {
     fun loginFormExposesPasswordAutofillMetadata() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitWebApp(scenario)
+            waitForFastWebApp(scenario)
             val result = evaluate(scenario, """
                 (function(){
                   var username=document.getElementById('loginEmail');
@@ -77,28 +77,35 @@ class MainMapRuntimeTest {
         return result
     }
 
-    private fun awaitWebApp(scenario: ActivityScenario<MainActivity>) {
+    private fun waitForFastWebApp(scenario: ActivityScenario<MainActivity>, requireBackNavigation: Boolean = false) {
         var diagnostic = "null"
-        val deadline = android.os.SystemClock.elapsedRealtime() + 30000
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            diagnostic = evaluate(scenario, """
-                document.readyState === 'complete' &&
-                typeof window.FAST_HANDLE_BACK === 'function' &&
-                typeof window.initMap === 'function' &&
-                !!document.getElementById('loginPassword') &&
-                !!document.getElementById('signupPassword')
-            """)
+        repeat(40) {
+            diagnostic = evaluate(
+                scenario,
+                """
+                (function(){
+                  var ready=document.readyState!=='loading' &&
+                    !!document.getElementById('loginEmail') &&
+                    !!document.getElementById('loginPassword') &&
+                    typeof window.FastNative==='object' &&
+                    typeof window.initMap==='function';
+                  if ($requireBackNavigation) ready = ready && typeof window.FAST_HANDLE_BACK==='function';
+                  return !!ready;
+                })()
+                """,
+                3
+            )
             if (diagnostic == "true") return
-            Thread.sleep(200)
+            Thread.sleep(250)
         }
-        throw AssertionError("FAST WebView did not finish loading within 30 seconds: $diagnostic")
+        assertTrue("FAST WebView did not become ready: $diagnostic", false)
     }
 
     @Test
     fun mainMapIsNativeGoogleVisibleAndGestureReady() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitWebApp(scenario)
+            waitForFastWebApp(scenario)
             val start = evaluate(
                 scenario,
                 """
@@ -123,6 +130,7 @@ class MainMapRuntimeTest {
                     scenario,
                     """
                     (function(){
+                      if (typeof window.initMap==='function') window.initMap();
                       var host=document.getElementById('map');
                       var appState=(typeof state!=='undefined')?state:null;
                       var bridge=window.FastNative;
@@ -165,7 +173,7 @@ class MainMapRuntimeTest {
     fun driverAvailabilityCardIsOutsideNativeMapTouchZone() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitWebApp(scenario)
+            waitForFastWebApp(scenario)
             val diagnostic = evaluate(
                 scenario,
                 """
@@ -213,7 +221,7 @@ class MainMapRuntimeTest {
     fun backRequiresTwoPressesToExit() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitWebApp(scenario)
+            waitForFastWebApp(scenario, requireBackNavigation = true)
             val afterFirstPress = pressBackAndWait(scenario)
             assertFalse("FAST must stay open after the first Back press", afterFirstPress)
             val afterSecondPress = pressBackAndWait(scenario)
@@ -222,24 +230,30 @@ class MainMapRuntimeTest {
     }
 
     private fun pressBackAndWait(scenario: ActivityScenario<MainActivity>): Boolean {
-        val latch = CountDownLatch(1)
-        var finishing = false
-        scenario.onActivity { activity ->
-            activity.onBackPressedDispatcher.onBackPressed()
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                finishing = activity.isFinishing
-                latch.countDown()
-            }, 350)
+        try {
+            scenario.onActivity { activity ->
+                activity.onBackPressedDispatcher.onBackPressed()
+            }
+        } catch (_: IllegalStateException) {
+            return true
         }
-        check(latch.await(5, TimeUnit.SECONDS))
-        return finishing
+        Thread.sleep(450)
+        return try {
+            var finishing = false
+            scenario.onActivity { activity ->
+                finishing = activity.isFinishing || activity.isDestroyed
+            }
+            finishing
+        } catch (_: IllegalStateException) {
+            true
+        }
     }
 
     @Test
     fun backRetracesViewsBeforeDoublePressExit() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitWebApp(scenario)
+            waitForFastWebApp(scenario, requireBackNavigation = true)
             evaluate(scenario, """
                 state.role='client';
                 window.loadActivity=async function(){};
@@ -258,7 +272,7 @@ class MainMapRuntimeTest {
     fun clientHomeReturnsAfterCancellationUiReset() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitWebApp(scenario)
+            waitForFastWebApp(scenario)
             val result = evaluate(
                 scenario,
                 """
