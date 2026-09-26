@@ -45,6 +45,7 @@ jobs:
           node tests/address-search-regression.mjs
           node tests/autofill-regression.mjs
           node tests/back-navigation-regression.mjs
+          node tests/booking-regression.mjs
           grep -q 'android:label="FAST N°1"' app/src/main/AndroidManifest.xml
           grep -q 'WebViewAssetLoader' app/src/main/java/cg/fast/n1/MainActivity.kt
           grep -R -q '/v1/auth/password' app/src/main/assets/*.js

@@ -107,6 +107,7 @@ jobs:
           node tests/address-search-regression.mjs
           node tests/autofill-regression.mjs
           node tests/back-navigation-regression.mjs
+          node tests/booking-regression.mjs
           grep -q 'com.google.android.geo.API_KEY' app/src/main/AndroidManifest.xml
           grep -q 'FAST_NATIVE_MAP' app/src/main/java/cg/fast/n1/DriverMapActivity.kt
           test -n "$FAST_GOOGLE_MAPS_API_KEY"
