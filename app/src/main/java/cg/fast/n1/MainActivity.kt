@@ -557,6 +557,7 @@ class MainActivity : AppCompatActivity() {
         fun enableMainMap(lat: Double, lng: Double, zoom: Double) {
             if (!BuildConfig.MAPS_NATIVE_CONFIGURED) return
             runOnUiThread {
+                if (mainMapEnabled) return@runOnUiThread
                 mainMapEnabled = true
                 mainMapLoaded = false
                 mainMapView.visibility = View.VISIBLE

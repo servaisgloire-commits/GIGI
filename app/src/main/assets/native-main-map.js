@@ -201,6 +201,10 @@
   }
 
   function initNativeMainMap() {
+    if (state.map?.provider === 'google-native-main') {
+      syncBoundary();
+      return;
+    }
     installTransparency();
     const center = centerPoint();
     call('enableMainMap', center.lat, center.lng, 15);

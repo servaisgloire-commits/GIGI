@@ -260,7 +260,14 @@
     } catch {}
   };
 
+  let bookingPending = false;
   window.book = async function bookSingleFast(){
+    if (bookingPending) return;
+    if (state.ride?.id && !['completed','cancelled'].includes(state.ride.status)) {
+      showClientRide();
+      return;
+    }
+    bookingPending = true;
     try {
       $('bookBtn').disabled = true;
       await ensurePlace('pickup');
@@ -279,6 +286,8 @@
     } catch (error) {
       toast(error.message);
       $('bookBtn').disabled = false;
+    } finally {
+      bookingPending = false;
     }
   };
 
