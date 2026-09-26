@@ -17,8 +17,9 @@ import java.util.concurrent.TimeUnit
 class MainMapRuntimeTest {
     @Test
     fun loginFormExposesPasswordAutofillMetadata() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(1500)
+            awaitWebApp(scenario)
             val result = evaluate(scenario, """
                 (function(){
                   var username=document.getElementById('loginEmail');
@@ -76,11 +77,28 @@ class MainMapRuntimeTest {
         return result
     }
 
+    private fun awaitWebApp(scenario: ActivityScenario<MainActivity>) {
+        var diagnostic = "null"
+        val deadline = android.os.SystemClock.elapsedRealtime() + 30000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            diagnostic = evaluate(scenario, """
+                document.readyState === 'complete' &&
+                typeof window.FAST_HANDLE_BACK === 'function' &&
+                typeof window.initMap === 'function' &&
+                !!document.getElementById('loginPassword') &&
+                !!document.getElementById('signupPassword')
+            """)
+            if (diagnostic == "true") return
+            Thread.sleep(200)
+        }
+        throw AssertionError("FAST WebView did not finish loading within 30 seconds: $diagnostic")
+    }
+
     @Test
     fun mainMapIsNativeGoogleVisibleAndGestureReady() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(3000)
+            awaitWebApp(scenario)
             val start = evaluate(
                 scenario,
                 """
@@ -147,7 +165,7 @@ class MainMapRuntimeTest {
     fun driverAvailabilityCardIsOutsideNativeMapTouchZone() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(2500)
+            awaitWebApp(scenario)
             val diagnostic = evaluate(
                 scenario,
                 """
@@ -193,8 +211,9 @@ class MainMapRuntimeTest {
 
     @Test
     fun backRequiresTwoPressesToExit() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            awaitWebApp(scenario)
             val afterFirstPress = pressBackAndWait(scenario)
             assertFalse("FAST must stay open after the first Back press", afterFirstPress)
             val afterSecondPress = pressBackAndWait(scenario)
@@ -218,8 +237,9 @@ class MainMapRuntimeTest {
 
     @Test
     fun backRetracesViewsBeforeDoublePressExit() {
+        grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(1500)
+            awaitWebApp(scenario)
             evaluate(scenario, """
                 state.role='client';
                 window.loadActivity=async function(){};
@@ -238,7 +258,7 @@ class MainMapRuntimeTest {
     fun clientHomeReturnsAfterCancellationUiReset() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            Thread.sleep(2500)
+            awaitWebApp(scenario)
             val result = evaluate(
                 scenario,
                 """

@@ -212,6 +212,34 @@ jobs:
             adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
             adb shell pidof cg.fast.n1.mobile
 
+      - name: Verify clean install on Android 29 (2020 devices)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
+            adb install "$FAST_APK_NAME"
+            adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
+            adb shell pidof cg.fast.n1.mobile
+
+      - name: Verify clean install on Android 30 (2020 devices)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb uninstall cg.fast.n1.mobile >/dev/null 2>&1 || true
+            adb install "$FAST_APK_NAME"
+            adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
+            adb shell pidof cg.fast.n1.mobile
+
       - name: Verify native driver map on Android 35 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -254,7 +282,17 @@ jobs:
             adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
             adb shell dumpsys activity activities | grep 'cg.fast.n1.mobile'
             adb logcat -c
-            gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.MainMapRuntimeTest
+            gradle :app:connectedVerificationAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=cg.fast.n1.MainMapRuntimeTest || { adb logcat -d -s chromium AndroidRuntime; exit 1; }
+
+      - name: Preserve Android runtime test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-android-runtime-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: ignore
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
