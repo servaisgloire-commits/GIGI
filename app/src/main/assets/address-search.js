@@ -77,6 +77,41 @@
   };
 
   window.ensurePlace = async function ensureCurrentAddress(kind) {
-    if (validPoint(state[kind]))…465 tokens truncated…eneration[kind];clearTimeout(timers[kind]);}
+    if (validPoint(state[kind])) return state[kind];
+    if (selections.has(kind)) {
+      const place = await selections.get(kind);
+      if (place) return place;
+    }
+    const input=$(kind), q=clean(input.value);
+    if (kind==='pickup' && validPoint(state.coords) && (!q || q==='Ma position actuelle')) {
+      return state.pickup={...state.coords,label:'Ma position actuelle'};
+    }
+    if(q.length<2) throw new Error(kind==='pickup'?'Indiquez votre départ.':'Indiquez votre destination.');
+    let items;
+    try { items=await lookup(q); } catch(error) { throw new Error(errorMessage(error)); }
+    if(clean(input.value)!==q) throw new Error('L’adresse a changé. Confirmez votre nouvelle adresse.');
+    if(!items.length) throw new Error('Aucune adresse trouvée. Précisez la ville ou le code postal.');
+    const place=await detailsFor(items[0]);
+    if(clean(input.value)!==q) throw new Error('L’adresse a changé. Confirmez votre nouvelle adresse.');
+    if(!validPoint(place)) throw new Error('Les coordonnées de cette adresse sont indisponibles. Choisissez une autre suggestion.');
+    state[kind]=place; input.value=place.label; placeMarker(kind,place); return place;
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    for(const kind of ['pickup','destination']) {
+      const input=$(kind), target=$(`${kind}Suggestions`);
+      input.oninput=()=>{
+        ++generation[kind]; state[kind]=null; target.innerHTML='';
+        clearTimeout(timers[kind]);
+        timers[kind]=setTimeout(()=>window.suggest(kind,input,target),280);
+      };
+      $(`clear${kind[0].toUpperCase()}${kind.slice(1)}`)?.addEventListener('click',()=>{
+        ++generation[kind]; clearTimeout(timers[kind]);
+      });
+    }
+  });
+  document.addEventListener('fast:dismiss-address-search',()=>{
+    for(const kind of ['pickup','destination']){++generation[kind];clearTimeout(timers[kind]);}
   });
 })();
+
