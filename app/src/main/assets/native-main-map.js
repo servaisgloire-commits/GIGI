@@ -110,6 +110,9 @@
 
   function syncBoundary() {
     const viewport = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    const overlayOpen = [...document.querySelectorAll('.overlay-view')].some(el =>
+      !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none');
+    call('setMainMapInteractionBlocked', overlayOpen || !document.getElementById('app')?.classList.contains('active'));
 
     const topControls = ['.floating-header','.driver-online-card','#vehicleAlert']
       .map(selector => document.querySelector(selector))

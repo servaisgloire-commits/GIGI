@@ -49,4 +49,20 @@ const paris={id:'paris',label:'10 Rue de Rivoli, Paris, France',lat:48.855,lng:2
   const {context:c,elements:e}=setup(async()=>({items:[]}));e.destination.value='Missing place';
   await assert.rejects(c.ensurePlace('destination'),/ville ou le code postal/);
 }
-console.log('Address search regression: 6 cases passed (France, stale responses, cached results, pending selection, edited text, network/empty results).');
+{
+  const urls=[];
+  const {context:c,elements:e}=setup(async url=>{urls.push(url);return {items:url.includes('&lat=')?[]:[paris]};});
+  e.destination.value='4 allées des';
+  await c.suggest('destination',e.destination,e.destinationSuggestions);
+  assert.match(e.destinationSuggestions.innerHTML,/Rivoli/);
+  assert.equal(urls.length,2);
+  assert.doesNotMatch(urls[1],/lat=|lng=/,'Empty biased search must retry worldwide');
+  assert.equal((await c.ensurePlace('destination')).id,'paris');
+  assert.equal(urls.length,2,'Successful fallback must be reused');
+}
+{
+  const {context:c,elements:e}=setup(async()=>({}));
+  e.destination.value='Paris';await c.suggest('destination',e.destination,e.destinationSuggestions);
+  assert.match(e.destinationSuggestions.textContent,/indisponible/,'Malformed response is not an address with no matches');
+}
+console.log('Address search regression: 8 cases passed, including worldwide retry and malformed provider responses.');

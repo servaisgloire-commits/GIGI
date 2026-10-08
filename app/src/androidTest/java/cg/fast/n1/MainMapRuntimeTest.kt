@@ -16,6 +16,73 @@ import java.util.concurrent.TimeUnit
 @RunWith(AndroidJUnit4::class)
 class MainMapRuntimeTest {
     @Test
+    fun overlayCloseButtonsReceiveRealTouchAboveNativeMap() {
+        grantRuntimePermissions()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForFastWebApp(scenario, requireBackNavigation = true)
+            evaluate(scenario, "state.role='client'; window.loadActivity=async function(){}; window.loadVehicle=async function(){}; showApp();")
+            for (name in listOf("profile", "activity", "vehicle")) {
+                evaluate(scenario, "switchView('$name')")
+                Thread.sleep(500)
+                val position = org.json.JSONArray(evaluate(scenario, """
+                    (function(){var r=document.querySelector('#${name}View .closeView').getBoundingClientRect();
+                    return [(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight];})()
+                """))
+                var x = 0f
+                var y = 0f
+                scenario.onActivity { activity ->
+                    val web = requireNotNull(findWebView(activity.window.decorView.rootView))
+                    val origin = IntArray(2)
+                    web.getLocationOnScreen(origin)
+                    x = origin[0] + (position.getDouble(0) * web.width).toFloat()
+                    y = origin[1] + (position.getDouble(1) * web.height).toFloat()
+                }
+                val now = android.os.SystemClock.uptimeMillis()
+                for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                    val event = android.view.MotionEvent.obtain(now, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+                    InstrumentationRegistry.getInstrumentation().sendPointerSync(event)
+                    event.recycle()
+                }
+                Thread.sleep(500)
+                assertTrue("Close button did not close $name", evaluate(scenario, "document.getElementById('${name}View').classList.contains('hidden')") == "true")
+                scenario.onActivity { activity ->
+                    val field = MainActivity::class.java.getDeclaredField("mainMapInteractionBlocked")
+                    field.isAccessible = true
+                    assertFalse("Map gestures must resume after closing $name", field.getBoolean(activity))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun liveAddressSearchReturnsSelectableCoordinates() {
+        grantRuntimePermissions()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForFastWebApp(scenario, requireBackNavigation = true)
+            evaluate(scenario, """
+                window.fastAddressTest='pending';
+                state.coords={lat:48.8566,lng:2.3522}; state.destination=null;
+                document.getElementById('pickup').value='4 allées des';
+                suggest('pickup',document.getElementById('pickup'),document.getElementById('pickupSuggestions'))
+                  .then(async function(){
+                    var buttons=document.querySelectorAll('#pickupSuggestions button');
+                    if(!buttons.length) throw new Error(document.getElementById('pickupSuggestions').textContent);
+                    await buttons[Math.floor(Math.random()*buttons.length)].onclick();
+                    var place=state.pickup;
+                    window.fastAddressTest=place&&Number.isFinite(place.lat)&&Number.isFinite(place.lng)&&document.getElementById('pickup').value===place.label?'ok':'invalid selection';
+                  }).catch(function(e){window.fastAddressTest=String(e.message);});
+            """)
+            var result = "\"pending\""
+            val deadline = android.os.SystemClock.elapsedRealtime() + 30000
+            while (result == "\"pending\"" && android.os.SystemClock.elapsedRealtime() < deadline) {
+                Thread.sleep(500)
+                result = evaluate(scenario, "window.fastAddressTest")
+            }
+            assertTrue("Live address lookup failed: $result", result == "\"ok\"")
+        }
+    }
+
+    @Test
     fun loginFormExposesPasswordAutofillMetadata() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
