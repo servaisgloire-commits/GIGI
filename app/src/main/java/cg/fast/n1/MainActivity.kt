@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var mainMapEnabled = false
     private var mainMapLoaded = false
     private var forwardingMapGesture = false
+    private var mainMapInteractionBlocked = false
     private var mainMapTouchBoundaryRatio = 0.58f
     private var mainMapTouchTopBoundaryRatio = 0.11f
     private var lastBackPressAt = 0L
@@ -150,6 +151,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.setOnTouchListener { _, event ->
+            if (mainMapInteractionBlocked) {
+                forwardingMapGesture = false
+                return@setOnTouchListener false
+            }
             if (!mainMapEnabled || mainMapView.visibility != View.VISIBLE) return@setOnTouchListener false
             val boundary = webView.height * mainMapTouchBoundaryRatio
             val headerGuard = dp(88).toFloat()
@@ -552,6 +557,14 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun nativeMainMapLoaded(): Boolean = mainMapLoaded
+
+        @JavascriptInterface
+        fun setMainMapInteractionBlocked(blocked: Boolean) {
+            runOnUiThread {
+                mainMapInteractionBlocked = blocked
+                if (blocked) forwardingMapGesture = false
+            }
+        }
 
         @JavascriptInterface
         fun enableMainMap(lat: Double, lng: Double, zoom: Double) {

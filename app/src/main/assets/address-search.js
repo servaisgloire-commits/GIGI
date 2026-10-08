@@ -22,9 +22,17 @@
     const key = q + bias;
     const previous = searches.get(key);
     if (previous && Date.now() - previous.time < 30000) return previous.promise;
+    const readItems = response => {
+      if (!Array.isArray(response?.items)) throw new TypeError('Invalid address response');
+      return response.items.filter(item => clean(item.label) && (item.id || validPoint(item)));
+    };
     const promise = api(`/v1/places/autocomplete?q=${encodeURIComponent(q)}${bias}`, {auth:false})
-      .then(response => {
-        const items = (response.items || []).filter(item => clean(item.label) && (item.id || validPoint(item)));
+      .then(async response => {
+        let items = readItems(response);
+        // GPS is a preference, never a restriction on where a passenger may search.
+        if (!items.length && bias) {
+          items = readItems(await api(`/v1/places/autocomplete?q=${encodeURIComponent(q)}`, {auth:false}));
+        }
         if (!items.length) searches.delete(key);
         return items;
       }).catch(error => { searches.delete(key); throw error; });
@@ -106,3 +114,4 @@
     for(const kind of ['pickup','destination']){++generation[kind];clearTimeout(timers[kind]);}
   });
 })();
+
