@@ -56,11 +56,16 @@
       target.innerHTML = items.slice(0,5).map((item,i) => `<button type="button" data-i="${i}">📍 ${escapeHtml(item.label)}</button>`).join('');
       [...target.children].forEach((button,i) => {
         let chosen=false;
-        const choose = event => {
+        const choose = async event => {
           event?.preventDefault?.(); event?.stopPropagation?.();
           if(chosen)return;
           chosen=true;
-          window.selectPlace(kind,items[i],input,target);
+          try{
+            await window.selectPlace(kind,items[i],input,target);
+          }catch(error){
+            chosen=false;
+            throw error;
+          }
         };
         button.addEventListener('pointerup', choose);
         button.onclick=choose;
