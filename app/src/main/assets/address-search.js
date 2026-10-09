@@ -5,8 +5,15 @@
   const generation = {pickup:0, destination:0};
   const timers = {};
   const clean = value => String(value || '').trim().replace(/\s+/g, ' ');
+  // Address controls always take priority over the native Google map, including
+  // while the keyboard is open and before/after suggestions are rendered.
+  const addressUiActive = () => ['pickup','destination'].some(kind => {
+    const input = document.getElementById?.(kind);
+    const suggestions = document.getElementById?.(`${kind}Suggestions`);
+    return document.activeElement === input || !!String(suggestions?.textContent || '').trim();
+  });
   const blockNativeMap = blocked => {
-    try { window.FastNative?.setMainMapInteractionBlocked?.(!!blocked); } catch {}
+    try { window.FastNative?.setMainMapInteractionBlocked?.(!!blocked || addressUiActive()); } catch {}
   };
   const validPoint = value => value?.lat != null && value?.lng != null &&
     Number.isFinite(Number(value.lat)) && Number.isFinite(Number(value.lng)) &&
@@ -119,8 +126,20 @@
   document.addEventListener('DOMContentLoaded', () => {
     for(const kind of ['pickup','destination']) {
       const input=$(kind), target=$(`${kind}Suggestions`);
-      target.addEventListener?.('pointerdown',event=>event.stopPropagation());
-      target.addEventListener?.('touchstart',event=>event.stopPropagation(),{passive:true});
+      // Prevent touches on address results from falling through to the native map.
+      target.addEventListener?.('pointerdown',event=>{
+        blockNativeMap(true);
+        event.stopPropagation();
+        if(event.target?.closest?.('button')) event.preventDefault();
+      });
+      target.addEventListener?.('pointerup',event=>event.stopPropagation());
+      target.addEventListener?.('touchstart',event=>{
+        blockNativeMap(true);
+        event.stopPropagation();
+      },{passive:true});
+      target.addEventListener?.('click',event=>event.stopPropagation());
+      input.addEventListener?.('focus',()=>blockNativeMap(true));
+      input.addEventListener?.('blur',()=>blockNativeMap(false));
       input.oninput=()=>{
         ++generation[kind]; state[kind]=null; target.innerHTML='';
         clearTimeout(timers[kind]);
