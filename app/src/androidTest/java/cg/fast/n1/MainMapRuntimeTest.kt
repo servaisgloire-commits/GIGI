@@ -121,7 +121,8 @@ class MainMapRuntimeTest {
             """)
             assertTrue(
                 "Native session persistence diagnostic: $result",
-                result.contains("\"present\":true") && result.contains("\"cleared\":true")
+                (result.contains("\"present\":true") || result.contains("\\\"present\\\":true")) &&
+                    (result.contains("\"cleared\":true") || result.contains("\\\"cleared\\\":true"))
             )
         }
     }
