@@ -6,6 +6,7 @@ import android.webkit.WebView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.lifecycle.Lifecycle
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -320,22 +321,25 @@ class MainMapRuntimeTest {
     }
 
     private fun pressBackAndWait(scenario: ActivityScenario<MainActivity>): Boolean {
+        if (scenario.state == Lifecycle.State.DESTROYED) return true
         try {
             scenario.onActivity { activity ->
                 activity.onBackPressedDispatcher.onBackPressed()
             }
-        } catch (_: IllegalStateException) {
-            return true
+        } catch (error: RuntimeException) {
+            if (scenario.state == Lifecycle.State.DESTROYED) return true
+            throw error
         }
         Thread.sleep(450)
+        if (scenario.state == Lifecycle.State.DESTROYED) return true
         return try {
             var finishing = false
             scenario.onActivity { activity ->
                 finishing = activity.isFinishing || activity.isDestroyed
             }
             finishing
-        } catch (_: IllegalStateException) {
-            true
+        } catch (error: RuntimeException) {
+            if (scenario.state == Lifecycle.State.DESTROYED) true else throw error
         }
     }
 
