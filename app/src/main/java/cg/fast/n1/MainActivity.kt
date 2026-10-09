@@ -427,7 +427,7 @@ class MainActivity : AppCompatActivity() {
         getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
             .edit()
             .putString(SESSION_PAYLOAD_KEY, payload)
-            .apply()
+            .commit()
     }
 
     private fun readNativeSession(): String =
@@ -438,7 +438,7 @@ class MainActivity : AppCompatActivity() {
         getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
             .edit()
             .remove(SESSION_PAYLOAD_KEY)
-            .apply()
+            .commit()
     }
 
     private fun ensureRideOfferChannel() {
