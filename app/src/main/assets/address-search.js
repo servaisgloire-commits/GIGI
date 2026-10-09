@@ -52,15 +52,21 @@
     try {
       const items = await lookup(q);
       if (revision !== generation[kind] || clean(input.value) !== q) return;
-      if (!items.length) { target.textContent='Aucune adresse trouvée. Précisez la ville ou le code postal.'; return; }
+      if (!items.length) { target.textContent='Aucune adresse trouvée. Précisez la ville ou le code postal.'; blockNativeMap(false); return; }
       target.innerHTML = items.slice(0,5).map((item,i) => `<button type="button" data-i="${i}">📍 ${escapeHtml(item.label)}</button>`).join('');
       [...target.children].forEach((button,i) => {
-        const choose = event => { event?.preventDefault?.(); event?.stopPropagation?.(); window.selectPlace(kind,items[i],input,target); };
+        let chosen=false;
+        const choose = event => {
+          event?.preventDefault?.(); event?.stopPropagation?.();
+          if(chosen)return;
+          chosen=true;
+          window.selectPlace(kind,items[i],input,target);
+        };
         button.addEventListener('pointerup', choose);
         button.addEventListener('click', choose);
       });
     } catch (error) {
-      if (revision === generation[kind] && clean(input.value) === q) target.textContent=errorMessage(error);
+      if (revision === generation[kind] && clean(input.value) === q) { target.textContent=errorMessage(error); blockNativeMap(false); }
     }
   };
 
