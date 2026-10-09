@@ -455,12 +455,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRideOfferNotification(offerId: String, title: String, message: String) {
-        val offerPrefs = getSharedPreferences(DRIVER_OFFER_PREFS, MODE_PRIVATE)
-        if (offerPrefs.getString(DRIVER_LAST_OFFER_KEY, "") == offerId) return
-        offerPrefs.edit().putString(DRIVER_LAST_OFFER_KEY, offerId).apply()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
+        val offerPrefs = getSharedPreferences(DRIVER_OFFER_PREFS, MODE_PRIVATE)
+        if (offerPrefs.getString(DRIVER_LAST_OFFER_KEY, "") == offerId) return
+        offerPrefs.edit().putString(DRIVER_LAST_OFFER_KEY, offerId).apply()
 
         val notificationId = (offerId.hashCode() and Int.MAX_VALUE).takeIf { it != 0 } ?: 2001
         val openApp = Intent(this, MainActivity::class.java).apply {
