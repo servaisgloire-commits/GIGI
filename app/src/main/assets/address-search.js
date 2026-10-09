@@ -63,7 +63,7 @@
           window.selectPlace(kind,items[i],input,target);
         };
         button.addEventListener('pointerup', choose);
-        button.addEventListener('click', choose);
+        button.onclick=choose;
       });
     } catch (error) {
       if (revision === generation[kind] && clean(input.value) === q) { target.textContent=errorMessage(error); blockNativeMap(false); }
