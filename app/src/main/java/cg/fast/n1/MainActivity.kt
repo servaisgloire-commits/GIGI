@@ -423,6 +423,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
+    private fun persistNativeSession(payload: String) {
+        getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
+            .edit()
+            .putString(SESSION_PAYLOAD_KEY, payload)
+            .apply()
+    }
+
+    private fun readNativeSession(): String =
+        getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
+            .getString(SESSION_PAYLOAD_KEY, "") ?: ""
+
+    private fun clearNativeSession() {
+        getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
+            .edit()
+            .remove(SESSION_PAYLOAD_KEY)
+            .apply()
+    }
+
     private fun ensureRideOfferChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
@@ -437,6 +455,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRideOfferNotification(offerId: String, title: String, message: String) {
+        val offerPrefs = getSharedPreferences(DRIVER_OFFER_PREFS, MODE_PRIVATE)
+        if (offerPrefs.getString(DRIVER_LAST_OFFER_KEY, "") == offerId) return
+        offerPrefs.edit().putString(DRIVER_LAST_OFFER_KEY, offerId).apply()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -538,6 +559,31 @@ class MainActivity : AppCompatActivity() {
                     getSystemService(AutofillManager::class.java)?.commit()
                 }
             }
+        }
+
+        @JavascriptInterface
+        fun persistSession(payload: String) {
+            if (payload.isBlank() || payload.length > 200_000) return
+            persistNativeSession(payload)
+        }
+
+        @JavascriptInterface
+        fun loadPersistentSession(): String = readNativeSession()
+
+        @JavascriptInterface
+        fun clearPersistentSession() {
+            clearNativeSession()
+        }
+
+        @JavascriptInterface
+        fun startDriverOfferWatch(sessionJson: String) {
+            if (sessionJson.isBlank() || sessionJson.length > 200_000) return
+            DriverOfferService.start(this@MainActivity, sessionJson)
+        }
+
+        @JavascriptInterface
+        fun stopDriverOfferWatch() {
+            DriverOfferService.stop(this@MainActivity)
         }
 
         @JavascriptInterface
@@ -715,6 +761,10 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val RIDE_OFFER_CHANNEL_ID = "fast_ride_offers"
+        private const val DRIVER_OFFER_PREFS = "fast.driver.offers"
+        private const val DRIVER_LAST_OFFER_KEY = "last_offer_id"
+        private const val SESSION_PREFS = "fast.session.native"
+        private const val SESSION_PAYLOAD_KEY = "payload"
         private const val MAIN_MAP_TAG = "FAST_NATIVE_MAIN"
         private const val BACK_EXIT_WINDOW_MS = 2_000L
     }
