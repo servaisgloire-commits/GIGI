@@ -21,10 +21,13 @@ assert.ok(!app.includes("catch(e){saveSession(null);showAuth();toast('Session ex
 assert.ok(app.includes('syncBackgroundOfferWatch(true)'), 'Driver online mode must start background offer monitoring');
 assert.ok(app.includes('syncBackgroundOfferWatch(false)'), 'Driver offline/logout must stop background offer monitoring');
 
-assert.ok(address.includes('setMainMapInteractionBlocked?.(!!blocked)'), 'Address menu must block native map gesture interception');
+assert.ok(address.includes('setMainMapInteractionBlocked?.(!!blocked || addressUiActive())'), 'Address controls must block native map gesture interception');
+assert.ok(address.includes("input.addEventListener?.('focus',()=>blockNativeMap(true))"), 'Focused address fields must block native map gestures');
+assert.ok(address.includes("target.addEventListener?.('pointerdown',event=>{"), 'Address suggestion touch starts must stay in the WebView');
 assert.ok(address.includes("button.addEventListener('pointerup', choose)"), 'Address suggestions must support touch pointer selection');
 assert.ok(address.includes('if(chosen)return'), 'Address touch selection must be single-fire');
 assert.ok(nativeMain.includes('addressMenuOpen'), 'Native map must remain blocked while address dropdown is open');
+assert.ok(nativeMain.includes('addressInputFocused'), 'Native map must stay blocked while an address field has focus');
 assert.ok(css.includes('.suggestions{position:relative;z-index:950;pointer-events:auto;touch-action:manipulation}'), 'Address dropdown must remain above map and touchable');
 
 assert.ok(simplified.includes('id="openGoogleMapsNav"'), 'Driver must receive an explicit Google Maps option');
