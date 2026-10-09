@@ -114,8 +114,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     for(const kind of ['pickup','destination']) {
       const input=$(kind), target=$(`${kind}Suggestions`);
-      target.addEventListener('pointerdown',event=>event.stopPropagation());
-      target.addEventListener('touchstart',event=>event.stopPropagation(),{passive:true});
+      target.addEventListener?.('pointerdown',event=>event.stopPropagation());
+      target.addEventListener?.('touchstart',event=>event.stopPropagation(),{passive:true});
       input.oninput=()=>{
         ++generation[kind]; state[kind]=null; target.innerHTML='';
         clearTimeout(timers[kind]);
