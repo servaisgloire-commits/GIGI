@@ -23,25 +23,46 @@ class MainMapRuntimeTest {
             evaluate(scenario, "state.role='client'; window.loadActivity=async function(){}; window.loadVehicle=async function(){}; showApp();")
             for (name in listOf("profile", "activity", "vehicle")) {
                 evaluate(scenario, "switchView('$name')")
-                Thread.sleep(500)
+                val deadline = android.os.SystemClock.elapsedRealtime() + 10000
+                var ready = false
+                while (!ready && android.os.SystemClock.elapsedRealtime() < deadline) {
+                    scenario.onActivity { activity ->
+                        val web = requireNotNull(findWebView(activity.window.decorView.rootView))
+                        val field = MainActivity::class.java.getDeclaredField("mainMapInteractionBlocked")
+                        field.isAccessible = true
+                        ready = activity.hasWindowFocus() && web.isShown && field.getBoolean(activity)
+                    }
+                    if (!ready) Thread.sleep(100)
+                }
+                assertTrue("FAST overlay not ready for touch: $name", ready)
+                assertTrue("Close button not visible or covered: $name", evaluate(scenario, """
+                    (function(){var b=document.querySelector('#${name}View .closeView'),r=b.getBoundingClientRect();
+                    var hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+                    return r.width>0&&r.height>0&&!!hit&&hit.closest('.closeView')===b;})()
+                """) == "true")
                 val position = org.json.JSONArray(evaluate(scenario, """
                     (function(){var r=document.querySelector('#${name}View .closeView').getBoundingClientRect();
                     return [(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight];})()
                 """))
-                var x = 0f
-                var y = 0f
+                assertTrue("Close button outside WebView: $name $position", position.getDouble(0)>0 && position.getDouble(0)<1 && position.getDouble(1)>0 && position.getDouble(1)<1)
                 scenario.onActivity { activity ->
                     val web = requireNotNull(findWebView(activity.window.decorView.rootView))
-                    val origin = IntArray(2)
-                    web.getLocationOnScreen(origin)
-                    x = origin[0] + (position.getDouble(0) * web.width).toFloat()
-                    y = origin[1] + (position.getDouble(1) * web.height).toFloat()
-                }
-                val now = android.os.SystemClock.uptimeMillis()
-                for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
-                    val event = android.view.MotionEvent.obtain(now, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
-                    InstrumentationRegistry.getInstrumentation().sendPointerSync(event)
-                    event.recycle()
+                    for (fieldName in listOf("mainMapEnabled", "mainMapInteractionBlocked")) {
+                        val field = MainActivity::class.java.getDeclaredField(fieldName)
+                        field.isAccessible = true
+                        assertTrue("Expected $fieldName before closing $name", field.getBoolean(activity))
+                    }
+                    val x = (position.getDouble(0) * web.width).toFloat()
+                    val y = (position.getDouble(1) * web.height).toFloat()
+                    val now = android.os.SystemClock.uptimeMillis()
+                    // Exercise the real OnTouchListener and DOM hit testing in local view coordinates.
+                    // System-window injection can target a different UID during emulator transitions.
+                    for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                        val event = android.view.MotionEvent.obtain(now, now + if (action == android.view.MotionEvent.ACTION_UP) 50 else 0, action, x, y, 0)
+                        event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                        web.dispatchTouchEvent(event)
+                        event.recycle()
+                    }
                 }
                 Thread.sleep(500)
                 assertTrue("Close button did not close $name", evaluate(scenario, "document.getElementById('${name}View').classList.contains('hidden')") == "true")
@@ -125,9 +146,11 @@ class MainMapRuntimeTest {
             "pm grant cg.fast.n1.mobile android.permission.ACCESS_FINE_LOCATION",
             "pm grant cg.fast.n1.mobile android.permission.POST_NOTIFICATIONS",
         ).forEach { command ->
-            automation.executeShellCommand(command).close()
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use { it.readBytes() }
+            val permission = command.substringAfterLast(' ')
+            assertTrue("Permission not granted before launching FAST: $permission",
+                InstrumentationRegistry.getInstrumentation().targetContext.checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED)
         }
-        Thread.sleep(750)
     }
 
     private fun evaluate(scenario: ActivityScenario<MainActivity>, script: String, waitSeconds: Long = 6): String {
