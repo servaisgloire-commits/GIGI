@@ -66,6 +66,16 @@ class MainActivity : AppCompatActivity() {
     private var mainDriverAnimator: ValueAnimator? = null
     private val mainNearbyMarkers = mutableListOf<Marker>()
     private var mainRoutePolyline: Polyline? = null
+    // A route may be selected in the WebView before GoogleMap is ready.
+    // Retain only map presentation state so it can be rendered when the map initializes.
+    private data class MainMarkerState(
+        val hasPickup: Boolean, val pickupLat: Double, val pickupLng: Double,
+        val hasDestination: Boolean, val destinationLat: Double, val destinationLng: Double,
+    )
+    private var mainMarkerState: MainMarkerState? = null
+    private var mainRouteEncoded: String? = null
+    private var mainRouteRendered: String? = null
+    private var mainRequestedBounds: LatLngBounds? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
 
     private val picker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -234,6 +244,13 @@ class MainActivity : AppCompatActivity() {
         }
         enableMainLocationLayer()
         updateMainMapPadding()
+        // Replay early address and itinerary updates instead of dropping them.
+        mainRouteRendered = null
+        mainMarkerState?.let {
+            updateMainMarkers(it.hasPickup, it.pickupLat, it.pickupLng,
+                it.hasDestination, it.destinationLat, it.destinationLng)
+        }
+        mainRouteEncoded?.let { updateMainRoute(it) }
         armMainMapLoadedCallback()
     }
 
@@ -242,6 +259,10 @@ class MainActivity : AppCompatActivity() {
         map.setOnMapLoadedCallback {
             mainMapLoaded = true
             Log.i(MAIN_MAP_TAG, "map_loaded")
+            // The map now has dimensions; retry any itinerary framing requested early.
+            mainRequestedBounds?.let { bounds ->
+                runCatching { map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(72))) }
+            }
         }
     }
 
@@ -270,15 +291,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun fitMainBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double) {
         if (!listOf(minLat, minLng, maxLat, maxLng).all { it.isFinite() }) return
-        val map = mainGoogleMap ?: return
         val southWest = LatLng(kotlin.math.min(minLat, maxLat), kotlin.math.min(minLng, maxLng))
         val northEast = LatLng(kotlin.math.max(minLat, maxLat), kotlin.math.max(minLng, maxLng))
-        if (southWest == northEast) {
+        val builder = LatLngBounds.builder().include(southWest).include(northEast)
+        // Include road bends; fitting only the endpoints can clip the actual itinerary.
+        mainRoutePolyline?.points?.forEach { builder.include(it) }
+        val bounds = builder.build()
+        mainRequestedBounds = bounds
+        val map = mainGoogleMap ?: return
+        if (southWest == northEast && (mainRoutePolyline?.points?.size ?: 0) < 2) {
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(southWest, 15f))
             return
         }
         runCatching {
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds(southWest, northEast), dp(72)))
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(72)))
         }
     }
 
@@ -290,6 +316,8 @@ class MainActivity : AppCompatActivity() {
         destinationLat: Double,
         destinationLng: Double,
     ) {
+        mainMarkerState = MainMarkerState(hasPickup, pickupLat, pickupLng,
+            hasDestination, destinationLat, destinationLng)
         val map = mainGoogleMap ?: return
         mainPickupMarker?.remove()
         mainDestinationMarker?.remove()
@@ -314,9 +342,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateMainRoute(encoded: String) {
+        mainRouteEncoded = encoded
         val map = mainGoogleMap ?: return
+        // Avoid redrawing the same route at each chauffeur location update.
+        if (mainRouteRendered == encoded) return
         mainRoutePolyline?.remove()
         mainRoutePolyline = null
+        mainRouteRendered = encoded
         val points = decodePolyline(encoded)
         if (points.size < 2) return
         mainRoutePolyline = map.addPolyline(
@@ -324,6 +356,7 @@ class MainActivity : AppCompatActivity() {
                 .addAll(points)
                 .color(Color.rgb(11, 87, 208))
                 .width(dp(7).toFloat())
+                .zIndex(15f)
                 .geodesic(false)
         )
     }
