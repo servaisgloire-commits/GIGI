@@ -14,6 +14,7 @@ const driverIdentity=fs.readFileSync('app/src/main/assets/driver-identity.js','u
 const driverIdentityCss=fs.readFileSync('app/src/main/assets/driver-identity.css','utf8');
 const native=fs.readFileSync('app/src/main/java/cg/fast/n1/MainActivity.kt','utf8');
 const driverMapActivity=fs.readFileSync('app/src/main/java/cg/fast/n1/DriverMapActivity.kt','utf8');
+const driverOfferService=fs.readFileSync('app/src/main/java/cg/fast/n1/DriverOfferService.kt','utf8');
 const backendVehicle=fs.readFileSync('backend/app/vehicle_main.py','utf8');
 const gradle=fs.readFileSync('app/build.gradle.kts','utf8');
 const manifest=fs.readFileSync('app/src/main/AndroidManifest.xml','utf8');
@@ -33,7 +34,7 @@ function requireText(text,needle,label){
 // fast-simplified.js replaces quoteAll/updateQuoteUI before user interaction.
 const retiredCategoryIds=new Set(['priceStandard','priceComfort','priceXl']);
 const dynamicIds=new Set([
-  'driverNavigationPanel','driverNavigationEta','driverNavigationDistance','expandDriverGps',
+  'driverNavigationPanel','driverNavigationEta','driverNavigationDistance','expandDriverGps','openGoogleMapsNav',
   'driverPhotoField','driverPhoto','driverPhotoPreview','driverIdentityPhotos','driverVehiclePhoto'
 ]);
 const ids=[...all.matchAll(/\$\('([^']+)'\)/g)].map(m=>m[1]);
@@ -64,7 +65,8 @@ requireText(pinMigration,'require_verified_pin_before_start','database PIN start
 requireText(pinMigration,'pin_verified_at is not null','verified PIN required before start');
 requireText(simplified,'/navigation','driver navigation polling');
 requireText(simplified,'Temps restant','driver remaining time display');
-requireText(simplified,'Agrandir le GPS','driver navigation expand control');
+requireText(simplified,'openGoogleMapsNav','explicit Google Maps driver navigation control');
+requireText(simplified,'Google Maps','visible Google Maps driver navigation option');
 requireText(driverNative,"new Set(['accepted', 'driver_arriving', 'in_progress'])",'native map on all active driver phases');
 requireText(driverNative,'window.FastNative?.openDriverMap','native map bridge call');
 requireText(driverNative,"phase === 'to_pickup'",'native pickup navigation phase');
@@ -159,6 +161,15 @@ requireText(native,'fun notifyRideOffer(','Android notification bridge');
 requireText(native,'RIDE_OFFER_CHANNEL_ID','ride offer notification channel');
 requireText(native,'NotificationManagerCompat.from(this).notify','native notification delivery');
 requireText(manifest,'android.permission.POST_NOTIFICATIONS','Android notification permission');
+requireText(manifest,'android.permission.FOREGROUND_SERVICE','background driver notification service permission');
+requireText(manifest,'.DriverOfferService','background driver offer service registration');
+requireText(driverOfferService,'startForeground(MONITOR_NOTIFICATION_ID','driver offer watch remains active in background');
+requireText(driverOfferService,'/v1/driver/offers/current','background driver offer polling');
+requireText(driverOfferService,'grant_type=refresh_token','background session refresh');
+requireText(core,'loadPersistentSession','native session restore');
+requireText(native,'fun persistSession(payload: String)','native session persistence bridge');
+requireText(app,'FAST reste connecté. Synchronisation réseau en attente.','temporary failures keep session signed in');
+requireText(nativeMain,'addressMenuOpen','native map blocked while address suggestions are open');
 requireText(driverPhotoMigration,"'driver-photos'",'private driver photo bucket');
 requireText(driverPhotoMigration,'driver_photos_storage_insert_own','driver photo own-folder insert policy');
 requireText(backendVehicle,'def _signed_driver_photo','signed driver photo helper');
