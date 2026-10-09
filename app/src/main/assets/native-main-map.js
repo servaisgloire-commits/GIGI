@@ -221,6 +221,7 @@
     syncMarkers();
     const route = activeRoutePolyline();
     if (route) call('setMainMapRoute', route);
+    fitCurrentPoints();
     syncBoundary();
     requestAnimationFrame(syncBoundary);
   }
@@ -228,6 +229,8 @@
   window.initMap = initNativeMainMap;
 
   window.placeMarker = function placeMarkerNative(kind, coords) {
+    // A new address invalidates the previous road line until its new quote arrives.
+    call('setMainMapRoute', '');
     syncMarkers();
     fitCurrentPoints();
   };
@@ -254,7 +257,9 @@
     window.updateQuoteUI = function updateQuoteUIWithNativeGoogle(q, ...rest) {
       const result = previousUpdateQuoteUI.call(this, q, ...rest);
       syncMarkers();
-      if (q?.polyline) call('setMainMapRoute', String(q.polyline));
+      // Refresh the native route even if the new estimate has no road geometry.
+      // In that case, discard any route left from a previous address selection.
+      call('setMainMapRoute', String(q?.polyline || ''));
       fitCurrentPoints();
       syncBoundary();
       return result;
