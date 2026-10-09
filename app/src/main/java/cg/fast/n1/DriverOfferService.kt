@@ -127,14 +127,15 @@ class DriverOfferService : Service() {
         if (offerId.isBlank()) return
         if (prefs.getString(KEY_LAST_OFFER, "") == offerId) return
 
-        prefs.edit().putString(KEY_LAST_OFFER, offerId).apply()
         val ride = root.optJSONObject("ride")
         val pickup = ride?.optString("pickup_address").orEmpty().ifBlank { "Départ" }
         val destination = ride?.optString("destination_address").orEmpty().ifBlank { "Destination" }
         val price = offer.optDouble("offered_price", Double.NaN)
         val currency = offer.optString("currency").ifBlank { ride?.optString("currency").orEmpty().ifBlank { "XAF" } }
         val amount = if (price.isFinite() && price > 0) " • ${Math.round(price)} $currency" else ""
-        notifyOffer(offerId, "Nouvelle course FAST", "$pickup → $destination$amount")
+        if (notifyOffer(offerId, "Nouvelle course FAST", "$pickup → $destination$amount")) {
+            prefs.edit().putString(KEY_LAST_OFFER, offerId).apply()
+        }
     }
 
     private fun requestCurrentOffer(accessToken: String): HttpResult =
@@ -172,11 +173,11 @@ class DriverOfferService : Service() {
         return merged
     }
 
-    private fun notifyOffer(offerId: String, title: String, message: String) {
+    private fun notifyOffer(offerId: String, title: String, message: String): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) return
+        ) return false
 
         val id = (offerId.hashCode() and Int.MAX_VALUE).takeIf { it != 0 } ?: 3201
         val notification = NotificationCompat.Builder(this, OFFER_CHANNEL_ID)
@@ -191,6 +192,7 @@ class DriverOfferService : Service() {
             .setContentIntent(openFastPendingIntent(id))
             .build()
         NotificationManagerCompat.from(this).notify(id, notification)
+        return true
     }
 
     private fun openFastPendingIntent(requestCode: Int): PendingIntent {
