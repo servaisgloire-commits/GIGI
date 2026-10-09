@@ -116,7 +116,9 @@
       const el=document.getElementById(id);
       return !!el && !!String(el.textContent||'').trim();
     });
-    call('setMainMapInteractionBlocked', overlayOpen || addressMenuOpen || !document.getElementById('app')?.classList.contains('active'));
+    const addressInputFocused = ['pickup','destination'].includes(document.activeElement?.id);
+    call('setMainMapInteractionBlocked',
+      overlayOpen || addressMenuOpen || addressInputFocused || !document.getElementById('app')?.classList.contains('active'));
 
     const topControls = ['.floating-header','.driver-online-card','#vehicleAlert']
       .map(selector => document.querySelector(selector))
@@ -288,6 +290,9 @@
   }
 
   const scheduleBoundary = () => requestAnimationFrame(syncBoundary);
+  // Update native touch routing immediately when an address field gains focus.
+  document.addEventListener('focusin', syncBoundary, true);
+  document.addEventListener('focusout', scheduleBoundary, true);
   window.addEventListener('resize', scheduleBoundary, {passive:true});
   document.addEventListener('pointerdown', scheduleBoundary, true);
   document.addEventListener('pointermove', scheduleBoundary, true);
