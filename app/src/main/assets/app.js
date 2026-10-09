@@ -63,8 +63,8 @@ function restoreCachedIdentity(){
   }catch{}
   const user=state.session?.user||{};
   const meta=user.user_metadata||{};
-  state.me={id:user.id||'',first_name:meta.first_name||'',last_name:meta.last_name||'',phone:meta.phone||'',role:meta.role||'client'};
-  state.role=String(state.me.role||'client').toLowerCase();
+  state.me={id:user.id||'',first_name:meta.first_name||'',last_name:meta.last_name||'',phone:meta.phone||'',role:'client'};
+  state.role='client';
   return !!state.session?.access_token;
 }
 function renderSignedInShell(){
