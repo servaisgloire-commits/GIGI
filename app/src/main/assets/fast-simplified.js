@@ -385,11 +385,12 @@
     panel = document.createElement('div');
     panel.id = 'driverNavigationPanel';
     panel.className = 'driver-navigation-panel hidden';
-    panel.innerHTML = '<div><small>Temps restant</small><strong id="driverNavigationEta">—</strong><span id="driverNavigationDistance">Calcul en cours…</span></div><button id="expandDriverGps" type="button">Agrandir le GPS</button>';
+    panel.innerHTML = '<div><small>Temps restant</small><strong id="driverNavigationEta">—</strong><span id="driverNavigationDistance">Calcul en cours…</span></div><div class="driver-navigation-actions"><button id="expandDriverGps" type="button">GPS FAST</button><button id="openGoogleMapsNav" type="button">Google Maps</button></div>';
     const finish = $('finishRideBtn');
     if (finish) rideSheet.insertBefore(panel, finish);
     else rideSheet.appendChild(panel);
     $('expandDriverGps').onclick = () => openDriverNavigation();
+    $('openGoogleMapsNav').onclick = () => openDriverNavigation();
     return panel;
   }
 

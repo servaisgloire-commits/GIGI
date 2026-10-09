@@ -6,8 +6,29 @@ const KEY=NATIVE.supabaseKey||'';
 const $=id=>document.getElementById(id);
 const state={session:null,me:null,role:null,quote:null,ride:null,offer:null,vehicle:null,coords:null,pickup:null,destination:null,rideType:'standard',payment:'cash',poll:null,offerPoll:null,gps:null,lastDispatchAt:0,map:null,pickupMarker:null,destinationMarker:null,driverMarkers:[],routeLayer:null};
 function toast(message){const el=$('toast');if(!el)return;el.textContent=message;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),4500)}
-function saveSession(s){state.session=s;localStorage.setItem('fast.session',JSON.stringify(s||null))}
-function loadSession(){try{state.session=JSON.parse(localStorage.getItem('fast.session')||'null')}catch{state.session=null}return state.session}
+function saveSession(s){
+  state.session=s;
+  const raw=JSON.stringify(s||null);
+  try{localStorage.setItem('fast.session',raw)}catch{}
+  try{
+    if(s)window.FastNative?.persistSession?.(raw);
+    else window.FastNative?.clearPersistentSession?.();
+  }catch{}
+}
+function loadSession(){
+  let raw=null;
+  try{raw=localStorage.getItem('fast.session')}catch{}
+  let parsed=null;
+  try{parsed=raw?JSON.parse(raw):null}catch{}
+  if(!parsed){
+    try{
+      const nativeRaw=window.FastNative?.loadPersistentSession?.();
+      if(nativeRaw){parsed=JSON.parse(nativeRaw);localStorage.setItem('fast.session',nativeRaw)}
+    }catch{}
+  }
+  state.session=parsed;
+  return state.session;
+}
 function token(){return state.session?.access_token||''}
 function friendlyApiError(data,status){
   const code=String(data?.code||data?.error_code||'').toLowerCase();

@@ -105,6 +105,28 @@ class MainMapRuntimeTest {
     }
 
     @Test
+    fun nativeSessionPersistsUntilExplicitClear() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForFastWebApp(scenario)
+            val result = evaluate(scenario, """
+                (function(){
+                  var payload=JSON.stringify({access_token:'fast-persist-test',refresh_token:'refresh-test'});
+                  FastNative.persistSession(payload);
+                  var saved=FastNative.loadPersistentSession();
+                  var present=typeof saved==='string' && saved.indexOf('fast-persist-test')>=0;
+                  FastNative.clearPersistentSession();
+                  var cleared=FastNative.loadPersistentSession()==='';
+                  return JSON.stringify({present:present,cleared:cleared});
+                })()
+            """)
+            assertTrue(
+                "Native session persistence diagnostic: $result",
+                result.contains("\"present\":true") && result.contains("\"cleared\":true")
+            )
+        }
+    }
+
+    @Test
     fun loginFormExposesPasswordAutofillMetadata() {
         grantRuntimePermissions()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->

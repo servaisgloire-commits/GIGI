@@ -5,6 +5,9 @@
   const generation = {pickup:0, destination:0};
   const timers = {};
   const clean = value => String(value || '').trim().replace(/\s+/g, ' ');
+  const blockNativeMap = blocked => {
+    try { window.FastNative?.setMainMapInteractionBlocked?.(!!blocked); } catch {}
+  };
   const validPoint = value => value?.lat != null && value?.lng != null &&
     Number.isFinite(Number(value.lat)) && Number.isFinite(Number(value.lng)) &&
     Math.abs(Number(value.lat)) <= 90 && Math.abs(Number(value.lng)) <= 180;
@@ -43,16 +46,27 @@
 
   window.suggest = async function suggestCurrentAddress(kind, input, target) {
     const q = clean(input.value), revision = ++generation[kind];
-    if (q.length < 2 || (kind === 'pickup' && q === 'Ma position actuelle')) { target.innerHTML=''; return; }
+    if (q.length < 2 || (kind === 'pickup' && q === 'Ma position actuelle')) { target.innerHTML=''; blockNativeMap(false); return; }
+    blockNativeMap(true);
     target.textContent = 'Recherche…';
     try {
       const items = await lookup(q);
       if (revision !== generation[kind] || clean(input.value) !== q) return;
-      if (!items.length) { target.textContent='Aucune adresse trouvée. Précisez la ville ou le code postal.'; return; }
+      if (!items.length) { target.textContent='Aucune adresse trouvée. Précisez la ville ou le code postal.'; blockNativeMap(false); return; }
       target.innerHTML = items.slice(0,5).map((item,i) => `<button type="button" data-i="${i}">📍 ${escapeHtml(item.label)}</button>`).join('');
-      [...target.children].forEach((button,i) => { button.onclick=()=>window.selectPlace(kind,items[i],input,target); });
+      [...target.children].forEach((button,i) => {
+        let chosen=false;
+        const choose = event => {
+          event?.preventDefault?.(); event?.stopPropagation?.();
+          if(chosen)return;
+          chosen=true;
+          window.selectPlace(kind,items[i],input,target);
+        };
+        button.addEventListener('pointerup', choose);
+        button.onclick=choose;
+      });
     } catch (error) {
-      if (revision === generation[kind] && clean(input.value) === q) target.textContent=errorMessage(error);
+      if (revision === generation[kind] && clean(input.value) === q) { target.textContent=errorMessage(error); blockNativeMap(false); }
     }
   };
 
@@ -66,7 +80,7 @@
         const place = await detailsFor(item);
         if (revision !== generation[kind] || clean(input.value) !== text) return null;
         if (!validPoint(place)) throw new Error('Les coordonnées de cette adresse sont indisponibles. Choisissez une autre suggestion.');
-        state[kind]=place; input.value=place.label; target.innerHTML='';
+        state[kind]=place; input.value=place.label; target.innerHTML=''; blockNativeMap(false);
         placeMarker(kind,place);
         if (kind === 'destination' || state.destination) await quoteAll();
         return place;
@@ -100,18 +114,21 @@
   document.addEventListener('DOMContentLoaded', () => {
     for(const kind of ['pickup','destination']) {
       const input=$(kind), target=$(`${kind}Suggestions`);
+      target.addEventListener?.('pointerdown',event=>event.stopPropagation());
+      target.addEventListener?.('touchstart',event=>event.stopPropagation(),{passive:true});
       input.oninput=()=>{
         ++generation[kind]; state[kind]=null; target.innerHTML='';
         clearTimeout(timers[kind]);
         timers[kind]=setTimeout(()=>window.suggest(kind,input,target),280);
       };
       $(`clear${kind[0].toUpperCase()}${kind.slice(1)}`)?.addEventListener('click',()=>{
-        ++generation[kind]; clearTimeout(timers[kind]);
+        ++generation[kind]; clearTimeout(timers[kind]); blockNativeMap(false);
       });
     }
   });
   document.addEventListener('fast:dismiss-address-search',()=>{
     for(const kind of ['pickup','destination']){++generation[kind];clearTimeout(timers[kind]);}
+    blockNativeMap(false);
   });
 })();
 
