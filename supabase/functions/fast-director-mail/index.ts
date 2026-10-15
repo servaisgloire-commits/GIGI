@@ -24,11 +24,19 @@ Deno.serve(async(req)=>{
  const needAlert=critical.length>0;
  if(!isDaily&&!isManual&&!needAlert)return json({ok:true,skipped:true,reason:"No report due"});
  const type=isManual?"activation":isDaily?"daily":"incident";
- const key=type==="daily"?"daily:"+time.year+time.month+time.day:
+ let key=type==="daily"?"daily:"+time.year+time.month+time.day:
   type==="activation"?"activation:2026-10-15":
   "critical:"+critical.map(x=>x.id).sort().join("_").slice(0,1200);
  const existing=await safeList("fast_director_mail_log?message_key=eq."+encodeURIComponent(key)+"&select=id,status&limit=1");
- if(existing.length)return json({ok:true,skipped:true,reason:"Already recorded",status:existing[0].status});
+ if(existing.length){
+   // Only an explicit owner-triggered test can retry a failed report;
+   // preserve the initial failure record, never resend an accepted report.
+   if(existing[0].status!=="failed" || !isManual || input.force_retry!==true)
+     return json({ok:true,skipped:true,reason:"Already recorded",status:existing[0].status});
+   key += ":retry:"+time.year+time.month+time.day+time.hour+time.minute;
+   const retry=await safeList("fast_director_mail_log?message_key=eq."+encodeURIComponent(key)+"&select=id,status&limit=1");
+   if(retry.length)return json({ok:true,skipped:true,reason:"Retry already recorded",status:retry[0].status});
+ }
  const agents=await rest("fast_agent_registry?select=agent_code,display_name,status,last_seen_at&order=display_name.asc");
  const checks=await safeList("fast_org_web_checks?select=service_name,classification,http_status,checked_at&order=checked_at.desc&limit=24");
  const dedup=new Map();for(const c of checks)if(!dedup.has(c.service_name))dedup.set(c.service_name,c);
