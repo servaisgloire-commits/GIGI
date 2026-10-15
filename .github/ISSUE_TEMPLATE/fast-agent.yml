@@ -1,0 +1,51 @@
+name: Mission technique FAST — ChatGPT
+description: Mission publique et non sensible examinée par le moteur central AGENT G (ChatGPT)
+title: "[FAST-AGENT] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ce dépôt est PUBLIC. Ne publiez jamais de données clients/chauffeurs, documents, tokens, mots de passe, coordonnées privées ou conversations FAST Connect.
+        Ce ticket est une demande au moteur central ChatGPT; une réponse n'implique pas une exécution technique.
+  - type: dropdown
+    id: service
+    attributes:
+      label: Service destinataire
+      options:
+        - Gabriel — direction générale
+        - Camille — administration
+        - Idriss — sécurité
+        - Inès — design
+        - Sarah — communication
+        - Léon — marketing
+        - Nathan — produit
+        - Hugo — carte GPS
+        - Karim — chauffeurs
+        - Anaïs — clients
+        - Sami — dispatch
+        - Maxime — conformité
+        - Étienne — audit indépendant
+    validations:
+      required: true
+  - type: textarea
+    id: demande
+    attributes:
+      label: Demande technique publique
+      description: Décrire le dysfonctionnement et les résultats attendus. Ne pas copier de données privées.
+      placeholder: "Ex. : Le script public address-search.js affiche des suggestions obsolètes. Proposer un correctif à examiner."
+    validations:
+      required: true
+  - type: textarea
+    id: preuves
+    attributes:
+      label: Références de code / preuves non sensibles
+      placeholder: "Ex. : app/src/main/assets/address-search.js"
+    validations:
+      required: false
+  - type: checkboxes
+    id: confidentiality
+    attributes:
+      label: Vérification de confidentialité
+      options:
+        - label: "Ce ticket n'inclut aucune donnée sensible ni privée et peut être lu publiquement."
+          required: true
