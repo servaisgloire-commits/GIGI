@@ -51,7 +51,25 @@ async function checkSite(agentCode,name,url,expected){
  await rest("fast_org_web_checks",{method:"POST",headers:{"Prefer":"return=minimal"},body:JSON.stringify({agent_code:agentCode,service_name:name,url,http_status:httpStatus||null,classification,response_ms:Math.min(100000,Date.now()-t),detail})});
  return{name,classification,status:httpStatus||null};
 }
-async function webSnapshot(agent){const results=await Promise.all(sites.map(s=>checkSite(agent,...s)));return{checks:results,unhealthy:results.filter(x=>x.classification!=="ok").map(x=>x.name)};}
+async function issueMaintenanceTask(check){
+ const key="fast:uptime:"+check.name.toLowerCase().replace(/[^a-z0-9]+/g,"_");
+ const existing=await rest("fast_agent_tasks?dedupe_key=eq."+encodeURIComponent(key)+"&status=in.(queued,in_progress,blocked)&select=id&limit=1");
+ if(existing.data?.length)return;
+ const owner=check.name.toLowerCase().includes("admin")?"G_FAST_ADMIN":"PRODUCT_G";
+ const priority=(check.status===404||check.classification==="unavailable")?"critical":"high";
+ const proposal={agent_code:owner,kind:"website_availability_incident",dedupe_key:key,priority,status:"queued",
+  payload:{service:check.name,classification:check.classification,http_status:check.status,
+   recommendation:"Inspecter le déploiement Vercel, corriger les ressources manquantes, vérifier sur une prévisualisation et demander validation avant publication.",
+   no_delete:true,owner_approval_required_for_production:true}};
+ await rest("fast_agent_tasks",{method:"POST",headers:{"Prefer":"return=minimal"},body:JSON.stringify(proposal)});
+ await rest("fast_agent_events",{method:"POST",headers:{"Prefer":"return=minimal"},body:JSON.stringify({
+   agent_code:"DESIGNER_G",severity:priority,category:"website_availability",title:"Anomalie de disponibilité : "+check.name,
+   details:{service:check.name,classification:check.classification,http_status:check.status,assigned_to:owner,
+    no_production_change:true}})});
+}
+async function webSnapshot(agent){const results=await Promise.all(sites.map(s=>checkSite(agent,...s)));
+ if(agent==="DESIGNER_G")for(const check of results.filter(x=>x.classification!=="ok"))await issueMaintenanceTask(check);
+ return{checks:results,unhealthy:results.filter(x=>x.classification!=="ok").map(x=>x.name)};}
 async function operationalSnapshot(kind){
  const today=new Date(Date.now()-86400000).toISOString();
  if(kind==="rides")return{rides_24h:await count("rides","created_at=gte."+encodeURIComponent(today)),cancelled_24h:await count("rides","status=eq.cancelled&created_at=gte."+encodeURIComponent(today)),completed_24h:await count("rides","status=eq.completed&created_at=gte."+encodeURIComponent(today))};
