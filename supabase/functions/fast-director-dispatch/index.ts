@@ -44,6 +44,14 @@ Deno.serve(async req=>{
   const reportingChain=chain(target,registry);
   const directive={order_id:order.id,issued_by:"AGENT_G",target_agent_code:target,chain:reportingChain,directive:String(order.order_text).slice(0,6000),requires_approval:true,status:"queued"};
   await db("fast_director_directives?on_conflict=order_id,target_agent_code",{method:"POST",headers:{"Prefer":"resolution=ignore-duplicates,return=minimal"},body:JSON.stringify(directive)});
+  // Deliver the same instruction into the target agent's operational task queue.
+  const dedupe="fast:director:"+order.id;
+  const prior=await db("fast_agent_tasks?dedupe_key=eq."+encodeURIComponent(dedupe)+"&select=id&limit=1");
+  if(!prior?.length) await db("fast_agent_tasks",{method:"POST",headers:{"Prefer":"return=minimal"},body:JSON.stringify({
+    agent_code:target,kind:"director_instruction",dedupe_key:dedupe,priority:order.priority,status:"queued",
+    payload:{instruction:String(order.order_text).slice(0,6000),director:"AGENT_G",chain:reportingChain,
+      requires_approval:true,reference_order_id:order.id,no_delete:true,production_changes_require_owner_approval:true}
+  })});
   await db("fast_director_orders?id=eq."+order.id,{method:"PATCH",body:JSON.stringify({status:"dispatched",handled_at:new Date().toISOString(),result:{director:"AGENT_G",assigned_to:target,chain:reportingChain,requires_approval:true}})});
   results.push({order:order.id,status:"dispatched",assigned_to:target,chain:reportingChain});
  }
