@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FAST Connect</string>
+    <string name="app_name">FAST Connect Test</string>
     <string name="offline_title">Connexion indisponible</string>
     <string name="offline_text">FAST Connect nécessite une connexion Internet sécurisée.</string>
     <string name="retry">Réessayer</string>

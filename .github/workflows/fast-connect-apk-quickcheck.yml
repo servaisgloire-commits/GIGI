@@ -1,4 +1,4 @@
-name: FAST Connect APK quick verified bundle
+name: FAST Connect APK isolated safe-install test
 on:
   push:
     branches: [fast-connect-quickcheck-20261016]
@@ -44,13 +44,14 @@ jobs:
           aapt="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
           "$sign" verify --verbose --print-certs "$apk" | head -12
           "$aapt" dump badging "$apk" | grep '^package:' | tee /tmp/connect-package.txt
-          grep -q "name='com.fastn1.connect'" /tmp/connect-package.txt
+          grep -q "name='com.fastn1.connect.test'" /tmp/connect-package.txt
           grep -q "versionCode='2'" /tmp/connect-package.txt
+          "$aapt" dump badging "$apk" | grep -F "launchable-activity: name='com.fastn1.connect.MainActivity'"
           grep -q "versionName='1.1.0-test'" /tmp/connect-package.txt
           sha256sum "$apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: FAST-Connect-1.1-Verified-Build
+          name: FAST-Connect-1.1-Isolated-Verified
           path: fast-connect-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

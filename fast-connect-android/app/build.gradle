@@ -5,7 +5,7 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId 'com.fastn1.connect'
+        applicationId 'com.fastn1.connect.test'
         minSdk 24
         targetSdk 34
         versionCode 2
