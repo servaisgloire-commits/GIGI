@@ -214,6 +214,36 @@ jobs:
             adb shell am start -W -n cg.fast.n1.mobile/cg.fast.n1.MainActivity
             adb shell pidof cg.fast.n1.mobile
 
+      # API 29 SDK download failed with "Error on ZipFile unknown archive" in
+      # run 37943517014, before the emulator could start. Retry the Google SDK
+      # download, verify the installed android.jar, and keep all API tests enabled.
+      - name: Prepare Android 29 and 30 SDK with download retries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for api in 29 30; do
+            platform="$ANDROID_HOME/platforms/android-$api/android.jar"
+            if [ -s "$platform" ]; then
+              echo "Android SDK platform $api already installed."
+              continue
+            fi
+            ready=0
+            for attempt in 1 2 3 4; do
+              echo "Installing Android SDK platform $api (attempt $attempt/4)."
+              if sdkmanager --install "platforms;android-$api" && [ -s "$platform" ]; then
+                ready=1
+                break
+              fi
+              if [ "$attempt" -lt 4 ]; then
+                sleep "$((attempt * 8))"
+              fi
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "::error::Android SDK platform $api unavailable after retries; Android tests not skipped."
+              exit 1
+            fi
+          done
+
       - name: Verify clean install on Android 29 (2020 devices)
         uses: reactivecircus/android-emulator-runner@v2
         with:
