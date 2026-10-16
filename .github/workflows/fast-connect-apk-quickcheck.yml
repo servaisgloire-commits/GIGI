@@ -55,3 +55,18 @@ jobs:
           path: fast-connect-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      # Android emulator runner executes script lines as separate shell commands:
+      # never rely on a shell variable defined on a previous line.
+      - name: Verify FAST Connect test application launches on Android 30
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install fast-connect-android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -W -n com.fastn1.connect.test/com.fastn1.connect.MainActivity
+            adb shell pidof com.fastn1.connect.test
