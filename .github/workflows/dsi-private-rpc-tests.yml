@@ -1,0 +1,24 @@
+name: DSI private SQL regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/202610181945_*.sql'
+      - 'tests/test_dsi_private_rpc.py'
+      - '.github/workflows/dsi-private-rpc-tests.yml'
+  push:
+    branches: [dsi-private-sql-hardening-20261018]
+permissions:
+  contents: read
+jobs:
+  private-rpc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify private function wrappers and grants
+        run: python -m unittest discover -s tests -p test_dsi_private_rpc.py -v
