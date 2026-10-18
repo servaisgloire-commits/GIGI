@@ -18,8 +18,6 @@ BEGIN
    -- Skip an unnecessary fourth Groq HTTP request per incident cycle.
    IF TG_OP <> 'UPDATE' OR NEW.status <> 'completed' OR OLD.status='completed'
       OR NEW.stage='functional_test_plan' THEN RETURN NEW; END IF;
-   -- The QA plan is the final stage: no further Groq task needs dispatch.
-   IF NEW.stage='functional_test_plan' THEN RETURN NEW; END IF;
    v_incident:=NEW.incident_id;
    v_org:=NEW.organization;
  ELSE
