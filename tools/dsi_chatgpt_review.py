@@ -46,8 +46,13 @@ if len(patch.encode("utf-8")) > 45000:
     stop("diff too large for a complete review")
 if "Binary files " in patch or "GIT binary patch" in patch:
     stop("binary code cannot be safely reviewed through text diff")
-if any(re.search(r"(^|/)(\\.env($|\\.)|.*\\.(pem|p12|pfx|jks|keystore)$)", f, re.I) for f in files):
-    stop("sensitive configuration or binary signing material must be reviewed separately")
+if any(
+    f.split("/")[-1].lower().startswith(".env")
+    or f.lower().endswith((".pem", ".p12", ".pfx", ".jks", ".keystore"))
+    for f in files
+):
+    stop("sensitive configuration or signing material requires separate review")
+
 
 instructions = (
     "You are an independent code-review gate for FAST or Talent Congo. "
