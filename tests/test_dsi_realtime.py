@@ -9,6 +9,7 @@ import unittest
 ROOT = Path("supabase/migrations")
 BRIDGE = ROOT / "202610181900_dsi_realtime_bridge.sql"
 REOPEN = ROOT / "202610181901_dsi_reopen_history.sql"
+SKIP_FINAL = ROOT / "202610182000_dsi_skip_final_webhook.sql"
 NOOP = ROOT / "202610182015_dsi_skip_idle_dispatch.sql"
 
 class DsiRealtimeBridgeTests(unittest.TestCase):
@@ -16,6 +17,7 @@ class DsiRealtimeBridgeTests(unittest.TestCase):
     def setUpClass(cls):
         cls.b = BRIDGE.read_text(encoding="utf-8").lower()
         cls.r = REOPEN.read_text(encoding="utf-8").lower()
+        cls.f = SKIP_FINAL.read_text(encoding="utf-8").lower()
         cls.n = NOOP.read_text(encoding="utf-8").lower()
 
     def test_event_driven_triggers(self):
@@ -47,6 +49,12 @@ class DsiRealtimeBridgeTests(unittest.TestCase):
         self.assertIn("new.status <> 'completed'",self.n)
         self.assertIn("net.http_post(",self.n)
         self.assertIn("name='dsi_dispatch_token_v1'",self.n)
+
+
+    def test_last_stage_does_not_waste_a_groq_request(self):
+        self.assertIn("if new.stage='functional_test_plan' then return new; end if;", self.f)
+        self.assertIn("net.http_post(", self.f)
+        self.assertLess(self.f.index("if new.stage='functional_test_plan'"),self.f.index("net.http_post("))
 
     def test_privileged_rpcs_not_public(self):
         self.assertIn("revoke all on function dsi_ops.push_realtime_groq()",self.b)
