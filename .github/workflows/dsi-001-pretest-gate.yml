@@ -8,7 +8,7 @@ jobs:
   pretest-contract:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c8af683 # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Validate pretests and evidence gate
         run: python3 -m unittest discover -s tests -p test_dsi_pretest.py -v
       - name: Retain existing Groq bridge regression tests
