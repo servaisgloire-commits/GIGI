@@ -34,7 +34,7 @@ class TestRlsPolicies(unittest.TestCase):
             self.assertEqual(set(actual),expected)
             self.assertEqual(len(self.statements),5)
             self.assertGreaterEqual(self.body.lower().count("select auth.jwt()"),5)
-            self.assertNotRegex(self.body,r"(?<!select )auth\.jwt\(\)")
+            self.assertNotRegex(self.body.lower(),r"(?<!select )auth\.jwt\(\)")
         else:
             self.assertEqual(len(self.statements),2)
             self.assertIn("ALTER POLICY tc_rls_merged_tc_needs_select",self.body)
