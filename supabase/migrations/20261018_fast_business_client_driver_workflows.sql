@@ -84,12 +84,13 @@ BEGIN
  INSERT INTO public.fast_business_work_items
   (work_key,subject_id,workflow,owner_department,priority,reason_codes,human_review_required)
  SELECT 'client:preflight:'||c.user_id,c.user_id,'client','client_accounts','normal',
-  jsonb_build_array(
-   CASE WHEN u.email_confirmed_at IS NULL THEN 'EMAIL_UNCONFIRMED' END,
-   CASE WHEN nullif(trim(coalesce(p.first_name,'')),'') IS NULL THEN 'FIRST_NAME_MISSING' END,
-   CASE WHEN nullif(trim(coalesce(p.last_name,'')),'') IS NULL THEN 'LAST_NAME_MISSING' END,
-   CASE WHEN nullif(trim(coalesce(p.phone,'')),'') IS NULL THEN 'CONTACT_PHONE_MISSING' END
-  )- 'null'::jsonb,
+  (SELECT coalesce(jsonb_agg(elem),'[]'::jsonb)
+   FROM jsonb_array_elements(jsonb_build_array(
+     CASE WHEN u.email_confirmed_at IS NULL THEN 'EMAIL_UNCONFIRMED' END,
+     CASE WHEN nullif(trim(coalesce(p.first_name,'')),'') IS NULL THEN 'FIRST_NAME_MISSING' END,
+     CASE WHEN nullif(trim(coalesce(p.last_name,'')),'') IS NULL THEN 'LAST_NAME_MISSING' END,
+     CASE WHEN nullif(trim(coalesce(p.phone,'')),'') IS NULL THEN 'CONTACT_PHONE_MISSING' END
+   )) AS elem WHERE elem<>'null'::jsonb),
   true
  FROM public.account_admin_controls c
  JOIN public.profiles p ON p.id=c.user_id
