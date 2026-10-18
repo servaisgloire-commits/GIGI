@@ -9,12 +9,14 @@ import unittest
 ROOT = Path("supabase/migrations")
 BRIDGE = ROOT / "202610181900_dsi_realtime_bridge.sql"
 REOPEN = ROOT / "202610181901_dsi_reopen_history.sql"
+NOOP = ROOT / "202610182015_dsi_skip_idle_dispatch.sql"
 
 class DsiRealtimeBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.b = BRIDGE.read_text(encoding="utf-8").lower()
         cls.r = REOPEN.read_text(encoding="utf-8").lower()
+        cls.n = NOOP.read_text(encoding="utf-8").lower()
 
     def test_event_driven_triggers(self):
         self.assertIn("after insert or update of state on dsi_ops.incidents", self.b)
@@ -39,6 +41,12 @@ class DsiRealtimeBridgeTests(unittest.TestCase):
         self.assertIn("t.run_number=i.reopens", self.r)
         self.assertIn("prev.run_number=t.run_number", self.r)
         self.assertNotRegex(self.r, r"(?i)\b(?:truncate|delete from dsi_ops\.agent_tasks|drop table)\b")
+
+    def test_skip_useless_fourth_llm_dispatch(self):
+        self.assertIn("or new.stage='functional_test_plan'",self.n)
+        self.assertIn("new.status <> 'completed'",self.n)
+        self.assertIn("net.http_post(",self.n)
+        self.assertIn("name='dsi_dispatch_token_v1'",self.n)
 
     def test_privileged_rpcs_not_public(self):
         self.assertIn("revoke all on function dsi_ops.push_realtime_groq()",self.b)
