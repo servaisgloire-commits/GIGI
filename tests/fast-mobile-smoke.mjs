@@ -23,7 +23,10 @@ const pinMigration=fs.readFileSync('supabase/migrations/20260914_require_verifie
 const mapsMigration=fs.readFileSync('supabase/migrations/20260914_add_android_maps_key_reader.sql','utf8');
 const driverPhotoMigration=fs.readFileSync('supabase/migrations/20260914_driver_profile_photos.sql','utf8');
 const securityHardening=fs.readFileSync('supabase/migrations/20260924_security_g_hardening.sql','utf8');
-const securityAgent=fs.readFileSync('supabase/functions/security-g/index.ts','utf8');
+// SECURITY G is intentionally retired: do not restore it to satisfy a legacy test.
+if (fs.existsSync('supabase/functions/security-g/index.ts')) {
+  throw new Error('Retired SECURITY G agent should not be reintroduced');
+}
 const all=core+'\n'+app+'\n'+simplified+'\n'+driverNative+'\n'+driverIdentity;
 
 function requireText(text,needle,label){
@@ -119,8 +122,8 @@ requireText(securityHardening,'extensions.hmac(','ride PIN keyed HMAC protection
 requireText(securityHardening,'extensions.gen_random_bytes(2)','cryptographic PIN generation');
 requireText(securityHardening,"raise exception 'pin_key_unavailable'","PIN Vault key is mandatory");
 if (securityHardening.includes('FAST-N1-PIN-FALLBACK')) throw new Error('Static PIN fallback key must not exist');
-requireText(securityAgent,'safeEqual(','constant-time SECURITY G token comparison');
-requireText(securityAgent,'rides_with_repeated_pin_failures','SECURITY G PIN abuse monitoring');
+
+
 requireText(gradle,'FAST_GOOGLE_MAPS_API_KEY','dedicated Android Maps build key');
 requireText(gradle,'MAPS_NATIVE_CONFIGURED','native Maps build guard');
 requireText(manifest,'com.google.android.geo.API_KEY','Google Maps Android API key metadata');
