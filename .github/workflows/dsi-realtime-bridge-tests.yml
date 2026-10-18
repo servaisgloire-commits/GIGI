@@ -6,6 +6,7 @@ on:
     paths:
       - 'supabase/migrations/202610181900_dsi_realtime_bridge.sql'
       - 'supabase/migrations/202610181901_dsi_reopen_history.sql'
+      - 'supabase/migrations/202610182000_dsi_skip_final_webhook.sql'
       - 'tests/test_dsi_realtime.py'
       - '.github/workflows/dsi-realtime-bridge-tests.yml'
   push:
