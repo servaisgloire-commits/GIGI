@@ -10,7 +10,7 @@ Chaîne générale : **site/inscription → Supabase Auth → profil client/chau
 
 ### Workflow client — entièrement automatisable pour les vérifications techniques
 
-1. Inscription via FAST/Supabase Auth, création `profiles(role='client')`.
+1. Inscription via FAST/Supabase Auth, création `profiles(role='client')` et contrôle `account_admin_controls.admin_status='pending'`. La fonction de création `handle_new_fast_user()` a été corrigée pour **ne jamais valider immédiatement un compte client non confirmé** ; une ancienne fonction non utilisée a également été sécurisée pour empêcher la création de rôle admin à partir de métadonnées d'inscription.
 2. `fast_workflows.client_cycle()` toutes les 2 minutes crée l'entrée `account_admin_controls` en `pending` si nécessaire ; les décisions administratives `invalidated` et `is_active=false` ne sont jamais effacées.
 3. Si **e-mail confirmé**, prénom, nom et numéro de contact présents, et compte non suspendu, l'étape **technique** passe automatiquement à `admin_status='validated'`, avec une justification et une date. Il ne s'agit pas d'une authentification de l'identité civile ni d'une vérification du téléphone par OTP.
 4. Si une information manque, création d'un dossier de suivi `fast_business_work_items`. Le client complète son profil, puis le prochain cycle réévalue.
@@ -51,7 +51,7 @@ Chaîne générale : **site/inscription → Supabase Auth → profil client/chau
 4. Tentative SQL sans effet persistant pour mettre ce chauffeur non conforme `available` : rejet conforme.
 5. Tentative SQL fictive d'insérer une course pour un compte client non validé : rejet conforme.
 6. Tentative SQL fictive d'accepter une offre de course par un chauffeur non conforme : rejet conforme.
-7. Les deux tâches planifiées ont affiché une dernière exécution `succeeded` après correction d'un problème de JSONB lors du premier cycle client.
+7. Les deux tâches planifiées ont affiché une dernière exécution `succeeded` après correction d'un problème de JSONB lors du premier cycle client. La fonction d'inscription a été corrigée pour commencer les nouveaux comptes en `pending`.
 8. Fonctions de cycle non exécutables par `anon` ni `authenticated`, tables de suivi avec RLS.
 9. Administration Vercel **READY**, route protégée par session administrateur. Le parcours complet connecté au navigateur demeure à tester.
 
