@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION fast_workflows.guard_client_new_ride()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public,auth AS $fn$
 BEGIN
-  IF current_user='authenticated' AND (auth.uid() IS NULL OR auth.uid() IS DISTINCT FROM NEW.client_id) THEN
+  IF coalesce(current_setting('request.jwt.claim.role',true),'')='authenticated' AND (auth.uid() IS NULL OR auth.uid() IS DISTINCT FROM NEW.client_id) THEN
     RAISE EXCEPTION 'FAST_CLIENT_OWNERSHIP_REQUIRED' USING ERRCODE='23514';
   END IF;
   IF NEW.client_id IS NULL OR NOT EXISTS (
@@ -29,7 +29,7 @@ RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public,auth AS $fn$
 BEGIN
  IF NEW.status='accepted' AND (TG_OP='INSERT' OR OLD.status IS DISTINCT FROM NEW.status) THEN
-   IF current_user='authenticated' AND (auth.uid() IS NULL OR auth.uid() IS DISTINCT FROM NEW.driver_id) THEN
+   IF coalesce(current_setting('request.jwt.claim.role',true),'')='authenticated' AND (auth.uid() IS NULL OR auth.uid() IS DISTINCT FROM NEW.driver_id) THEN
      RAISE EXCEPTION 'FAST_DRIVER_OWNERSHIP_REQUIRED' USING ERRCODE='23514';
    END IF;
    IF NEW.driver_id IS NULL OR NOT EXISTS(
