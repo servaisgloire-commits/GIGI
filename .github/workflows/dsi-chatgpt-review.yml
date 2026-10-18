@@ -1,0 +1,48 @@
+name: DSI free ChatGPT correction inbox
+on:
+  pull_request:
+    branches: [main]
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check DSI free bridge
+        run: node tools/test_dsi_free_bridge.mjs
+  queue:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const {owner,repo} = context.repo;
+            if (pr.head.repo.full_name !== owner + '/' + repo) return;
+            if (!/^(dsi[-/]|fix\/|hotfix\/)/.test(pr.head.ref)) return;
+            const marker = 'DSI-QUEUE-' + pr.number + '-' + pr.head.sha;
+            const issueNumber = 73;
+            const existing = await github.paginate(github.rest.issues.listComments,
+              {owner,repo,issue_number:issueNumber,per_page:100});
+            if (existing.some(c => (c.body || '').includes(marker))) return;
+            const body = [
+              'Nouvelle proposition a corriger dans ChatGPT',
+              'PR: ' + pr.html_url,
+              'SHA: ' + pr.head.sha,
+              'Statut: en attente de revue et correction ChatGPT dans la conversation.',
+              'Apres correction, les agents doivent tester le nouveau SHA.',
+              'Aucune fusion automatique.',
+              '<!-- ' + marker + ' -->'
+            ].join('\n');
+            await github.rest.issues.createComment({owner,repo,issue_number:issueNumber,body});
