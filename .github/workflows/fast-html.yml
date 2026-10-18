@@ -1,0 +1,24 @@
+name: FAST HTML checks
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'app/src/main/assets/**'
+      - 'app/build.gradle.kts'
+      - '.github/workflows/fast-html.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-html:
+    name: Build and smoke-test shared HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node web/smoke.mjs
