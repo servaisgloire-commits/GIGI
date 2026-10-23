@@ -70,6 +70,7 @@ module.exports = async function handler(req, res) {
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const agent = String(body.agent || "").slice(0, 80);
   const mode = String(body.mode || "analysis").slice(0, 80);
+  if(mode==="code_fix") return require("./agent-code-fix.js")(req,res);
   const context = body.context ?? {};
   const task = String(body.task || "").slice(0, 5000);
 

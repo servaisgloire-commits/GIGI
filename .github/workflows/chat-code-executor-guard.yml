@@ -1,0 +1,38 @@
+name: FAST Chat GitHub Executor Guard
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/api/agent-code-fix.js'
+      - 'backend/api/agent-brain.js'
+      - '.github/workflows/chat-code-executor-guard.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate server-side JavaScript
+        run: |
+          set -euo pipefail
+          node --check backend/api/agent-code-fix.js
+          node --check backend/api/agent-brain.js
+      - name: Verify secrets and destructive GitHub verbs are not embedded
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const fs=require('fs');
+          const s=fs.readFileSync('backend/api/agent-code-fix.js','utf8');
+          if(!s.includes('process.env.GITHUB_AGENT_REPO_TOKEN'))throw Error('Missing server-only token source');
+          if(!s.includes('draft:true'))throw Error('PR must stay draft until tests');
+          if(!s.includes('manifest.workflows'))throw Error('Missing per-agent scope verification');
+          if(!s.includes('AGENT_SCOPE_NOT_AUTHORIZED'))throw Error('Missing explicit denied-access branch');
+          if(/gh\(token,["']DELETE["']/.test(s))throw Error('GitHub destructive API access');
+          if(s.includes('GITHUB_AGENT_REPO_TOKEN='+String.fromCharCode(39)))throw Error('Embedded automation token');
+          console.log('Agent GitHub executor security invariants pass.');
+          JS
