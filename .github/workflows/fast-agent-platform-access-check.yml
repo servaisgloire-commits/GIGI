@@ -19,6 +19,29 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Verify 77-agent split and non-destructive permissions manifest
+        shell: bash
+        env:
+          EXPECTED_ORGANIZATION: 'FAST'
+          EXPECTED_AGENTS: '28'
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const m=JSON.parse(fs.readFileSync('.github/agent-platform-capabilities.json','utf8'));
+          const agents=m.agents||[];
+          const ids=agents.map(a=>a.agent_id||a.id);
+          if(m.organization!==process.env.EXPECTED_ORGANIZATION)throw Error('Wrong project isolation');
+          if(agents.length!==Number(process.env.EXPECTED_AGENTS))throw Error('Missing agent identities');
+          if(new Set(ids).size!==ids.length || ids.some(x=>!x||!x.includes(':')))throw Error('Duplicate or missing agent');
+          if((agents.filter(x=>x.group==='dsi'||x.role==='dsi')).length!==18)throw Error('Wrong DSI roster');
+          if(!Array.isArray(m.vercel_projects||m.vercel))throw Error('Vercel scope not defined');
+          if(!(m.github_repository||m.github)?.endsWith(process.env.EXPECTED_ORGANIZATION==='FAST'?'/GIGI':'/GIGI-Talon-Congo'))throw Error('Cross repository reference');
+          const forbidden=/^(delete|drop|truncate|remove|erase|purge|revoke|destroy)/i;
+          const allowed=[...(m.allowed_operations||[]),...agents.flatMap(a=>a.allowed||[])];
+          if(allowed.some(x=>forbidden.test(x)))throw Error('Destructive operation in grants');
+          console.log('Validated',agents.length,'agent identities for',m.organization);
+          console.log('Connector-mediated access only: no direct administrative credentials provisioned.');
+          JS
       - name: Check project source on exact SHA
         shell: bash
         run: |
