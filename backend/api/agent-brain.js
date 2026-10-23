@@ -15,9 +15,9 @@ function safeEqual(a, b) {
 
 function chooseModel(agent) {
   const a = String(agent || "").toUpperCase();
-  if (a.includes("COMMUNICATION")) return "openai/gpt-5.6-luna";
-  if (a.includes("DESIGNER")) return "openai/gpt-5.6-terra";
-  return "openai/gpt-5.6-sol";
+  if (a.includes("COMMUNICATION")) return "openai/gpt-6-sol";
+  if (a.includes("DESIGNER")) return "openai/gpt-6-sol";
+  return "openai/gpt-6-sol";
 }
 
 const schema = {
@@ -108,9 +108,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model,
-        models: model === "openai/gpt-5.6-sol"
-          ? ["openai/gpt-5.6-terra", "openai/gpt-5.6-luna"]
-          : ["openai/gpt-5.6-luna"],
+        reasoning_effort: "none",
         messages: [
           { role: "system", content: system },
           {
