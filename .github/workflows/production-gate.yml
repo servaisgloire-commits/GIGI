@@ -72,3 +72,40 @@ jobs:
           if grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml; then exit 1; fi
       - name: Compile clean Android app
         run: gradle assembleDebug
+
+  public-web-readonly-smoke:
+    name: FAST web and API GET-only smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Confirm FAST web and API respond
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in 'https://fast-n1-officiel.vercel.app' 'https://fast-n1-python-api.vercel.app/health'; do
+            http_code="$(curl -sS -L -o /dev/null -w '%{http_code}' --max-time 25 "$url")"
+            echo "FAST GET-only check $url: HTTP $http_code"
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 400 ]; then exit 1; fi
+          done
+
+  agent-source-integrity:
+    name: FAST APK, backend, and public site source inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only source inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/src/main/java/cg/fast/n1/MainActivity.kt
+          test -s app/src/main/AndroidManifest.xml
+          test -s backend/app/main.py
+          test -s admin/index.html
+          test -s app/build.gradle.kts
+          echo "FAST audit source SHA: $(git rev-parse HEAD)"
+          echo 'No GitHub/Vercel/Supabase secrets are used or printed.'

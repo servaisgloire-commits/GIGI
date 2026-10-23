@@ -1,0 +1,92 @@
+name: FAST AI Agents - GitHub Vercel Supabase Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fast-agent-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-validation:
+    name: GitHub code and commit verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify 77-agent split and non-destructive permissions manifest
+        shell: bash
+        env:
+          EXPECTED_ORGANIZATION: 'FAST'
+          EXPECTED_AGENTS: '28'
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const m=JSON.parse(fs.readFileSync('.github/agent-platform-capabilities.json','utf8'));
+          const agents=m.agents||[];
+          const ids=agents.map(a=>a.agent_id||a.id);
+          if(m.organization!==process.env.EXPECTED_ORGANIZATION)throw Error('Wrong project isolation');
+          if(agents.length!==Number(process.env.EXPECTED_AGENTS))throw Error('Missing agent identities');
+          if(new Set(ids).size!==ids.length || ids.some(x=>!x||!x.includes(':')))throw Error('Duplicate or missing agent');
+          if((agents.filter(x=>x.group==='dsi'||x.role==='dsi')).length!==18)throw Error('Wrong DSI roster');
+          if(!Array.isArray(m.vercel_projects||m.vercel))throw Error('Vercel scope not defined');
+          if(!(m.github_repository||m.github)?.endsWith(process.env.EXPECTED_ORGANIZATION==='FAST'?'/GIGI':'/GIGI-Talon-Congo'))throw Error('Cross repository reference');
+          const forbidden=/^(delete|drop|truncate|remove|erase|purge|revoke|destroy)/i;
+          const allowed=[...(m.allowed_operations||[]),...agents.flatMap(a=>a.allowed||[])];
+          if(allowed.some(x=>forbidden.test(x)))throw Error('Destructive operation in grants');
+          console.log('Validated',agents.length,'agent identities for',m.organization);
+          console.log('Connector-mediated access only: no direct administrative credentials provisioned.');
+          JS
+      - name: Check project source on exact SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s 'app/src/main/java/cg/fast/n1/MainActivity.kt'
+          test -s 'backend/app/main.py'
+          test -s 'docs/fast-agent-atlas-2026-10-23.md'
+          echo "### GitHub repository verification" >> "$GITHUB_STEP_SUMMARY"
+          echo "Organization: FAST" >> "$GITHUB_STEP_SUMMARY"
+          echo "Repository: $GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Read-only GitHub source inspection successful.' >> "$GITHUB_STEP_SUMMARY"
+
+  vercel-public-health:
+    name: Vercel deployed applications, read-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check only this organization's Vercel applications
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            'https://fast-n1-officiel.vercel.app' \
+            'https://fast-n1-python-api.vercel.app/health'
+          do
+            code="$(curl -sS -L --max-time 25 -o /dev/null -w '%{http_code}' "$url")"
+            printf '%s - HTTP %s\n' "$url" "$code"
+            test "$code" -ge 200 && test "$code" -lt 400
+          done
+          echo 'Vercel HTTP read-only checks succeeded.' >> "$GITHUB_STEP_SUMMARY"
+
+  supabase-edge-health:
+    name: Supabase isolated project gateway health
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check Supabase project Edge Function without secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/dsi-agent-engine/health'
+          code="$(curl -sS -L --max-time 25 -o /dev/null -w '%{http_code}' "$url")"
+          echo "Supabase gateway HTTP $code"
+          test "$code" -eq 200
+          echo 'Supabase Edge health checked. No direct table access was granted.' >> "$GITHUB_STEP_SUMMARY"

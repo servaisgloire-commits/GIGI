@@ -1,0 +1,143 @@
+{
+  "organization": "FAST",
+  "supabase": "hmwxwzfcpdvgzjgxruup",
+  "github": "servaisgloire-commits/GIGI",
+  "vercel": [
+    "fast-n1-officiel",
+    "fast-n1-python-api"
+  ],
+  "authorization": "Requests executed only by connected maintenance with individually verified scoped tools",
+  "allowed_operations": [
+    "github:source_read",
+    "github:ci_read",
+    "github:propose_safe_patch",
+    "vercel:status_read",
+    "vercel:logs_read",
+    "supabase:schema_read",
+    "supabase:aggregate_read",
+    "incident:diagnose"
+  ],
+  "disallowed_operations": [
+    "data_delete",
+    "delete_project",
+    "delete_file",
+    "drop_table",
+    "truncate",
+    "reveal_secrets",
+    "cross_organization_access"
+  ],
+  "agents": [
+    {
+      "id": "dsi:Arthur",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Bastien",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Camille",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Clément",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Émile",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Enzo",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Éthan",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Gabriel",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Hugo",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Inès",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Iris",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Lucas",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Malik",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Maxime",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Nathan",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Noé",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Sofia",
+      "role": "dsi"
+    },
+    {
+      "id": "dsi:Yanis",
+      "role": "dsi"
+    },
+    {
+      "id": "metier:AXEL",
+      "role": "metier"
+    },
+    {
+      "id": "metier:JADE",
+      "role": "metier"
+    },
+    {
+      "id": "metier:LEON",
+      "role": "metier"
+    },
+    {
+      "id": "metier:LINA",
+      "role": "metier"
+    },
+    {
+      "id": "metier:MATHIS",
+      "role": "metier"
+    },
+    {
+      "id": "metier:MAYA",
+      "role": "metier"
+    },
+    {
+      "id": "metier:NOAH",
+      "role": "metier"
+    },
+    {
+      "id": "metier:OCEANE",
+      "role": "metier"
+    },
+    {
+      "id": "metier:THEO",
+      "role": "metier"
+    },
+    {
+      "id": "metier:YAN",
+      "role": "metier"
+    }
+  ]
+}

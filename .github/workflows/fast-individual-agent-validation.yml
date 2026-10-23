@@ -1,0 +1,34 @@
+name: FAST - Validate Individual Agent Workflows
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/agents/**'
+      - '.github/agent-platform-capabilities.json'
+      - '.github/workflows/fast-individual-agent-validation.yml'
+      - 'tools/agent-workflow-validator.mjs'
+  workflow_dispatch:
+    inputs:
+      agent_id:
+        description: 'Agent ID (dsi:Name or metier:CODE) or all'
+        required: true
+        default: all
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: fast-individual-workflow-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check-agent-workflows:
+    name: Validate all scoped agent definitions and selected agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit specific agent workflows and exact capability identities
+        shell: bash
+        env:
+          AGENT_ID: ${{ inputs.agent_id || 'all' }}
+        run: |
+          node tools/agent-workflow-validator.mjs '.github/agents/fast-per-agent-workflows.json' 'FAST' 28 "$AGENT_ID"
