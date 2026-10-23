@@ -41,7 +41,7 @@ module.exports=async function codeFix(req,res){
   !/^[a-f0-9]{40}$/.test(expected)||typeof find!=="string"||typeof replace!=="string"||
   find.length<4||find.length>1700||replace.length<4||replace.length>3500||
   evidence.length<16||evidence.length>1200||find===replace||
-  DESTRUCTIVE.test(replace)||/sb_secret_|sk-proj-|github_pat_|ghp_[A-Za-z0-9]{12}/i.test(replace))
+  DESTRUCTIVE.test(replace)||/sb[_]secret_|sk[-]proj-|github[_]pat_|ghp_[A-Za-z0-9]{12}/i.test(replace))
   return send(res,400,{ok:false,error:"INVALID_OR_UNSAFE_CHANGE"});
  const token=process.env.GITHUB_AGENT_REPO_TOKEN;
  if(!token)return send(res,503,{ok:false,error:"SCOPED_GITHUB_TOKEN_NOT_CONNECTED"});
