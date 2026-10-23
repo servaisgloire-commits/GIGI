@@ -7,8 +7,8 @@ const MANIFEST=".github/agents/fast-per-agent-workflows.json";
 const TOKEN_HASH="15a771603d2d2fe18605c974b28d5a7ba2cbc2e418a07f18350b930a6c77a1e1";
 const ROOTS=["app/","backend/","admin/","tests/"];
 const GITHUB="https://api.github.com/repos/"+REPO;
-const RESTRICTED=/\\/(?:\\.env|node_modules|secret|secrets|private[-_]?key|credentials|\.git)(?:\\/|\\.|$)/i;
-const DESTRUCTIVE=/\\b(?:DROP\\s+TABLE|TRUNCATE\\s+TABLE|DELETE\\s+FROM|rm\\s+-rf|git\\s+rm|REVOKE\\s+ALL|DROP\\s+POLICY)\\b/i;
+const RESTRICTED=/\/(?:\.env|node_modules|secret|secrets|private[-_]?key|credentials|\.git)(?:\/|\.|$)/i;
+const DESTRUCTIVE=/\b(?:DROP\s+TABLE|TRUNCATE\s+TABLE|DELETE\s+FROM|rm\s+-rf|git\s+rm|REVOKE\s+ALL|DROP\s+POLICY)\b/i;
 function send(res,status,data){return res.status(status).json(data)}
 function equalToken(value){
  const hash=crypto.createHash("sha256").update(String(value||""),"utf8").digest("hex");
@@ -16,9 +16,9 @@ function equalToken(value){
 }
 function validPath(path){
  return typeof path==="string" && path.length<=220 && ROOTS.some(r=>path.startsWith(r)) &&
- /^[A-Za-z0-9_.\\/-]+\\.(?:js|jsx|ts|tsx|mjs|css|html|kt|java|py|xml|json)$/.test(path) &&
+ /^[A-Za-z0-9_.\/-]+\.(?:js|jsx|ts|tsx|mjs|css|html|kt|java|py|xml|json)$/.test(path) &&
  !path.includes("..") && !RESTRICTED.test("/"+path) &&
- !/(?:^|\\/)(?:auth|security|secrets?|credentials|migrations|node_modules)(?:\\/|\\.|$)/i.test(path);
+ !/(?:^|\/)(?:auth|security|secrets?|credentials|migrations|node_modules)(?:\/|\.|$)/i.test(path);
 }
 async function gh(token,method,path,body){
  const response=await fetch(GITHUB+path,{method,headers:{
@@ -37,7 +37,7 @@ module.exports=async function codeFix(req,res){
  const agent=String(b.agent_id||"").trim(),path=String(b.source_path||"");
  const expected=String(b.base_sha||""),find=b.find,replace=b.replace;
  const evidence=String(b.bug_evidence||"").trim();
- if(!/^(?:dsi|metier):[\\p{L}A-Za-z0-9_-]{2,75}$/u.test(agent)||!validPath(path)||
+ if(!/^(?:dsi|metier):[\p{L}A-Za-z0-9_-]{2,75}$/u.test(agent)||!validPath(path)||
   !/^[a-f0-9]{40}$/.test(expected)||typeof find!=="string"||typeof replace!=="string"||
   find.length<4||find.length>1700||replace.length<4||replace.length>3500||
   evidence.length<16||evidence.length>1200||find===replace||
@@ -76,9 +76,9 @@ module.exports=async function codeFix(req,res){
   });
   const pr=await gh(token,"POST","/pulls",{title:"fix: verified correction proposed by "+agent,
    head:branch,base:"main",draft:true,
-   body:"Automated guarded correction request.\\nOrganization: FAST\\nAgent: "+agent+
-    "\\nBase SHA: "+expected+"\\nFile: "+path+"\\nEvidence: "+evidence+
-    "\\nNo production deployment performed. CI and review required before merge."});
+   body:"Automated guarded correction request.\nOrganization: FAST\nAgent: "+agent+
+    "\nBase SHA: "+expected+"\nFile: "+path+"\nEvidence: "+evidence+
+    "\nNo production deployment performed. CI and review required before merge."});
   return send(res,201,{ok:true,organization:"FAST",agent,
    branch,commit_sha:updated.commit?.sha||null,pr_url:pr.html_url,
    status:"PR_DRAFT_AWAITING_TESTS",production_deployed:false,delete_allowed:false});
