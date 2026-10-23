@@ -1,0 +1,2013 @@
+{
+  "organization": "FAST",
+  "repo": "servaisgloire-commits/GIGI",
+  "source_baseline_sha": "8f5bdaaf70edf34608bd9421706f2ee2a0bb7462",
+  "expected_agents": 28,
+  "execution": "on_demand_agent_selection_with_pr_checks",
+  "automated_production_deploy": false,
+  "forbidden_actions": [
+    "DELETE",
+    "DROP",
+    "TRUNCATE",
+    "REMOVE_FILE",
+    "DELETE_BRANCH",
+    "DELETE_PROJECT",
+    "CLEAR_LOGS",
+    "READ_PRIVATE_CREDENTIALS"
+  ],
+  "authorization": "connector_mediated_not_direct_identity",
+  "workflows": [
+    {
+      "id": "dsi:Arthur",
+      "name": "Arthur",
+      "group": "dsi",
+      "department": "Cybersécurité et accès",
+      "mission": "contrôle des accès",
+      "source_scopes": [
+        "supabase",
+        "backend",
+        "tests",
+        ".github/workflows"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "supabase",
+            "backend",
+            "tests",
+            ".github/workflows"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Bastien",
+      "name": "Bastien",
+      "group": "dsi",
+      "department": "Tests de correction et non-régression",
+      "mission": "Tests de code, parcours chauffeur/client, GPS, PIN et API; exécute les tests de préproduction, reproduit les bugs, documente les résultats et non-régressions; transmet ses constats à Nathan. Aucun commit, merge ni déploiement autonome.",
+      "source_scopes": [
+        "app",
+        "backend",
+        "tests"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Camille",
+      "name": "Camille",
+      "group": "dsi",
+      "department": "Pré-tests du code avant revue ChatGPT",
+      "mission": "Pré-teste FAST AVANT proposition ChatGPT : revues statiques, contrôle dépendances, sécurité des accès, API, autorisations, tests d'intégration et cas limites; produit les preuves et distingue résultats observés des hypothèses. Aucun commit, merge, déploiement, suppression ni test destructif en production.",
+      "source_scopes": [
+        "backend",
+        "supabase",
+        ".github/workflows",
+        "tests"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "backend",
+            "supabase",
+            ".github/workflows",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Clément",
+      "name": "Clément",
+      "group": "dsi",
+      "department": "Correction de code et anomalies",
+      "mission": "Ingénieur de correction de code; prépare les options de correctif et le plan de tests pour ChatGPT. Aucune écriture de patch, merge ou déploiement avant autorisation explicite du propriétaire portant sur l'incident.",
+      "source_scopes": [
+        "app",
+        "backend",
+        "admin",
+        "tests",
+        "supabase",
+        ".github/workflows",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "admin",
+            "tests",
+            "supabase",
+            ".github/workflows",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Émile",
+      "name": "Émile",
+      "group": "dsi",
+      "department": "Pré-tests du code avant revue ChatGPT",
+      "mission": "Pré-teste le code FAST AVANT envoi à ChatGPT : reproduit le bug, lance les tests disponibles dans un environnement non-productif sur le SHA identifié, vérifie parcours chauffeur-client, GPS, PIN, courses, API et bases; collecte traces, erreurs, tests réussis/échoués, environnement et étapes de reproduction. Ne propose aucun correctif comme appliqué et ne touche ni code ni données de production.",
+      "source_scopes": [
+        "app",
+        "backend",
+        "tests"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Enzo",
+      "name": "Enzo",
+      "group": "dsi",
+      "department": "Applications et GPS",
+      "mission": "application Android et APK",
+      "source_scopes": [
+        "app",
+        "backend",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Éthan",
+      "name": "Éthan",
+      "group": "dsi",
+      "department": "Infrastructure et données",
+      "mission": "supervision incidents",
+      "source_scopes": [
+        "backend",
+        "supabase",
+        ".github/workflows",
+        "tests"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "backend",
+            "supabase",
+            ".github/workflows",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Gabriel",
+      "name": "Gabriel",
+      "group": "dsi",
+      "department": "Direction",
+      "mission": "directeur DSI & cybersécurité",
+      "source_scopes": [
+        "supabase",
+        "backend",
+        "tests",
+        ".github/workflows"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "supabase",
+            "backend",
+            "tests",
+            ".github/workflows"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Hugo",
+      "name": "Hugo",
+      "group": "dsi",
+      "department": "Infrastructure et données",
+      "mission": "DevOps",
+      "source_scopes": [
+        "backend",
+        "supabase",
+        ".github/workflows",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "backend",
+            "supabase",
+            ".github/workflows",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Inès",
+      "name": "Inès",
+      "group": "dsi",
+      "department": "Infrastructure et données",
+      "mission": "bases et sauvegardes",
+      "source_scopes": [
+        "backend",
+        "supabase",
+        ".github/workflows",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "backend",
+            "supabase",
+            ".github/workflows",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Iris",
+      "name": "Iris",
+      "group": "dsi",
+      "department": "Tests de correction et non-régression",
+      "mission": "Tests indépendants de sécurité, permissions, charge et scénarios d'échec FAST; collabore avec Yanis et Nathan, signale les vulnérabilités et prépare un rapport avant/après sur chaque SHA autorisé. Aucun commit, merge ni déploiement autonome.",
+      "source_scopes": [
+        "supabase",
+        "backend",
+        "tests",
+        ".github/workflows"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "supabase",
+            "backend",
+            "tests",
+            ".github/workflows"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Lucas",
+      "name": "Lucas",
+      "group": "dsi",
+      "department": "Applications et GPS",
+      "mission": "backend et API",
+      "source_scopes": [
+        "app",
+        "backend",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Malik",
+      "name": "Malik",
+      "group": "dsi",
+      "department": "Applications et GPS",
+      "mission": "GPS et dispatch",
+      "source_scopes": [
+        "app",
+        "backend",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Maxime",
+      "name": "Maxime",
+      "group": "dsi",
+      "department": "Gouvernance et audit",
+      "mission": "audit indépendant",
+      "source_scopes": [
+        "app",
+        "backend",
+        "admin",
+        "tests",
+        "supabase",
+        ".github/workflows",
+        "docs"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "admin",
+            "tests",
+            "supabase",
+            ".github/workflows",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Nathan",
+      "name": "Nathan",
+      "group": "dsi",
+      "department": "Paiements et qualité",
+      "mission": "tests et non-régression",
+      "source_scopes": [
+        "backend",
+        "supabase",
+        "tests"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "backend",
+            "supabase",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Noé",
+      "name": "Noé",
+      "group": "dsi",
+      "department": "Correction de code et anomalies",
+      "mission": "Détection et diagnostic des bugs applicatifs, API, base, Android, GPS et workflows; établit les preuves, l'impact, la reproduction et le rapport technique sans modifier le code.",
+      "source_scopes": [
+        "app",
+        "backend",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "app",
+            "backend",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Sofia",
+      "name": "Sofia",
+      "group": "dsi",
+      "department": "Paiements et qualité",
+      "mission": "transactions et fraude",
+      "source_scopes": [
+        "backend",
+        "supabase",
+        "tests"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "backend",
+            "supabase",
+            "tests"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "dsi:Yanis",
+      "name": "Yanis",
+      "group": "dsi",
+      "department": "Cybersécurité et accès",
+      "mission": "tests d'intrusion autorisés",
+      "source_scopes": [
+        "supabase",
+        "backend",
+        "tests",
+        ".github/workflows"
+      ],
+      "mode": "audit_only",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "supabase",
+            "backend",
+            "tests",
+            ".github/workflows"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_schema_rls_logs_in_project",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "run_or_review_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "report_findings_without_code_write",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:AXEL",
+      "name": "AXEL",
+      "group": "metier",
+      "department": "reseaux_sociaux",
+      "mission": "Équipe réseaux sociaux",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:JADE",
+      "name": "JADE",
+      "group": "metier",
+      "department": "marketing",
+      "mission": "Équipe marketing",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:LEON",
+      "name": "LEON",
+      "group": "metier",
+      "department": "marketing",
+      "mission": "Direction marketing",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:LINA",
+      "name": "LINA",
+      "group": "metier",
+      "department": "reseaux_sociaux",
+      "mission": "Équipe réseaux sociaux",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:MATHIS",
+      "name": "MATHIS",
+      "group": "metier",
+      "department": "marketing",
+      "mission": "Équipe marketing",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:MAYA",
+      "name": "MAYA",
+      "group": "metier",
+      "department": "reseaux_sociaux",
+      "mission": "Équipe réseaux sociaux",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:NOAH",
+      "name": "NOAH",
+      "group": "metier",
+      "department": "marketing",
+      "mission": "Équipe marketing",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:OCEANE",
+      "name": "OCEANE",
+      "group": "metier",
+      "department": "marketing",
+      "mission": "Équipe marketing",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:THEO",
+      "name": "THEO",
+      "group": "metier",
+      "department": "reseaux_sociaux",
+      "mission": "Équipe réseaux sociaux",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    },
+    {
+      "id": "metier:YAN",
+      "name": "YAN",
+      "group": "metier",
+      "department": "reseaux_sociaux",
+      "mission": "Responsable réseaux sociaux",
+      "source_scopes": [
+        "admin",
+        "app",
+        "docs"
+      ],
+      "mode": "mediated_corrective_work",
+      "model": "gpt-6-sol",
+      "github": "servaisgloire-commits/GIGI",
+      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "workflow": [
+        {
+          "step": "chat",
+          "operation": "receive_and_classify",
+          "require": "ticket_with_agent_and_organization"
+        },
+        {
+          "step": "github",
+          "operation": "read_scoped_sources_at_exact_SHA",
+          "paths": [
+            "admin",
+            "app",
+            "docs"
+          ],
+          "require": "verified_source_revision"
+        },
+        {
+          "step": "supabase",
+          "operation": "inspect_authorized_aggregates",
+          "require": "authorized_scope_no_personal_data"
+        },
+        {
+          "step": "tests",
+          "operation": "prepare_and_verify_non_destructive_checks",
+          "require": "github_actions_evidence_for_exact_SHA"
+        },
+        {
+          "step": "review",
+          "operation": "security_non_regression_and_owner_rules",
+          "require": "no_delete_no_new_feature_without_approval"
+        },
+        {
+          "step": "execution",
+          "operation": "request_mediated_safe_patch_in_separate_PR",
+          "require": "confirmed_bug_and_scoped_executor"
+        },
+        {
+          "step": "vercel",
+          "operation": "verify_project_or_deployment_read_only",
+          "require": "project_allowlist_only"
+        },
+        {
+          "step": "chat",
+          "operation": "report_commit_CI_URL_and_actual_result",
+          "require": "no_claim_without_evidence"
+        }
+      ],
+      "limits": {
+        "no_deletion": true,
+        "no_cross_org": true,
+        "no_secret_access": true,
+        "no_direct_admin_credentials": true,
+        "approval_for_new_features": true
+      }
+    }
+  ]
+}
