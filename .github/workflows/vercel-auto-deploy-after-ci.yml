@@ -24,7 +24,6 @@ jobs:
             project: prj_fFq7tf0gmVRerxi1bYNzloFh8L1l
             name: fast-n1-python-api
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: team_ikooiav5lkWrGTZIY05wYg0n
       VERCEL_PROJECT_ID: ${{ matrix.project }}
     defaults:
@@ -32,6 +31,8 @@ jobs:
         working-directory: ${{ matrix.root }}
     steps:
       - name: Verify authorization exists without exposing credentials
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then echo "Vercel deploy disabled: VERCEL_TOKEN is missing in protected GitHub Actions secrets" >&2; exit 1; fi
       - uses: actions/checkout@v4
@@ -47,11 +48,15 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
       - name: Build exact verified source in CI
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           vercel pull --yes --environment=production
           vercel build --prod
       - name: Deploy prebuilt source to existing Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           vercel deploy --prebuilt --prod
