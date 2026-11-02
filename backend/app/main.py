@@ -15,7 +15,7 @@ from supabase import create_client
 
 from .http_pool import shared_http_client
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://hmwxwzfcpdvgzjgxruup.supabase.co")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://slnxjpsjfbsigoweormy.supabase.co")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 GOOGLE_MAPS_API_KEY = (os.getenv("GOOGLE_MAPS_API_KEY") or "").strip()
 APP_VERSION = os.getenv("APP_VERSION") or "6.0"

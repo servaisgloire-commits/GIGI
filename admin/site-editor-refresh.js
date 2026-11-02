@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-site-admin';
+const API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-site-admin';
 const OFFICIAL='https://fast-n1-officiel.vercel.app/';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-const API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-users';
-const AUTH_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api';
+const API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-users';
+const AUTH_API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-api';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';

@@ -1,7 +1,7 @@
 'use strict';
 const NATIVE=(()=>{try{return JSON.parse(window.FastNative?.config?.()||'{}')}catch{return {}}})();
 const API=(NATIVE.apiUrl||'https://fast-n1-python-api.vercel.app').replace(/\/$/,'');
-const SUPA=(NATIVE.supabaseUrl||'https://hmwxwzfcpdvgzjgxruup.supabase.co').replace(/\/$/,'');
+const SUPA=(NATIVE.supabaseUrl||'https://slnxjpsjfbsigoweormy.supabase.co').replace(/\/$/,'');
 const KEY=NATIVE.supabaseKey||'';
 const $=id=>document.getElementById(id);
 const state={session:null,me:null,role:null,quote:null,ride:null,offer:null,vehicle:null,coords:null,pickup:null,destination:null,rideType:'standard',payment:'cash',poll:null,offerPoll:null,gps:null,lastDispatchAt:0,map:null,pickupMarker:null,destinationMarker:null,driverMarkers:[],routeLayer:null};

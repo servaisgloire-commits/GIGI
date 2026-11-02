@@ -17,8 +17,8 @@ android {
         versionCode = 25092033
         versionName = "09.10.2026.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "SUPABASE_URL", "\"https://hmwxwzfcpdvgzjgxruup.supabase.co\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38\"")
+        buildConfigField("String", "SUPABASE_URL", "\"https://slnxjpsjfbsigoweormy.supabase.co\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_2ztv2WciJXIqcC_yHYcqBg_kQf9Vjwa\"")
         buildConfigField("String", "PYTHON_API_URL", "\"https://fast-n1-python-api.vercel.app\"")
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"$escapedMapsApiKey\"")
         buildConfigField("boolean", "MAPS_NATIVE_CONFIGURED", mapsApiKey.isNotBlank().toString())

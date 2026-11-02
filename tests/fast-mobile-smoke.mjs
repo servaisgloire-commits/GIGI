@@ -126,7 +126,7 @@ if (securityAgent !== null) {
 } else {
   // Security G was explicitly retired: keep the endpoint disabled.
   // The database HMAC/PIN safeguards above remain mandatory.
-  const endpoint='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/security-g';
+  const endpoint='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/security-g';
   const response=await fetch(endpoint,{method:'GET',signal:AbortSignal.timeout(10000)});
   const body=await response.json().catch(()=>({}));
   if(response.status!==410 || body?.error!=='AGENT_REMOVED'){

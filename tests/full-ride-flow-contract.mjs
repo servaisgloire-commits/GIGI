@@ -21,7 +21,7 @@ const android=read('app/src/main/java/cg/fast/n1/MainActivity.kt');
 // 1. Registration / login: Android WebView uses the live FAST Edge auth proxy,
 // while the Python proxy remains available for later backend deployment.
 requireText(index,'auth-proxy-fix.js','FAST auth proxy loader');
-requireText(authProxy,'https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-auth-proxy','live Edge auth endpoint');
+requireText(authProxy,'https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-auth-proxy','live Edge auth endpoint');
 requireText(authProxy,"return 'password'",'login Edge action');
 requireText(authProxy,"return 'signup'",'signup Edge action');
 requireText(authProxy,"return 'recover'",'recovery Edge action');
