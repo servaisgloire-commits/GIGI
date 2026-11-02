@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api';
+const API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-api';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const money=(v,c='EUR')=>{try{return new Intl.NumberFormat('fr-FR',{style:'currency',currency:c,maximumFractionDigits:['XAF','XOF','JPY'].includes(c)?0:2}).format(Number(v||0))}catch{return `${Number(v||0).toLocaleString('fr-FR')} ${c}`}};
@@ -35,7 +35,7 @@ window.addEventListener('load',boot);document.addEventListener('click',e=>{if(e.
 
 (()=>{
 'use strict';
-const API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api';
+const API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-api';
 const $=id=>document.getElementById(id);
 let autoTimer=null,opsBusy=false;
 function token(){return localStorage.getItem('fast_admin_token')||''}

@@ -11,7 +11,7 @@ from supabase import create_client
 
 from .http_pool import shared_http_client
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://hmwxwzfcpdvgzjgxruup.supabase.co")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://slnxjpsjfbsigoweormy.supabase.co")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 AUTH_EMAIL_COOLDOWN_SECONDS = max(60, int(os.getenv("AUTH_EMAIL_COOLDOWN_SECONDS", "120")))
 AUTH_EMAIL_LIMIT_BACKOFF_SECONDS = max(300, int(os.getenv("AUTH_EMAIL_LIMIT_BACKOFF_SECONDS", "600")))

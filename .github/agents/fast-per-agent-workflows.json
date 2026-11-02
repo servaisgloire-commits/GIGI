@@ -32,7 +32,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -103,7 +103,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -174,7 +174,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -249,7 +249,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -323,7 +323,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -393,7 +393,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -464,7 +464,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -536,7 +536,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -608,7 +608,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -680,7 +680,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -752,7 +752,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -823,7 +823,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -893,7 +893,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -967,7 +967,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1041,7 +1041,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1111,7 +1111,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1181,7 +1181,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1252,7 +1252,7 @@
       "mode": "audit_only",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1323,7 +1323,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1393,7 +1393,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1463,7 +1463,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1533,7 +1533,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1603,7 +1603,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1673,7 +1673,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1743,7 +1743,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1813,7 +1813,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1883,7 +1883,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",
@@ -1953,7 +1953,7 @@
       "mode": "mediated_corrective_work",
       "model": "gpt-6-sol",
       "github": "servaisgloire-commits/GIGI",
-      "supabase_project": "hmwxwzfcpdvgzjgxruup",
+      "supabase_project": "slnxjpsjfbsigoweormy",
       "workflow": [
         {
           "step": "chat",

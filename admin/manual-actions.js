@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
 
-const MAIN_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api';
-const MANUAL_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-manual';
+const MAIN_API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-api';
+const MANUAL_API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-manual';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let cache=null;

@@ -12,8 +12,8 @@ if (manifest.organization !== organization || grants.organization !== organizati
 if (manifest.expected_agents !== expected || manifest.workflows?.length !== expected) fail('Agent total mismatch');
 if (grants.agents?.length !== expected) fail('Capability count mismatch');
 const project = organization === 'FAST'
-  ? {repo:'servaisgloire-commits/GIGI', db:'hmwxwzfcpdvgzjgxruup'}
-  : {repo:'servaisgloire-commits/GIGI-Talon-Congo', db:'ioffjwxfxrqvxttbjeok'};
+  ? {repo:'servaisgloire-commits/GIGI', db:'slnxjpsjfbsigoweormy'}
+  : {repo:'servaisgloire-commits/GIGI-Talon-Congo', db:'yukxkgpaoekqjnvkyzrn'};
 if (manifest.repo !== project.repo) fail('Wrong GitHub repository');
 const ids = new Set();
 const caps = new Set(grants.agents.map(x => x.agent_id || x.id));

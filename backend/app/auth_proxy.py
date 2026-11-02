@@ -11,7 +11,7 @@ router = APIRouter(prefix="/v1/auth", tags=["auth-proxy"])
 
 SUPABASE_PUBLISHABLE_KEY = os.getenv(
     "SUPABASE_PUBLISHABLE_KEY",
-    "sb_publishable_RYYcI3j1QU9LAUa-0s1eZQ_x6HpDr38",
+    "sb_publishable_2ztv2WciJXIqcC_yHYcqBg_kQf9Vjwa",
 ).strip()
 
 

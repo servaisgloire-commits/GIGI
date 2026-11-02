@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
-const ADMIN_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-admin-api';
-const VEHICLE_API='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-erp-vehicle-admin';
+const ADMIN_API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-admin-api';
+const VEHICLE_API='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-erp-vehicle-admin';
 const token=()=>localStorage.getItem('fast_admin_token')||'';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';

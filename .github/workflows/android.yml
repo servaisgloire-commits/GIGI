@@ -16,7 +16,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FAST_SIGNING_BROKER_URL: https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/fast-signing-broker
+      FAST_SIGNING_BROKER_URL: https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/fast-signing-broker
 
     steps:
       - name: Checkout

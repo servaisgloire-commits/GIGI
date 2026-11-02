@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url='https://hmwxwzfcpdvgzjgxruup.supabase.co/functions/v1/dsi-agent-engine/health'
+          url='https://slnxjpsjfbsigoweormy.supabase.co/functions/v1/dsi-agent-engine/health'
           code="$(curl -sS -L --max-time 25 -o /dev/null -w '%{http_code}' "$url")"
           echo "Supabase gateway HTTP $code"
           test "$code" -eq 200
