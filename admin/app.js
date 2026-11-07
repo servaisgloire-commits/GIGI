@@ -45,7 +45,7 @@ function fullName(id){const p=profile(id);return p?`${p.first_name||''} ${p.last
 function countryName(code){return state.markets.find(x=>x.country_code===code)?.country_name||code||'—'}
 function pill(text,kind=''){return `<span class="pill ${kind}">${esc(text)}</span>`}
 function statusKind(s){return ['paid','approved','completed','available','verified'].includes(String(s))?'ok':['failed','rejected','cancelled','offline'].includes(String(s))?'bad':['pending','searching','authorized','driver_arriving','in_progress','accepted'].includes(String(s))?'warn':'blue'}
-function pageTitle(p){return({dashboard:'Tableau de bord',drivers:'Chauffeurs',clients:'Clients',documents:'Documents chauffeurs',payments:'Paiements clients',payouts:'Paie chauffeurs',rides:'Courses',markets:'Pays, paiements & tarifs'})[p]||'FAST N°1'}
+function pageTitle(p){return({dashboard:'Tableau de bord',drivers:'Chauffeurs',clients:'Clients',documents:'Documents chauffeurs',workflows:'Workflows clients & chauffeurs',payments:'Paiements clients',payouts:'Paie chauffeurs',rides:'Courses',markets:'Pays, paiements & tarifs'})[p]||'FAST N°1'}
 function renderAll(){renderDashboard();renderDrivers();renderClients();renderDocuments();renderPayments();renderPayouts();renderRides();renderMarkets();fillCountryFilter();$('pendingDocBadge').textContent=state.documents.filter(d=>d.status==='pending').length}
 
 function renderDashboard(){
