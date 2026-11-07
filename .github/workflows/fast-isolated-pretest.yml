@@ -1,0 +1,68 @@
+name: FAST Isolated Pretest (No Production Access)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/fast-isolated-pretest.yml'
+      - 'tests/**'
+      - 'app/**'
+      - 'backend/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fast-isolated-pretest-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated-pretest:
+    name: FAST sandbox security and offline syntax checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify isolated test environment (never print secret values)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_SERVICE_ROLE_KEY DATABASE_URL OPENAI_API_KEY VERCEL_TOKEN VERCEL_AUTH_TOKEN GH_TOKEN GITHUB_TOKEN; do
+            if test -n "${!name:-}"; then
+              echo "Unexpected credential environment variable: $name" >&2
+              exit 1
+            fi
+          done
+          test -s app/src/main/java/cg/fast/n1/MainActivity.kt
+          test -s backend/app/main.py
+          test -d tests
+          echo "FAST verified source SHA: $(git rev-parse HEAD)"
+          echo 'No production migration, database write, outbound API call or deployment is authorized by this job.'
+      - name: Isolated, read-only, network-disabled JavaScript syntax checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m \
+            --volume "$PWD:/workspace:ro" --workdir /workspace \
+            node:22-alpine sh -ec '
+              test -d tests
+              count=0
+              for file in tests/*.mjs; do
+                node --check "$file"
+                count=$((count + 1))
+              done
+              echo "Offline syntax checks validated: $count JavaScript test files"
+            '
+      - name: Summarize verified limitations
+        shell: bash
+        run: |
+          {
+            echo '## FAST isolated pretest'
+            echo "- SHA: $(git rev-parse HEAD)"
+            echo '- Source checked: Android, backend and JavaScript test syntax'
+            echo '- GitHub token: contents:read only; not persisted in checkout'
+            echo '- JavaScript checks: Docker container read-only, no network'
+            echo '- Database migrations and production network integrations: NOT executed'
+            echo '- APK instrumentation and end-to-end functional tests: NOT covered'
+          } >> "$GITHUB_STEP_SUMMARY"
